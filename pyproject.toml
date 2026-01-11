@@ -1,0 +1,25 @@
+[project]
+name = "bespoke"
+version = "0.1.0"
+authors = [
+   {name="Fabian Kaczmarczyck"},
+   {name="Julian Zimmert"},
+]
+description = "Language learning app using generative AI"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "aiofiles",
+    "google-genai",
+    "nicegui",
+    "numpy",
+    "pydantic",
+    "ruff",
+    "tenacity",
+]
+
+[tool.ruff]
+exclude = [
+    ".git",
+    ".venv",
+]

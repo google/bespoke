@@ -1,0 +1,92 @@
+Vs（的）N The use of state verbs (adjectives) to modify a noun, often requiring the particle "的" to link the description to the object.
+V了¹ An aspect marker indicating the completion or realization of an action, typically placed immediately after the verb.
+和¹ A conjunction used to link two or more nouns or noun phrases together as a list or a compound subject/object.
+没（有）¹ The negation used specifically for the verb "to have" or to indicate that an action did not happen in the past.
+会¹ An auxiliary verb used to express a future possibility or the likelihood that something will happen.
+V着¹ An aspect marker indicating a continuous state or the manner in which an action is performed.
+序数 The use of the prefix "第" before a number and measure word to indicate rank, order, or sequence.
+如果 A conjunction used at the beginning of a clause to introduce a hypothetical condition (if).
+可以¹ An auxiliary verb used to express permission or the objective possibility of an action being allowed.
+要² An auxiliary verb used to express an obligation, a piece of advice, or a strong necessity to do something.
+要³ An auxiliary verb expressing a desire, intention, or a future plan to perform an action.
+时量补语 A duration complement placed after the verb to indicate the length of time an action has continued.
+但是 A conjunction used to introduce a clause that contrasts with or contradicts the preceding statement.
+能¹ An auxiliary verb used to express physical capability or the capacity of an object to hold/contain something.
+V过¹ An aspect marker indicating an experiential past, showing that an action has been performed at least once in the past.
+就¹ An adverb used to indicate that an action happens immediately after another, or occurs sooner than expected.
+“的”后接成分省略 The omission of a noun after the particle "的" when the identity of the noun is already clear from context.
+会² An auxiliary verb used to indicate an acquired skill or a learned ability.
+能² An auxiliary verb used to indicate capability based on objective circumstances or physical health.
+要¹ Used as a main verb to indicate that an event is imminent or about to happen shortly.
+宾+被+V A basic passive voice structure (Bei-construction) where the object of an action becomes the subject of the sentence.
+V+Vs A resultative compound where a state verb follows an action verb to describe the outcome of that action.
+跟² A preposition used to introduce the person to whom a statement is directed or with whom information is shared.
+想 An auxiliary verb expressing a desire, wish, or intent to do something, often softer than "要".
+和² A preposition used to indicate the person with whom an activity is shared or performed together.
+从¹ A preposition used to indicate the starting point or origin of a movement or journey.
+用 A preposition used to indicate the tool, instrument, or method used to perform an action.
+在²/正在V Aspect markers used to indicate that an action is currently in progress at a specific moment.
+呢¹ A sentence-final particle used for elliptical questions to ask "how about...?" regarding a previously mentioned subject.
+（虽然），可是 A common sentence pattern used to express a concession or contrast between two related clauses.
+N+们 A suffix added to personal pronouns or nouns referring to people to indicate plurality.
+开始V A verbal structure used to indicate the commencement of a specific activity or state.
+怎么 An interrogative pronoun used to ask about the manner, method, or way in which an action is performed.
+可以² An auxiliary verb used to express ability or a "can do" state, often related to comprehension or situational possibility.
+为什么 An interrogative phrase used to ask for the reason, cause, or purpose of an action or state.
+给 A verb or preposition used to indicate the recipient of an action or an object being transferred.
+V见 A resultative complement used after verbs of perception (like see/hear) to indicate that the perception was successful.
+V了² A sentence-final particle used to indicate a "change of state" or the emergence of a new situation.
+（请）不要 A polite or direct command used to forbid or discourage an action.
+数字+几 A construction used to express an approximate number, typically meaning "ten-some" or "more than ten."
+请 A polite verb used at the beginning of a sentence to make a request or give a polite command.
+V得+补语 A structural particle "得" used to link a verb to a complement of degree or description.
+帮 A verb or preposition used to indicate that an action is being performed on behalf of or for the benefit of someone else.
+以前 A time word used to refer to the past or to indicate that an action occurs prior to another event.
+V出¹ A directional complement indicating movement from the inside to the outside.
+多/少 Adverbs used before a verb to suggest doing an action more or less, often in the context of advice.
+也 An adverb used to indicate similarity or addition, meaning "also" or "too," always placed before the verb.
+在³ A preposition used to indicate a specific point in time when an event occurs.
+以前/以后 Time markers used to indicate "before" or "after" a specific event or a certain duration of time.
+怎么样 An interrogative phrase used to ask about the quality, condition, or state of something or someone.
+几/多少¹ Interrogative words used to ask about quantities; "几" is for small numbers, "多少" is for any quantity or price.
+怎么办 A fixed interrogative expression used to ask for a solution or what should be done in a difficult situation.
+跟¹ A preposition used to indicate accompaniment, meaning "with" or "along with" someone else.
+请问 A polite formulaic expression used to preface a question to a stranger or in a formal setting.
+好吗 A tag question added to the end of a proposal or request to seek the listener's agreement or consent.
+怎么了 An interrogative phrase used to ask "what happened" or "what is wrong" with someone or something.
+V到²/在 Complements used to indicate the final location or destination reached as a result of an action.
+从……到……¹ A structure used to define a range of time from a specific start point to an end point.
+从……到……² A structure used to define the spatial distance or path between two geographical locations.
+都¹ An adverb meaning "all" or "both," used to group the subject and indicate that the verb applies to every member.
+V来/去¹ Simple directional complements used after a verb to show movement towards (来) or away from (去) the speaker.
+因为……所以…… A fundamental conjunction structure used to express cause and effect within a sentence.
+有的……有的…… A structure used to categorize different groups within a whole, meaning "some... others..."
+到……（去/来）+VP A serial verb construction indicating going to a place for the purpose of performing a specific action.
+太Vs了 A pattern used to express an excessive degree of a state or quality, often with a subjective or emotional tone.
+……还是…… A conjunction used in questions to provide alternative choices, meaning "or."
+又……又…… A structure used to indicate that two qualities or states exist simultaneously in one person or thing.
+有（一）点Vs An adverbial phrase used before an adjective to express a small degree, often regarding an unpleasant or undesirable state.
+（在） PW 的 N A locative structure where a location phrase acts as a modifier to specify which noun is being discussed.
+从² A preposition used to indicate the starting point of a process or the time when a new state begins.
+V起来¹ A directional complement used to indicate upward movement from a lower position.
+Vs一点 A structure used after an adjective to suggest a slightly higher degree or to make a request more polite.
+数词+多（量词） The use of "多" after a number and measure word to indicate an approximate amount that exceeds the stated number.
+V到¹ A resultative complement used to indicate that an action has reached a specific point in time or a certain extent.
+又¹ An adverb used to indicate that an action has repeated in the past or happens again contrary to expectation.
+又² An adverb used to list multiple actions or items that have occurred, emphasizing a sequence or accumulation.
+V过来¹/过去 Directional complements indicating movement toward (过来) or away from (过去) a specific point of reference.
+V下来/下去¹ Directional complements indicating movement from a higher position to a lower one.
+A比B …… The basic comparative structure used to state that "A" has more of a certain quality than "B."
+A跟B一样…… A comparative structure used to indicate that two things possess a quality to the same degree.
+一……就…… A structure used to indicate that the second action follows immediately after the first action.
+（是）……的 A construction used to emphasize a specific detail (time, place, or manner) of a past event that is already known.
+好/难+V Prefixes added to verbs to describe an action as being "easy/pleasant" or "difficult/unpleasant" to perform.
+了……就…… A structure used to show that once the first action is completed, the second action will occur.
+从……往…… A directional structure indicating the path taken from an origin toward a specific direction.
+A离B…… A structure used to describe the spatial or temporal distance between two points.
+VP 的 N A complex noun phrase where a verb phrase acts as an adjective to modify a noun.
+多+Vs？ A question structure used to ask about the degree or extent of a quality (e.g., how tall, how old).
+V进/出/上/回/过/起 + 来/去 Compound directional complements that describe complex movements relative to the speaker.
+零代词 The grammatical phenomenon where the subject or object is omitted because it is understood from the context.
+概数 Various ways to express approximate numbers, such as using "几" or neighboring numbers.
+话题优先 A sentence structure where the object or main topic is moved to the beginning of the sentence for emphasis.
