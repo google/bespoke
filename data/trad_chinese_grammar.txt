@@ -1,0 +1,139 @@
+Negation of "you" with "mei" - 沒 + 有
+Standard negation with "bu" - 不 + Verb / Adj.
+The "all" adverb "dou" - 都 + Verb / Adj.
+The "also" adverb "ye" - 也 + Verb / Adj.
+Expressing "and" with "he" - Noun 1 + 和 + Noun 2
+Offering choices with "haishi" - A + 還是 + B ?
+Age with "sui" - Subj. + Number + 歲
+Measure word "ge" - Number + 個 + Noun
+Structure of dates - Number + 年 + Number + 月 + Number + 日
+Structure of days of the week - 星期 + Number
+Structure of numbers - Number + Unit
+Structure of times (basic) - Number + 點(鐘)
+Expressing close possession without "de" - Pronoun + Noun
+Expressing possession with "de" - Noun 1 + 的 + Noun 2
+Questions with "ne" - ⋯⋯呢 ?
+Suggestions with "ba" - Command + 吧
+Expressing existence in a place with "zai" - 在 + Place
+Expressing existence with "you" - Place + 有 + Obj.
+Expressing possession with "you" - Subj. + 有 + Obj.
+Using the verb "jiao" - 叫 + Name
+Using the verb "qu" - 去 + Place
+Using the verb "xing" - 姓 + Surname
+Expressing ability or possibility with "neng" - 能 + Verb
+Expressing a learned skill with "hui" - 會 + Verb
+Expressing "be going to" with "yao" - Subj. + 要 + Verb (+ 了)
+Expressing permission with "keyi" - 可以 + Verb
+Wanting to do something with "yao" - 要 + Verb
+How to do something with "zenme" - 怎麼 + Verb ?
+Negation of past actions with "meiyou" - 沒有 + Verb
+Negative commands with "buyao" - 不要 + Verb
+Basic sentence order - Subj. + Verb (+ Obj.)
+Connecting nouns with "shi" - A + 是 + B
+Expressing "excessively" with "tai" - 太 + Adj. + 了
+Simple "noun + adjective" sentences - Noun + 很 + Adj.
+Affirmative-negative question - Verb + 不 + Verb / Adj. + 不 + Adj.
+Placement of question words - 什麼 / 什麼時候 / 誰 / 哪兒 / 為什麼 / 怎麼
+Tag questions with "bu" - ⋯⋯是不是 / 對不對 / 好不好 ?
+Tag questions with "ma" - ⋯⋯是嗎 / 對嗎 / 好嗎 ?
+Yes-no questions with "ma" - ⋯⋯嗎？
+Comparing "er" and "liang" - 二 vs 兩
+Negative adjectives with "-si le" - Adj. + 死了
+Approximations with "chabuduo" - Subj. + 差不多
+Emphasizing quantity with "dou" - 大家 / 很多人 + 都⋯⋯
+Expressing actions in progress with "zai" - (正) 在 + Verb
+Expressing "all along" with "yizhi" - Subj. + 一直 + Predicate
+Expressing "already" with "yijing" - 已經⋯⋯了
+Expressing "always" with "zongshi" - 總是 + Verb
+Expressing "and also" with "hai" - 還 + Verb
+Expressing "just" with "gang" - Subj. + 剛 + Verb
+Expressing "only" with "zhi" - 只 + Verb
+Expressing "then" with "jiu" - 就 + Verb Phrase
+Negative commands with "bie" - 別 + Verb
+Simultaneous tasks with "yibian" - 一邊 + Verb 1 (，) 一邊 + Verb 2
+Asking about degree with "duo" - Subj. + 多 + Adj. ?
+Basic comparisons with "yiyang" - Noun 1 + 跟 / 和 + Noun 2 + 一樣 + Adj.
+Expressing "a little too" with "you dian" - 有點(兒) + Adj.
+Expressing "both A and B" with "you" - 又⋯⋯ 又⋯⋯
+Expressing distance with "li" - Place 1 + 離 + Place 2 + Adv. + 近 / 遠
+Expressing "even more" with "geng" - 更 + Adj.
+Expressing "not very" with "bu tai" - 不太 + Adj.
+Expressing "really" with "zhen" - 真 + Adj.
+Intensifying with "duo" - Subj. + 多 + Adj.
+Moderating positive adjectives with "hai" - 還 + Adj.
+Modifying nouns with adjective + "de" - Adj. + 的 + Noun
+Modifying nouns with phrase + "de" - Phrase + 的 + Noun
+Superlative "zui" - 最 + Adj. (+ 了)
+Expressing "or" in statements - ⋯⋯或者⋯⋯
+Expressing "with" with "gen" - 跟⋯⋯ + Verb
+The filler word "neige" - ⋯⋯那個⋯⋯
+Two words for "but" - ……，可是 / 但是……
+After a specific time with "yihou" - Time / Verb + 以後
+Before a specific time with "yiqian" - Time / Verb + 以前
+Expressing "before" in general with "yiqian" - 以前，⋯⋯
+Expressing "just now" with "gangcai" - 剛才 + Verb
+Expressing "when" with "de shihou" - ⋯⋯的時候
+In the future in general with "yihou" - 以後，⋯⋯
+Time words and word order - Subj. + Time⋯⋯ / Time + Subj.⋯⋯
+Approximating with sequential numbers - Number 1 + Number 2
+Big numbers in Chinese - Number + 萬 / 億
+Structure of times (advanced) - Number 1 + 點(鐘) + Number 2 + 分
+Using "ji" to mean "several" - 幾 + Measure Word + Noun
+Change of state with "le" - ⋯⋯了
+Conceding with "ba" - ⋯⋯吧
+Expressing "already" with just "le" - Subj. + Verb Phrase + 了
+Expressing completion with "le" - Subj. + Verb + 了 + Obj.
+Expressing experiences with "guo" - Verb + 過
+Expressing "not anymore" with "le" - 不 / 沒(有) + Verb Phrase + 了
+Expressing "now" with "le" - New Situation + 了
+Modal particle "ne" - ⋯⋯呢 ?
+Sentence-final interjection "a" - ⋯⋯啊
+Softening speech with "ba" - ⋯⋯吧
+Structural particle "de" - 的 / 得 / 地
+Using "guo" with "le" - Verb + 過 + 了
+Basic comparisons with "bi" - Noun 1 + 比 + Noun 2 + Adj.
+Expressing "from… to…" with "cong… dao…" - 從⋯⋯到⋯⋯
+Basic comparisons with "meiyou" - Noun 1 + 沒(有) + Noun 2 + Adj.
+Directional verbs "lai" and "qu" - 來 / 去 + Place
+Polite requests with "qing" - 請 + Verb
+Auxiliary verb "yao" and its multiple meanings - 要 + Noun / 要 + Verb
+Expressing "should" with "yinggai" - 應該 / 該 + Verb
+Expressing "will" with "hui" - 會 + Verb
+Expressing "would like to" with "xiang" - 想 + Verb
+Actions in a row - (Verb Phrase 1) + (Verb Phrase 2)
+Expressing "difficult" with "nan" - 難 + Verb
+Expressing duration with "le" - Verb + 了 + Duration
+Expressing "never" with "conglai" - 從來 + 不 / 沒(有) + Verb
+Expressing ongoing duration with double "le" - Verb + 了 + Duration + 了
+Expressing "together" with "yiqi" - 一起 + Verb
+Inability with "mei banfa" - 沒辦法 + Verb
+Indicating location with "zai" before verbs - Subj. + 在 + Place + Verb
+Reduplication of verbs - Verb + Verb
+Special cases of "zai" following verbs - Verb + 在 + Place
+Special verbs with "hen" - 很 + Verb
+Using "dao" to mean "to go to" - 到 + Place
+Using "hao" to mean "easy" - 好 + Verb
+Verbing briefly with "yixia" - Verb + 一下
+Verbs that take double objects - Subj. + Verb + Indirect Obj. + Direct Obj.
+Potential complement "-bu dong" for not understanding - Verb + 不懂
+Result complements "-dao" and "-jian" - Verb + 到 / 見
+Result complement "-wan" for finishing - Verb + 完 (+ 了)
+Expressing "some" with "yixie" - 一些 + Noun
+Using "youde" to mean "some" - 有的 + Noun
+Counting money - Number + 塊 / 元 (+ Number + 毛 / 角) (+ 錢)
+Expressing "every" with "mei" - 每 + Measure Word (+ Noun)
+Expressing "half" with "ban" - Number + Measure Word + 半 + Noun
+Measure words for counting - Number + Measure Word + Noun
+Measure words in quantity questions - 幾 + Measure Word (+ Noun) ?
+Measure words with "this" and "that" - 這 / 那 + Measure Word (+ Noun)
+Ordinal numbers with "di" - 第 + Number (+ Measure Word)
+Asking how something is with "zenmeyang" - ⋯⋯怎麼樣？
+Asking why with "zenme" - 怎麼⋯⋯？
+Questions with "le ma" - Verb + 了 + 嗎？
+Cause and effect with "yinwei" and "suoyi" - 因為⋯⋯ 所以⋯⋯
+Expressing "about to happen" with "le" - 快 + Verb / Adj. + 了
+Expressing "everything" with "shenme dou" - 什麼 + 都 / 也⋯⋯
+Expressing location with "zai... shang / xia / li" - 在 + Place + 上 / 下 / 裡 / 旁邊
+Expressing "stop doing" with "bie… le" - 別 + Verb + 了
+Comparing "bu" and "mei" - 不 vs 沒
+Comparing "yao" and "xiang" - 要 vs 想
