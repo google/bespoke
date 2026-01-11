@@ -1,0 +1,50 @@
+# Copyright 2026 Google LLC
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     https://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+import unittest
+from unittest.mock import AsyncMock, patch
+
+from bespoke import Card
+from bespoke import languages
+
+
+class TestCard(unittest.TestCase):
+    def test_split_into_parts(self) -> None:
+        language = languages.LANGUAGES["japanese"]
+        card = Card(
+            id="test",
+            sentence="大学生は学生より年上です。",
+            native_sentence="A university student is older than a student.",
+            audio_filename="audio.ogg",
+            slow_audio_filename="slow_audio.ogg",
+            native_audio_filename="native_audio.ogg",
+            phonetic="だいがくせいはがくせいよりとしうえです。",
+            units=["学生", "大学生"],
+            unit_tags={"学生": "学生", "大学生": "大学生"},
+            notes=[],
+        )
+        split = [
+            ("大学生", "大学生"),
+            ("は", None),
+            ("学生", "学生"),
+            ("より年上です。", None),
+        ]
+        self.assertEqual(card.split_into_parts(), split)
+        split_text = "[大学生](大学生)は[学生](学生)より年上です。"
+        str_text = f"Card: {split_text} = {card.native_sentence}"
+        self.assertEqual(str(card), str_text)
+
+
+if __name__ == "__main__":
+    unittest.main()
