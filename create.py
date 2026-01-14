@@ -46,10 +46,15 @@ def main():
     "--target",
     type=str,
     choices=list(target_choices),
+    required=True,
     help="The language you are learning.",
   )
   parser.add_argument(
-    "--native", type=str, choices=list(native_choices), help="A language that you know."
+    "--native",
+    type=str,
+    choices=list(native_choices),
+    required=True,
+    help="A language that you know.",
   )
   parser.add_argument(
     "--cards_per_unit", type=int, default=16, help="Number of cards in a single unit."

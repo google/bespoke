@@ -6,16 +6,14 @@ This is an experimental language learning app using generative AI.
 You listen to, speak, read or write sentences.
 These sentences are chosen to show you vocabulary with spaced repetition.
 
-## Architecture
+## Overview
 
 The project consists of 2 parts:
 
 - The LLM calls to generate the collection of learning cards.
-- The frontend that selects and shows cards to the user.
+- A simple frontend that selects and shows cards to the user.
 
-This repository only contains the card generation.
-
-## How to run
+## How to create cards
 
 The command below runs Bespoke with
 [uv](https://docs.astral.sh/uv/getting-started/installation/).
@@ -32,10 +30,26 @@ uv run create.py --target="Japanese" --native="English"
 You can also use other LLMs if you replace the implementations in
 `bespoke/llm.py`.
 
+## How to start learning
+
+First, you need to either create or import cards for your language.
+From here on, you won't need ffmpeg and a Gemini API key anymore.
+Run this command and a tab should open in your web browser:
+
+```
+uv run learn.py --target="Japanese" --native="English" --difficulty=A1 --use_read_mode
+```
+
 ## Supported languages
 
 You can find instructions in [languages.py](bespoke/languages.py) to add
 languages, both as a target for learning and your native language.
+
+For the target parameter above, try:
+
+- "Japanese"
+- "Simplified Chinese"
+- "Traditional Chinese"
 
 ## Disclaimer
 
