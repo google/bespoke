@@ -36,9 +36,9 @@ class UnitTagsBuilder:
     self._no_progress_counter = 0
 
   def add_filtered(
-      self,
-      new_tag_list: list[str, str],
-      vocabulary: list[str],
+    self,
+    new_tag_list: list[str, str],
+    vocabulary: list[str],
   ) -> None:
     all_tags = new_tag_list + list(self.unit_tags.items())
     all_tags.sort(reverse=True)
@@ -67,27 +67,25 @@ class UnitTagsBuilder:
 
 class DeckBuilder:
   def __init__(
-      self,
-      target_language: Language,
-      native_language: Language,
+    self,
+    target_language: Language,
+    native_language: Language,
   ) -> None:
     self._target_language = target_language
     self._native_language = native_language
     self._card_index = CardIndex.load(target_language, native_language)
     self._vocabulary = VOCABULARY[target_language.code_name]
     self._full_vocabulary = [
-        word
-        for words in self._vocabulary.values()
-        for word in words
+      word for words in self._vocabulary.values() for word in words
     ]
     self._grammar = GRAMMAR[target_language.code_name]
 
   async def create_cards(
-      self,
-      *,
-      cards_per_unit: int,
-      cards_per_call: int,
-      verbose: bool = False,
+    self,
+    *,
+    cards_per_unit: int,
+    cards_per_call: int,
+    verbose: bool = False,
   ) -> None:
     grammar = []
     missing = self._total_missing(cards_per_unit)
@@ -102,17 +100,19 @@ class DeckBuilder:
           units_to_learn = units[-cards_per_call:]
           units = units[:-cards_per_call]
           sentences = await llm.create_sentences(
-              language=self._target_language,
-              difficulty=difficulty,
-              grammar=grammar_to_learn,
-              units=units_to_learn,
+            language=self._target_language,
+            difficulty=difficulty,
+            grammar=grammar_to_learn,
+            units=units_to_learn,
           )
           builders = await self._tag_sentences(sentences)
           tasks = []
           for builder in builders:
-            tasks.append(self._card_index.create_card(
+            tasks.append(
+              self._card_index.create_card(
                 builder.sentence, builder.unit_tags, notes=[grammar_to_learn]
-            ))
+              )
+            )
           cards = await asyncio.gather(*tasks)
           if verbose:
             for unit in units_to_learn:
@@ -133,9 +133,9 @@ class DeckBuilder:
       print(f"Generated {done} out of {necessary} mandatory cards")
 
   def _get_missing_units(
-      self,
-      difficulty: Difficulty,
-      cards_per_unit: int,
+    self,
+    difficulty: Difficulty,
+    cards_per_unit: int,
   ) -> list[str]:
     units = list(self._vocabulary.get(difficulty, []))
     random.shuffle(units)
@@ -148,8 +148,8 @@ class DeckBuilder:
     return total
 
   async def _tag_sentences(
-      self,
-      sentences: list[str],
+    self,
+    sentences: list[str],
   ) -> list[UnitTagsBuilder]:
     builders = [UnitTagsBuilder(sentence) for sentence in sentences]
     while not all(builder.done() for builder in builders):
@@ -158,11 +158,13 @@ class DeckBuilder:
       for builder in builders:
         if not builder.done():
           used_builders.append(builder)
-          tasks.append(llm.tag_sentence(
+          tasks.append(
+            llm.tag_sentence(
               sentence=builder.sentence,
               language=self._target_language,
               unit_tags=builder.unit_tags,
-          ))
+            )
+          )
       all_new_tags = await asyncio.gather(*tasks)
       for builder, new_tag_list in zip(used_builders, all_new_tags):
         old_tags = builder.unit_tags

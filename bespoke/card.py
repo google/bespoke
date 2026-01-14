@@ -85,7 +85,7 @@ async def _read_cards(directory: str) -> list[Card]:
     return []
   semaphore = asyncio.Semaphore(16)
 
-  async def read_card_file(name: str) -> Card  | None:
+  async def read_card_file(name: str) -> Card | None:
     async with semaphore:
       return await _load_card_async(directory, name.removesuffix(".json"))
 
@@ -100,23 +100,32 @@ async def _read_cards(directory: str) -> list[Card]:
 
 async def _write_ogg(audio: np.ndarray, filename: str, bitrate="16k") -> None:
   cmd = [
-      "ffmpeg", "-y",
-      "-hide_banner",
-      "-loglevel", "error",
-      "-f", "s16le",
-      "-ar", "24000",
-      "-ac", "1",
-      "-i", "pipe:0",
-      "-b:a", bitrate,
-      "-c:a", "libopus",
-      "-vbr", "on",
-      filename,
+    "ffmpeg",
+    "-y",
+    "-hide_banner",
+    "-loglevel",
+    "error",
+    "-f",
+    "s16le",
+    "-ar",
+    "24000",
+    "-ac",
+    "1",
+    "-i",
+    "pipe:0",
+    "-b:a",
+    bitrate,
+    "-c:a",
+    "libopus",
+    "-vbr",
+    "on",
+    filename,
   ]
   process = await asyncio.create_subprocess_exec(
-      *cmd,
-      stdin=asyncio.subprocess.PIPE,
-      stdout=asyncio.subprocess.PIPE,
-      stderr=asyncio.subprocess.PIPE,
+    *cmd,
+    stdin=asyncio.subprocess.PIPE,
+    stdout=asyncio.subprocess.PIPE,
+    stderr=asyncio.subprocess.PIPE,
   )
   stdout, stderr = await process.communicate(input=audio.tobytes())
   if process.returncode != 0:
@@ -124,11 +133,11 @@ async def _write_ogg(audio: np.ndarray, filename: str, bitrate="16k") -> None:
 
 
 async def _write_audio_file(
-    *,
-    directory: str,
-    sentence: str,
-    language: Language,
-    slowly: bool,
+  *,
+  directory: str,
+  sentence: str,
+  language: Language,
+  slowly: bool,
 ) -> str:
   audio = await llm.speak(sentence, language, slowly=slowly)
   sentence_hash = hashlib.sha256(sentence.encode("utf-8")).hexdigest()
@@ -143,9 +152,9 @@ async def _write_audio_file(
 
 class CardIndex:
   def __init__(
-      self,
-      target_language: Language,
-      native_language: Language,
+    self,
+    target_language: Language,
+    native_language: Language,
   ) -> None:
     self._target_language = target_language
     self._native_language = native_language
@@ -233,44 +242,44 @@ class CardIndex:
 
   @llm.standard_retry
   async def create_card(
-      self,
-      sentence: str,
-      unit_tags: UnitTags,
-      notes: list[str] = [],
+    self,
+    sentence: str,
+    unit_tags: UnitTags,
+    notes: list[str] = [],
   ) -> Card:
     id = hashlib.sha256(sentence.encode("utf-8")).hexdigest()
     native_sentence = await llm.translate(sentence, self._native_language)
     audio_filename = await _write_audio_file(
-        directory=self._card_directory,
-        sentence=sentence,
-        language=self._target_language,
-        slowly=False,
+      directory=self._card_directory,
+      sentence=sentence,
+      language=self._target_language,
+      slowly=False,
     )
     slow_audio_filename = await _write_audio_file(
-        directory=self._card_directory,
-        sentence=sentence,
-        language=self._target_language,
-        slowly=True,
+      directory=self._card_directory,
+      sentence=sentence,
+      language=self._target_language,
+      slowly=True,
     )
     native_audio_filename = await _write_audio_file(
-        directory=self._card_directory,
-        sentence=native_sentence,
-        language=self._native_language,
-        slowly=False,
+      directory=self._card_directory,
+      sentence=native_sentence,
+      language=self._native_language,
+      slowly=False,
     )
     phonetic = await llm.to_phonetic(sentence, self._target_language)
     units = list(set(unit_tags.values()))
     card = Card(
-        id=id,
-        sentence=sentence,
-        native_sentence=native_sentence,
-        audio_filename=audio_filename,
-        slow_audio_filename=slow_audio_filename,
-        native_audio_filename=native_audio_filename,
-        phonetic=phonetic,
-        units=units,
-        unit_tags=unit_tags,
-        notes=notes,
+      id=id,
+      sentence=sentence,
+      native_sentence=native_sentence,
+      audio_filename=audio_filename,
+      slow_audio_filename=slow_audio_filename,
+      native_audio_filename=native_audio_filename,
+      phonetic=phonetic,
+      units=units,
+      unit_tags=unit_tags,
+      notes=notes,
     )
     card.write_json(self._card_directory)
     self._add(card)

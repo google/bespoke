@@ -13,5 +13,13 @@ dependencies = [
     "google-genai",
     "numpy",
     "pydantic",
+    "ruff",
     "tenacity",
 ]
+
+[tool.ruff]
+exclude = [
+    ".git",
+    ".venv",
+]
+indent-width = 2

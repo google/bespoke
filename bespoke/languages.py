@@ -46,12 +46,12 @@ class Difficulty(StrEnum):
 
 
 DIFFICULTY_EXPLANATIONS = {
-    Difficulty.A1: "Beginner, understands and uses simple phrases and sentences.",
-    Difficulty.A2: "Basic knowledge of frequently used expressions in areas of immediate relevance.",
-    Difficulty.B1: "Intermediate, understands main points of clear standard language.",
-    Difficulty.B2: "Independent, can interact with native speakers without strain.",
-    Difficulty.C1: "Proficient, can understand demanding, longer clauses and recognise implicit meaning.",
-    Difficulty.C2: "Near native, understands virtually everything heard or read with ease.",
+  Difficulty.A1: "Beginner, understands and uses simple phrases and sentences.",
+  Difficulty.A2: "Basic knowledge of frequently used expressions in areas of immediate relevance.",
+  Difficulty.B1: "Intermediate, understands main points of clear standard language.",
+  Difficulty.B2: "Independent, can interact with native speakers without strain.",
+  Difficulty.C1: "Proficient, can understand demanding, longer clauses and recognise implicit meaning.",
+  Difficulty.C2: "Near native, understands virtually everything heard or read with ease.",
 }
 
 
@@ -69,76 +69,73 @@ class Language(pydantic.BaseModel):
 
 
 ENGLISH = Language(
-    name="English",
-    writing_system="English",
-    phonetic_system=None,
-    code_name="english",
-    live_code="en-US",
+  name="English",
+  writing_system="English",
+  phonetic_system=None,
+  code_name="english",
+  live_code="en-US",
 )
 GERMAN = Language(
-    name="German",
-    writing_system="German",
-    phonetic_system=None,
-    code_name="german",
-    live_code="de-DE",
+  name="German",
+  writing_system="German",
+  phonetic_system=None,
+  code_name="german",
+  live_code="de-DE",
 )
 FRENCH = Language(
-    name="French",
-    writing_system="French",
-    phonetic_system=None,
-    code_name="french",
-    live_code="fr-FR",
+  name="French",
+  writing_system="French",
+  phonetic_system=None,
+  code_name="french",
+  live_code="fr-FR",
 )
 RUSSIAN = Language(
-    name="Russian",
-    writing_system="Russian",
-    phonetic_system=None,
-    code_name="russian",
-    live_code="ru-RU",
+  name="Russian",
+  writing_system="Russian",
+  phonetic_system=None,
+  code_name="russian",
+  live_code="ru-RU",
 )
 POLISH = Language(
-    name="Polish",
-    writing_system="Polish",
-    phonetic_system=None,
-    code_name="polish",
-    live_code="pl-PL",
+  name="Polish",
+  writing_system="Polish",
+  phonetic_system=None,
+  code_name="polish",
+  live_code="pl-PL",
 )
 JAPANESE = Language(
-    name="Japanese",
-    writing_system="Japanese",
-    phonetic_system="Hiragana",
-    code_name="japanese",
-    live_code="ja-JP",
+  name="Japanese",
+  writing_system="Japanese",
+  phonetic_system="Hiragana",
+  code_name="japanese",
+  live_code="ja-JP",
 )
 # Next two are Mandarin, should be synonymous.
 SIMP_CHINESE = Language(
-    name="Chinese",
-    writing_system="Simplified Chinese",
-    phonetic_system="Pinyin",
-    code_name="simp_chinese",
-    live_code="cmn-CN",
+  name="Chinese",
+  writing_system="Simplified Chinese",
+  phonetic_system="Pinyin",
+  code_name="simp_chinese",
+  live_code="cmn-CN",
 )
 TRAD_CHINESE = Language(
-    name="Chinese",
-    writing_system="Traditional Chinese",
-    phonetic_system="Pinyin",
-    code_name="trad_chinese",
-    live_code="cmn-CN",
+  name="Chinese",
+  writing_system="Traditional Chinese",
+  phonetic_system="Pinyin",
+  code_name="trad_chinese",
+  live_code="cmn-CN",
 )
 _ALL_LANGUAGES = [
-    ENGLISH,
-    GERMAN,
-    FRENCH,
-    RUSSIAN,
-    POLISH,
-    JAPANESE,
-    SIMP_CHINESE,
-    TRAD_CHINESE,
+  ENGLISH,
+  GERMAN,
+  FRENCH,
+  RUSSIAN,
+  POLISH,
+  JAPANESE,
+  SIMP_CHINESE,
+  TRAD_CHINESE,
 ]
-LANGUAGES = {
-    language.code_name: language
-    for language in _ALL_LANGUAGES
-}
+LANGUAGES = {language.code_name: language for language in _ALL_LANGUAGES}
 
 
 def _read_wordlist(filename: str) -> list[str]:
@@ -181,10 +178,9 @@ def _read_vocabulary(language: Language, verbose: bool = False) -> dict:
 
 SUPPORTED_LANGUAGES = [JAPANESE, SIMP_CHINESE, TRAD_CHINESE]
 VOCABULARY = {
-    language.code_name: _read_vocabulary(language)
-    for language in SUPPORTED_LANGUAGES
+  language.code_name: _read_vocabulary(language) for language in SUPPORTED_LANGUAGES
 }
 GRAMMAR = {
-    language.code_name: _read_wordlist(f"data/{language.code_name}_grammar.txt")
-    for language in SUPPORTED_LANGUAGES
+  language.code_name: _read_wordlist(f"data/{language.code_name}_grammar.txt")
+  for language in SUPPORTED_LANGUAGES
 }

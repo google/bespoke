@@ -24,15 +24,15 @@ from bespoke import languages
 
 
 async def create(
-    target: languages.Language,
-    native: languages.Language,
-    cards_per_unit: int,
-    cards_per_call: int,
+  target: languages.Language,
+  native: languages.Language,
+  cards_per_unit: int,
+  cards_per_call: int,
 ) -> None:
   deck_builder = DeckBuilder(target, native)
   await deck_builder.create_cards(
-      cards_per_unit=cards_per_unit,
-      cards_per_call=cards_per_call,
+    cards_per_unit=cards_per_unit,
+    cards_per_call=cards_per_call,
   )
   card_index = CardIndex.load(target, native)
   await card_index.check()
@@ -43,28 +43,19 @@ def main():
   target_choices = {l.writing_system: l for l in languages.SUPPORTED_LANGUAGES}
   native_choices = {l.writing_system: l for l in languages.LANGUAGES.values()}
   parser.add_argument(
-      "--target", 
-      type=str, 
-      choices=list(target_choices),
-      help="The language you are learning."
+    "--target",
+    type=str,
+    choices=list(target_choices),
+    help="The language you are learning.",
   )
   parser.add_argument(
-      "--native", 
-      type=str, 
-      choices=list(native_choices),
-      help="A language that you know."
+    "--native", type=str, choices=list(native_choices), help="A language that you know."
   )
   parser.add_argument(
-      "--cards_per_unit", 
-      type=int, 
-      default=16, 
-      help="Number of cards in a single unit."
+    "--cards_per_unit", type=int, default=16, help="Number of cards in a single unit."
   )
   parser.add_argument(
-      "--cards_per_call", 
-      type=int, 
-      default=8, 
-      help="Number of cards per API call."
+    "--cards_per_call", type=int, default=8, help="Number of cards per API call."
   )
   args = parser.parse_args()
 
@@ -74,4 +65,4 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+  main()
