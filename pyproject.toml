@@ -23,4 +23,3 @@ exclude = [
     ".git",
     ".venv",
 ]
-indent-width = 2
