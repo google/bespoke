@@ -1,0 +1,134 @@
+V過²	Used to indicate that a specific action was completed in the past, often emphasizing the fact that it is done.
+V著²	Used to indicate that one action (V1) is the background state while the main action (V2) is occurring.
+V到³	A resultative complement used to indicate the success or achievement of the goal of an action.
+才¹	An adverb indicating that an action occurred later or with more difficulty than expected.
+才⁴	An adverb used to emphasize a small number or a low degree, often translated as "only."
+讓¹	A causative verb used to indicate that one person or thing causes another to enter a certain state.
+讓²	A causative verb meaning "to allow" or "to permit" someone to do something.
+叫¹	A causative verb meaning "to order" or "to command" someone to perform a task.
+叫²	A verb used to indicate the act of summoning or hiring someone to perform an action.
+呢²	A sentence-final particle used with question words to make the question sound softer or more curious.
+沒（有）²	A sentence-final tag used to turn a statement about a past experience into a question.
+必須	An auxiliary verb expressing an absolute necessity or an unavoidable obligation.
+到	A preposition used to define the end point of a range or sequence.
+要是……就……	A conjunction structure used to express a hypothetical condition and its corresponding result.
+……的話	A phrase added to the end of a conditional clause to signify "if" or "supposing."
+A沒有B（這/那麼）……	A comparative structure indicating that A does not reach the same level of a quality as B.
+不但……而且……	A conjunction structure meaning "not only... but also..." used to add related or stronger information.
+不但……還/也……	A variation of the "not only... but also..." structure emphasizing additional capabilities or identities.
+而且	A conjunction used to connect two clauses to provide further information or an additional reason.
+真Vs	An adverbial use of "真" to express a strong exclamation or genuine feeling about a state or quality.
+越……越……	A structure expressing that the degree of the second quality changes in proportion to the change of the first.
+越來越……	A construction used to show that a state or quality is progressing or increasing over time.
+本來	An adverb referring to the original state or intention, often followed by a change in the current situation.
+然後	A conjunction used to indicate the next step in a chronological sequence of events.
+一邊……一邊……	A structure used to indicate that two actions are being performed simultaneously by the same person.
+先……再……	A sequence marker used to indicate that one action must be completed before the next one starts.
+就要……了	A pattern used to indicate that an event is about to happen very soon, often within a fixed timeframe.
+快要……了	A pattern indicating that a state or event is approaching its beginning or end.
+V一下	A verb complement used to indicate that an action is brief, casual, or an attempt to try something.
+（當）……的時候	A temporal phrase used to define the specific time or occasion when an action occurs.
+V上	A directional complement indicating movement toward a higher level or the attachment of one thing to another.
+V下	A directional complement indicating movement to a lower position or the completion of an action in a fixed spot.
+V起	A directional complement indicating movement upward or the beginning of an action/state.
+V滿	A resultative complement used to indicate that a space has been completely filled by an action.
+（也）……也……	A structure used to list two or more possibilities, functions, or qualities that are equally applicable.
+有時候……有時候……	A structure used to describe alternating situations or habits that occur at different times.
+對	A preposition used to indicate the target or object toward which an action or feeling is directed.
+對……有興趣	A specific prepositional phrase used to express a person's interest in a particular subject or activity.
+替	A preposition meaning "for" or "on behalf of," used when one person does an action for another.
+為了	A preposition used to express the purpose, goal, or motivation behind an action.
+動詞重疊（ABAB）	Reduplication of two-syllable verbs to indicate a casual, brief action or to soften the tone of a suggestion.
+狀態動詞重疊	Reduplication of state verbs (adjectives) to intensify the description of a quality or state.
+狀態動詞重疊定語	The use of reduplicated adjectives before a noun to provide a more vivid or emotional description.
+狀態動詞重疊狀語	The use of reduplicated adjectives before a verb to describe the manner in which an action is performed.
+VV看	Reduplication of a verb followed by "看" to suggest trying an action to see what the result will be.
+還沒（有）	A phrase used to indicate that an expected action has not yet occurred up to the present moment.
+不太/不很	Adverbial phrases used to soften a negative description, meaning "not very" or "not quite."
+不用/不必	Auxiliary verbs used to indicate that an action is not necessary or that there is no need to do it.
+是不是+VP	A structure used to confirm a suspicion or to ask for verification of a fact in a softened manner.
+好不好	A tag question used to seek approval, agreement, or to make a polite suggestion.
+好+幾/多/些	The use of "好" as an intensifier before quantities to emphasize that a number is quite large.
+結構助詞「地」	A structural particle used to link an adverbial modifier (usually an adjective) to the verb it describes.
+不知道……	A phrase used to introduce an indirect question or to express uncertainty about a future possibility.
+那麼	A conjunction used at the beginning of a clause to mean "in that case" or "then," based on previous info.
+那	A shortened version of "那麼," used to transition to a conclusion or suggestion based on what was just said.
+（請）別	A negative imperative used to advise or command someone not to do something.
+（請）+VP	Direct imperatives used to give instructions or orders, often softened with "請" for politeness.
+還是……吧	A pattern used to make a final suggestion or choice, implying it is the best option under the circumstances.
+應該¹	An auxiliary verb used to express what is likely or expected to happen based on logic.
+應該²	An auxiliary verb used to express a moral obligation or a strong suggestion of what one ought to do.
+可以³	An auxiliary verb used to indicate that a certain action has the potential to produce a beneficial effect.
+V起來²	A directional complement used metaphorically to indicate the start and continuation of an action or state.
+V起來³	A directional complement indicating the action of gathering, storing, or hiding something away.
+V下去²	A directional complement used metaphorically to indicate the continuation of an action that is already in progress.
+才²	An adverb used to indicate that a specific condition is the only way to achieve a certain result.
+才³	An adverb indicating that an action has only just occurred a very short time ago.
+就²	An adverb used to emphasize a large number, a high degree, or the inclusiveness of a fact.
+還¹	An adverb used in comparative sentences to mean "even more," emphasizing an extreme degree.
+願意	An auxiliary verb used to express willingness or readiness to perform an action or accept a situation.
+只要……就……	A conjunction structure indicating that a specific condition is sufficient to bring about a result.
+只有……才……	A conjunction structure indicating that a specific condition is the unique requirement for a result.
+只好	An adverb used to indicate that one has no other choice but to perform a certain action.
+不管……都……	A conjunction structure meaning "no matter what," indicating the result remains the same regardless of circumstances.
+一M比一M……	A comparative structure used to show a steady, progressive increase or decrease in a quality.
+Vs得多	A complement of degree used after an adjective to indicate a significant difference in a comparison.
+尤其（是）	An adverb used to single out a specific example that is particularly noteworthy or extreme.
+V 得/不 了	A potential complement expressing whether one has the ability or capacity to finish an action.
+V得/不……	Potential complements used to indicate whether a result can or cannot be achieved (e.g., can/cannot see).
+V 得/不 下	A potential complement expressing whether a space has the capacity to hold an object or person.
+疑問代詞	The use of question words as indefinite pronouns to mean "any," "anywhere," or "whoever."
+差不多	An adverb or adjective meaning "almost," "nearly," or "about the same."
+Vs極了/得不得了	Intensive complements used after adjectives to express an extremely high or superlative degree.
+Vs死了	A colloquial intensive complement used to express an unbearable or extreme degree of a state.
+Vs壞了	An intensive complement used to express that a state or feeling has reached an extreme, overwhelming level.
+Vs了一點	A phrase used after an adjective to indicate that a quality is slightly more than desired or expected.
+把O V（一）V	A "Ba" construction combined with verb reduplication to describe a casual disposal of an object.
+把 O V到……	A "Ba" construction used to describe moving an object to a specific location or person.
+把 O V 了	A "Ba" construction indicating that an action has been completed upon an object, often involving disposal.
+把……V+結果補語	A "Ba" construction where a resultative complement specifies the final state of the object after the action.
+把 O V-在 PW	A "Ba" construction specifically used to describe placing or leaving an object at a particular location.
+把+N¹+V給+N²	A "Ba" construction used to describe the transfer of an object from the subject to a recipient.
+被+（N）+V得	A passive construction where the "得" complement describes the extent or result of what happened to the subject.
+其實	An adverb used to introduce the actual facts of a situation, often correcting a misconception.
+什麼都……就是……	A pattern used to express that everything is a certain way except for one specific exception.
+V好	A resultative complement indicating that an action has been completed to a satisfactory or ready state.
+V完	A resultative complement indicating the simple conclusion or finishing of an activity.
+VP+VP(連動)	A serial verb construction where two actions occur in sequence, often with the first indicating the purpose of the second.
+才……就……	A structure used to highlight that a second event happened surprisingly soon after the first began.
+時段+否定	A structure where a duration of time is followed by negation to show how long an action has not happened.
+從……起	A phrase used to indicate the starting point in time from which a new habit or rule begins.
+V 得/不 起	A potential complement used to indicate whether one can afford the cost (financial or social) of an action.
+V （得/不）出來	A potential complement indicating whether a result or hidden information can be identified or produced.
+V住	A resultative complement indicating that an action has resulted in a firm, stable, or fixed state.
+V著（ㄓㄠˊ）	A resultative complement indicating that an action has successfully reached its goal or purpose (e.g., falling asleep).
+V 得/不 動	A potential complement expressing whether one has the physical strength to move something or perform an action.
+V慣	A resultative complement indicating that one has become accustomed to or habituated to a certain action/state.
+V掉	A resultative complement used to indicate the removal, disappearance, or complete consumption of an object.
+V個不停/沒完	Structures used to describe an action that continues incessantly or without a foreseeable end.
+V個夠	A complement structure indicating that an action has been performed to one's full satisfaction or heart's content.
+PW+V（存現）	An existential sentence structure used to describe the existence or presence of something at a certain location.
+會……的	A structure used to emphasize the certainty or inevitability of a future event or change.
+（連）……都/也	An emphatic structure used to point out an extreme case, meaning "even... (is/does not)."
+不是……就是……	A structure used to indicate that there are only two possibilities, meaning "if not A, then B."
+V（了）（一）V	A construction used to describe a quick, brief, or light action, often used with verbs of movement or expression.
+一M一M ……	Reduplication of a measure word to indicate a steady, step-by-step, or repetitive progression.
+不再……了	A phrase used to indicate the permanent cessation of a previous state or habit.
+一點也/都+不/沒	An emphatic negation structure meaning "not at all" or "not even a little bit."
+從來+不/沒……	An adverb meaning "never," used to describe an absolute lack of experience or a permanent habit.
+不/沒+嗎	A rhetorical or confirmatory question using negation to express surprise or to seek verification.
+不是/沒……嗎	A rhetorical question structure used to point out something that should be obvious or expected.
+QW……就……QW	The use of identical question words in two clauses to mean "whatever," "whoever," or "wherever."
+其中	A phrase meaning "among which" or "of them," used to specify a subset within a larger group.
+等/等等	Particles used at the end of a list to indicate "etcetera" or "and so on."
+以+上/下/內/外	Suffixes used with numbers or categories to define boundaries (above, below, within, outside).
+除了……都……	A structure meaning "except for," where everything else in the group shares a certain quality.
+除了……還/也……	A structure meaning "in addition to," used to add more items to a list.
+數+量+左右	A phrase used after a quantity to indicate "approximately" or "around."
+百分數	The formal way to express percentages using the "parts of a hundred" structure.
+倍數	The grammatical method of expressing multiples or "times" (e.g., twice as much).
+分數	The standard way to express fractions (e.g., one-third) in Mandarin.
+四則運算	The terminology used for basic arithmetic: addition, subtraction, multiplication, and division.
+小數點	The terminology and reading rules for decimal points and numbers.
+VP/S+的……	A substantivized phrase where a clause ending in "的" acts as a noun, representing the thing being discussed.
+別（再）……了	An imperative used to tell someone to stop an action that is currently happening.

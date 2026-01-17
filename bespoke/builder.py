@@ -16,7 +16,9 @@
 
 import asyncio
 import random
+from typing import Iterator
 
+from bespoke.card import Card
 from bespoke.card import CardIndex
 from bespoke.languages import Difficulty
 from bespoke.languages import Language
@@ -26,8 +28,8 @@ from bespoke.languages import VOCABULARY
 from bespoke import llm
 
 
-# Helper class to iteratively build the UnitTags
 class UnitTagsBuilder:
+  """Helper class to iteratively build the UnitTags."""
   DONE_AFTER = 2
 
   def __init__(self, sentence: str) -> None:
@@ -40,6 +42,7 @@ class UnitTagsBuilder:
     new_tag_list: list[str, str],
     vocabulary: list[str],
   ) -> None:
+    old_tags = self.unit_tags
     all_tags = new_tag_list + list(self.unit_tags.items())
     all_tags.sort(reverse=True)
     sentence = self.sentence
@@ -56,8 +59,6 @@ class UnitTagsBuilder:
       filtered[word] = unit
       used_units.add(unit)
     self.unit_tags = filtered
-
-  def check_progress(self, old_tags: UnitTags) -> None:
     if len(old_tags) >= len(self.unit_tags):
       self._no_progress_counter += 1
 
@@ -65,22 +66,142 @@ class UnitTagsBuilder:
     return self._no_progress_counter >= self.DONE_AFTER
 
 
+class UnitPool:
+  """Helper class that tracks progress for cards per units."""
+  def __init__(
+    self,
+    target_language: Language,
+    card_index: CardIndex,
+    difficulty: Difficulty
+  ) -> None:
+    self._card_index = card_index
+    self._difficulty = difficulty
+    self._vocabulary = VOCABULARY[target_language.code_name]
+    self._grammar = GRAMMAR[target_language.code_name]
+    self._card_count = {v: 0 for v in self._vocabulary}
+    self._fitting_card_count = {v: 0 for v in self._vocabulary}
+    self._difficulty_order = {d: i for i, d in enumerate(Difficulty)}
+    self._count_limit = 0
+    self._fitting_limit = 0
+
+  def __iter__(self) -> Iterator[tuple[list[str], str]]:
+    pass
+
+  def register_card_units(self, difficulties: dict[str, Difficulty]) -> None:
+    max_difficulty = max(difficulties.values(), key=lambda d: self._difficulty_order[d])
+    for unit, difficulty in difficulties.items():
+      if unit not in self._card_count:
+        continue
+      if difficulty != self._difficulty:
+        print(f"Difficulty mismatch detected for {unit}")
+      self._card_count[unit] += 1
+      if difficulty == max_difficulty:
+        self._fitting_card_count[unit] += 1
+
+  def get_averages(self) -> tuple[int, int]:
+    size = len(self._card_count)
+    count_average = sum(self._card_count.values()) / size
+    fitting_average = sum(self._fitting_card_count.values()) / size
+    return count_average, fitting_average
+
+  def set_limit(self, count_limit: int, fitting_limit: int) -> None:
+    self._count_limit = count_limit
+    self._fitting_limit = fitting_limit
+
+  def done(self) -> done:
+    pass
+
+
+class SentenceProducer:
+  """Helper class that produces sentences for the card pipeline."""
+  def __init__(
+    self,
+    language: Language,
+    card_index: CardIndex,
+    cards: list[Card],
+  ) -> None:
+    self._language = language
+    self._card_index = card_index
+    cards
+    self._vocabulary = VOCABULARY[target_language.code_name]
+    self._grammar = GRAMMAR[target_language.code_name]
+    self._difficulty_map = {}
+    for difficulty, words in self._vocabulary.items():
+      for word in words:
+        self._difficulty_map[word] = difficulty
+    difficulties = {u: self._difficulty_map[u] for u in card.units}
+    for pool in self._unit_pools.values():
+      pool.register_card_units(difficulties)
+
+    async def create(self) -> list[str]:
+      return await llm.create_sentences(
+        language=self._language,
+        difficulty=difficulty,
+        grammar=grammar_to_learn,
+        units=units_to_learn,
+      )
+
+    def done(self) -> bool:
+      return False
+
 class DeckBuilder:
+  MAX_PARALLELISM = 16
+
   def __init__(
     self,
     target_language: Language,
     native_language: Language,
   ) -> None:
-    self._target_language = target_language
-    self._native_language = native_language
+    self._language = target_language
     self._card_index = CardIndex.load(target_language, native_language)
-    self._vocabulary = VOCABULARY[target_language.code_name]
     self._full_vocabulary = [
-      word for words in self._vocabulary.values() for word in words
+      word for words in VOCABULARY[target_language.code_name].values() for word in words
     ]
-    self._grammar = GRAMMAR[target_language.code_name]
+    self._duplicates = set()
 
   async def create_cards(
+    self,
+    *,
+    cards_per_unit: int,
+    cards_per_call: int,
+    verbose: bool = False,
+  ) -> None:
+    self._duplicates = set()
+    cards = await self._card_index.all_cards()
+    for card in cards:
+      self._duplicates.add(card.sentence)
+    sentence_producer = SentenceProducer(self._language, self._card_index, cards)
+    print("Initialization complete")
+
+    semaphore = asyncio.Semaphore(self.MAX_PARALLELISM)
+    async with asyncio.TaskGroup() as tg:
+      while not sentence_producer.done():
+        sentences = await sentence_producer.create()
+        for sentence in sentences:
+          if sentence in self._duplicates:
+            print(f"Skipping duplicate sentence {sentence}")
+            continue
+          self._duplicates.add(sentence)
+          await semaphore.acquire()
+          tg.create_task(self._complete_card(semaphore, sentence, units_to_learn, grammar_to_learn))
+        self._card_index.save()
+
+  async def _complete_card(self, semaphore: asyncio.Semaphore, sentence: str, potential_units: list[str], prompted_grammar: str) -> Card:
+    async with semaphore:
+      builder = UnitTagsBuilder(sentence)
+      while not builder.done():
+        # TODO use prompted_units
+        new_tag_list = await llm.tag_sentence(
+          sentence=builder.sentence,
+          language=self._language,
+          unit_tags=builder.unit_tags,
+        )
+        builder.add_filtered(new_tag_list, self._full_vocabulary)
+      await self._card_index.create_card(
+        builder.sentence, builder.unit_tags, notes=[prompted_grammar]
+      )
+
+  async def old_create_cards(
     self,
     *,
     cards_per_unit: int,
@@ -146,28 +267,3 @@ class DeckBuilder:
     for unit in self._full_vocabulary:
       total += max(0, cards_per_unit - self._card_index.size(unit))
     return total
-
-  async def _tag_sentences(
-    self,
-    sentences: list[str],
-  ) -> list[UnitTagsBuilder]:
-    builders = [UnitTagsBuilder(sentence) for sentence in sentences]
-    while not all(builder.done() for builder in builders):
-      used_builders = []
-      tasks = []
-      for builder in builders:
-        if not builder.done():
-          used_builders.append(builder)
-          tasks.append(
-            llm.tag_sentence(
-              sentence=builder.sentence,
-              language=self._target_language,
-              unit_tags=builder.unit_tags,
-            )
-          )
-      all_new_tags = await asyncio.gather(*tasks)
-      for builder, new_tag_list in zip(used_builders, all_new_tags):
-        old_tags = builder.unit_tags
-        builder.add_filtered(new_tag_list, self._full_vocabulary)
-        builder.check_progress(old_tags)
-    return builders

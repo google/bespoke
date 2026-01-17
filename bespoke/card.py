@@ -80,24 +80,6 @@ async def _load_card_async(directory: str, card_id: str) -> Card | None:
   return None
 
 
-async def _read_cards(directory: str) -> list[Card]:
-  if not os.path.isdir(directory):
-    return []
-  semaphore = asyncio.Semaphore(16)
-
-  async def read_card_file(name: str) -> Card | None:
-    async with semaphore:
-      return await _load_card_async(directory, name.removesuffix(".json"))
-
-  tasks = []
-  for name in os.listdir(directory):
-    if not name.endswith(".json"):
-      continue
-    tasks.append(read_card_file(name))
-  cards = await asyncio.gather(*tasks)
-  return [card for card in cards if card is not None]
-
-
 async def _write_ogg(audio: np.ndarray, filename: str, bitrate="16k") -> None:
   cmd = [
     "ffmpeg",
@@ -177,14 +159,14 @@ class CardIndex:
 
   async def restart(self) -> None:
     self._index = {}
-    cards = await _read_cards(self._card_directory)
+    cards = await self.all_cards()
     print(f"Starting CardIndex with {len(cards)} cards.")
     for card in cards:
       self._add(card)
     self.save()
 
   async def check(self) -> None:
-    cards = await _read_cards(self._card_directory)
+    cards = await self.all_cards()
     language_system = self._target_language.writing_system
     print(f"Found {len(cards)} cards for {language_system}")
     audio_filenames = set()
@@ -228,6 +210,21 @@ class CardIndex:
     for card_id in card_ids:
       if os.path.isfile(os.path.join(self._card_directory, f"{card_id}.json")):
         tasks.append(_load_card_async(self._card_directory, card_id))
+    cards = await asyncio.gather(*tasks)
+    return [card for card in cards if card is not None]
+
+  async def all_cards(self) -> list[Card]:
+    semaphore = asyncio.Semaphore(16)
+
+    async def read_card_file(name: str) -> Card | None:
+      async with semaphore:
+        return await _load_card_async(self._card_directory, name.removesuffix(".json"))
+
+    tasks = []
+    for name in os.listdir(self._card_directory):
+      if not name.endswith(".json"):
+        continue
+      tasks.append(read_card_file(name))
     cards = await asyncio.gather(*tasks)
     return [card for card in cards if card is not None]
 
