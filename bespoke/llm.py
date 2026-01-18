@@ -29,11 +29,20 @@ import tenacity
 from bespoke.languages import Difficulty
 from bespoke.languages import Language
 from bespoke.languages import UnitTags
-from bespoke.languages import DIFFICULTY_EXPLANATIONS
 
 SPEAK_MODEL = "gemini-2.5-flash-native-audio-preview-12-2025"
 TEXT_MODEL = "gemini-2.0-flash"
 VOICES = ["Aoede", "Puck", "Charon", "Kore", "Fenrir", "Leda", "Orus", "Zephyr"]
+DIFFICULTY_EXPLANATIONS = {
+    Difficulty.A1: "Beginner, understands and uses simple phrases and sentences.",
+    Difficulty.A2: "Basic knowledge of frequently used expressions in areas of immediate relevance.",
+    Difficulty.B1: "Intermediate, understands main points of clear standard language.",
+    Difficulty.B2: "Independent, can interact with native speakers without strain.",
+    Difficulty.C1: "Proficient, can understand demanding, longer clauses and recognise implicit meaning.",
+    Difficulty.C2: "Near native, understands virtually everything heard or read with ease.",
+}
+
+
 
 client = genai.Client(api_key=os.environ.get("GEMINI_API_KEY"))
 
@@ -134,25 +143,34 @@ class UnitTagsSchema(pydantic.BaseModel):
 async def tag_sentence(
     sentence: str,
     language: Language,
-    unit_tags: UnitTags,
+    hint: list[str],
 ) -> list[str, str]:
-    tags = " \n".join(f"{w}: {u}" for w, u in unit_tags.items())
-    if tags:
-        tags_prompt = f"Tags annotated so far are: \n{tags} \n"
+    if hint:
+        hint_prompt = (
+            f" Some examples of dictionary words are: \n{' \n'.join(hint)} \n"
+            "Use these words if appropriate, but ignore them if they are "
+            "incorrect tags, even if they appear in the sentence."
+        )
     else:
-        tags_prompt = ""
+        hint_prompt = ""
+    if language.phonetic_system is not None:
+        phonetic_prompt = (
+            f" Write the tags in {language.writing_system}, "
+            f"not {language.phonetic_system}."
+        )
+    else:
+        phonetic_prompt = ""
     prompt = (
         f"Given is a sentence in {language.writing_system}: \n{sentence} \n"
         "I want to tag words in each sentence with vocabulary. "
         "The tags are a map from the word as written, "
-        f"to the vocabulary unit as in a dictionary. {tags_prompt}"
+        f"to the vocabulary unit as in a dictionary. "
         "Add all missing occurances to the existing map and output it. "
         "For compound words, idioms or grammatical constructions, "
         "the dictionary may only contain individual parts. "
         "Add all alternative tags, both complex and in parts."
+        f"{hint_prompt}{phonetic_prompt}"
     )
-    if language.phonetic_system is not None:
-        prompt += f" Write the tags in {language.writing_system}, not {language.writing_system}."
     config = types.GenerateContentConfig(
         response_mime_type="application/json",
         response_schema=UnitTagsSchema,

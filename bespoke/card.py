@@ -44,11 +44,35 @@ class Card(pydantic.BaseModel):
     model_config = pydantic.ConfigDict(frozen=True)
 
     def __str__(self) -> str:
-        sentence = self.sentence
-        for occurance, unit in self.unit_tags.items():
-            button_text = f"[{occurance}]({unit})"
-            sentence = sentence.replace(occurance, button_text, 1)
-        return f"Card: {sentence} = {self.native_sentence}"
+        parts = []
+        for occurance, unit in self.split_into_parts():
+            if unit is None:
+                parts.append(occurance)
+            else:
+                parts.append(f"[{occurance}]({unit})")
+        return f"Card: {''.join(parts)} = {self.native_sentence}"
+
+    def split_into_parts(self) -> list[tuple[str, str | None]]:
+        sorted_tags = list(self.unit_tags.items())
+        sorted_tags.sort(key=lambda x: len(x[1]), reverse=True)
+        sorted_tags.sort(key=lambda x: len(x[0]), reverse=True)
+        result = [(self.sentence, None)]
+        for word, unit in sorted_tags:
+            new_result = []
+            found = False
+            for part, tag in result:
+                if found or tag is not None or word not in part:
+                    new_result.append((part, tag))
+                    continue
+                prefix, suffix = part.split(word, maxsplit=1)
+                if prefix.strip():
+                    new_result.append((prefix.strip(), None))
+                new_result.append((word, unit))
+                if suffix.strip():
+                    new_result.append((suffix.strip(), None))
+                found = True
+            result = new_result
+        return result
 
     def write_json(self, directory: str) -> None:
         filename = os.path.join(directory, f"{self.id}.json")

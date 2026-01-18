@@ -21,6 +21,7 @@ We decided against it for simplicity.
 from collections import defaultdict
 import datetime
 from enum import StrEnum
+import numpy as np
 import pydantic
 
 BLOCK_INTERVAL = 60 * 60 * 20

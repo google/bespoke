@@ -19,13 +19,13 @@ To support your native language to translate into, add:
 - A constant of type `Language`.
 - An entry in `_ALL_LANGUAGES`.
 
-If you want to be able to learn the language, on top of that:
+If you want to be able to learn the language, additionally:
 
-- Add the language constant to `SUPPORTED_LANGUAGES` below.
-- Files f"data/{code_name}_{difficulty).txt for all difficulties with vocabulary.
-- A file f"data/{code_name}_grammar.txt with grammar concepts in the language.
+- Add the language constant to `_SUPPORTED_LANGUAGES` below.
+- Files f"data/{code_name}/vocabulary_{difficulty}.txt for all difficulties with vocabulary.
+- Files f"data/{code_name}/grammar_{difficulty}.txt with grammar concepts in the language.
 
-The txt files have one entry per line.
+The txt files have one entry per line. You need at least vocabulary and grammar for A1.
 """
 
 from enum import StrEnum
@@ -45,16 +45,6 @@ class Difficulty(StrEnum):
     C2 = "C2"
 
 
-DIFFICULTY_EXPLANATIONS = {
-    Difficulty.A1: "Beginner, understands and uses simple phrases and sentences.",
-    Difficulty.A2: "Basic knowledge of frequently used expressions in areas of immediate relevance.",
-    Difficulty.B1: "Intermediate, understands main points of clear standard language.",
-    Difficulty.B2: "Independent, can interact with native speakers without strain.",
-    Difficulty.C1: "Proficient, can understand demanding, longer clauses and recognise implicit meaning.",
-    Difficulty.C2: "Near native, understands virtually everything heard or read with ease.",
-}
-
-
 class Language(pydantic.BaseModel):
     # The English word for the spoken language. Not necessarily unique.
     name: str
@@ -66,6 +56,66 @@ class Language(pydantic.BaseModel):
     code_name: str
     # From https://ai.google.dev/gemini-api/docs/live-guide#supported-languages
     live_code: str
+
+    def vocabulary(self, difficulty: Difficulty) -> list[str]:
+        return LANGUAGE_DATA[self.code_name].vocabulary(difficulty)
+
+    def full_vocabulary(self) -> list[str]:
+        data = LANGUAGE_DATA[self.code_name]
+        return [
+            word for d in Difficulty for word in data.vocabulary(d)
+        ]
+
+    def grammar(self, difficulty: Difficulty) -> list[str]:
+        return LANGUAGE_DATA[self.code_name].grammar(difficulty)
+
+
+def _read_textfile(filename: str) -> list[str]:
+    try:
+        with open(filename, "r", encoding="utf-8") as f:
+            return [line.strip() for line in f if line.strip()]
+    except FileNotFoundError:
+        print(f"Unreadable file '{filename}'")
+        return []
+
+
+def _read_all_difficulties(prefix: str) -> dict[Difficulty, list[str]]:
+    content = {}
+    all_content = set()
+    for difficulty in Difficulty:
+        filename = f"data/{prefix}_{difficulty}.txt"
+        wordlist = _read_textfile(filename)
+        filtered = []
+        for word in wordlist:
+            if word not in all_content:
+                all_content.add(word)
+                filtered.append(word)
+        content[difficulty] = filtered
+    return content
+
+
+class LanguageData:
+    """Lazily initialized vocabulary and grammar lists."""
+    def __init__(self, code_name: str) -> None:
+        self._code_name = code_name
+        self._vocabulary = {}
+        self._grammar = {}
+
+    def _initialize(self) -> None:
+        if self._vocabulary:
+            return
+        vocabulary_prefix = f"{self._code_name}/vocabulary"
+        grammar_prefix = f"{self._code_name}/grammar"
+        self._vocabulary = _read_all_difficulties(vocabulary_prefix)
+        self._grammar = _read_all_difficulties(grammar_prefix)
+
+    def vocabulary(self, difficulty: Difficulty) -> list[str]:
+        self._initialize()
+        return self._vocabulary[difficulty]
+
+    def grammar(self, difficulty: Difficulty) -> list[str]:
+        self._initialize()
+        return self._grammar[difficulty]
 
 
 ENGLISH = Language(
@@ -110,7 +160,7 @@ JAPANESE = Language(
     code_name="japanese",
     live_code="ja-JP",
 )
-# Next two are Mandarin, should be synonymous.
+# Chinese = Mandarin
 SIMP_CHINESE = Language(
     name="Chinese",
     writing_system="Simplified Chinese",
@@ -125,6 +175,7 @@ TRAD_CHINESE = Language(
     code_name="trad_chinese",
     live_code="cmn-CN",
 )
+
 _ALL_LANGUAGES = [
     ENGLISH,
     GERMAN,
@@ -136,51 +187,11 @@ _ALL_LANGUAGES = [
     TRAD_CHINESE,
 ]
 LANGUAGES = {language.code_name: language for language in _ALL_LANGUAGES}
-
-
-def _read_wordlist(filename: str) -> list[str]:
-    words = []
-    try:
-        with open(filename, "r") as f:
-            for word in f.readlines():
-                words.append(word.strip())
-    except:
-        print(f"Unreadable wordlist file '{filename}'")
-    return words
-
-
-def _read_vocabulary(language: Language, verbose: bool = False) -> dict:
-    vocabulary = {}
-    full_vocabulary = set()
-    discarded = 0
-    for difficulty in Difficulty:
-        filename = f"data/{language.code_name}_{difficulty}.txt"
-        if os.path.isfile(filename):
-            wordlist = _read_wordlist(filename)
-            unique_wordlist = []
-            for word in wordlist:
-                if verbose:
-                    for punctuation in [".", ",", ":", ";", "。", "、"]:
-                        if punctuation in word:
-                            print(f"Detected puntuation in '{filename}' -> {word}")
-                if word in full_vocabulary:
-                    discarded += 1
-                else:
-                    full_vocabulary.add(word)
-                    unique_wordlist.append(word)
-            vocabulary[difficulty] = unique_wordlist
-        else:
-            print(f"Missing wordlist file '{filename}'")
-    if verbose and discarded:
-        print(f"Discarded {discarded} duplicates for {language.writing_system}")
-    return vocabulary
-
-
-SUPPORTED_LANGUAGES = [JAPANESE, SIMP_CHINESE, TRAD_CHINESE]
-VOCABULARY = {
-    language.code_name: _read_vocabulary(language) for language in SUPPORTED_LANGUAGES
-}
-GRAMMAR = {
-    language.code_name: _read_wordlist(f"data/{language.code_name}_grammar.txt")
-    for language in SUPPORTED_LANGUAGES
+_SUPPORTED_LANGUAGES = [
+    JAPANESE,
+    SIMP_CHINESE,
+    TRAD_CHINESE,
+]
+LANGUAGE_DATA = {
+    language.code_name: LanguageData(language.code_name) for language in _SUPPORTED_LANGUAGES
 }

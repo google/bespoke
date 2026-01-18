@@ -36,7 +36,6 @@ from bespoke.card import CardIndex
 from bespoke.languages import Difficulty
 from bespoke.languages import Language
 from bespoke.languages import LANGUAGES
-from bespoke.languages import VOCABULARY
 from bespoke.urgency import Mode
 from bespoke.urgency import Rating
 from bespoke.urgency import compute_urgency
@@ -90,13 +89,10 @@ class Deck:
         self._card_id_uses: dict[str, list[CardUsage]] = {}
         self._difficulty = Difficulty.A1
         self._modes = list(Mode)
-        self._vocabulary = VOCABULARY[target_language.code_name]
-        self._full_vocabulary = [
-            word for words in self._vocabulary.values() for word in words
-        ]
+        self._full_vocabulary = target_language.full_vocabulary()
         self._difficulty_map = {}
-        for difficulty, words in self._vocabulary.items():
-            for word in words:
+        for difficulty in Difficulty:
+            for word in self._target_language.vocabulary(difficulty):
                 self._difficulty_map[word] = difficulty
 
     def _compute_urgencies(self, current_time: float) -> dict[UrgencyState]:

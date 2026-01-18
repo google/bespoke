@@ -40,7 +40,10 @@ async def create(
 
 def main():
     parser = argparse.ArgumentParser(description="Create language cards.")
-    target_choices = {l.writing_system: l for l in languages.SUPPORTED_LANGUAGES}
+    target_choices = {}
+    for code_name in languages.LANGUAGE_DATA:
+        language = languages.LANGUAGES[code_name]
+        target_choices[language.writing_system] = language
     native_choices = {l.writing_system: l for l in languages.LANGUAGES.values()}
     parser.add_argument(
         "--target",

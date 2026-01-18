@@ -40,26 +40,6 @@ SCORE_ROTATION = {
 }
 
 
-def split_elements(sentence: str, unit_tags: UnitTags) -> list[tuple[str, str | None]]:
-    result = [(sentence, None)]
-    for word, unit in unit_tags.items():
-        new_result = []
-        found = False
-        for part, tag in result:
-            if found or tag is not None or word not in part:
-                new_result.append((part, tag))
-                continue
-            prefix, suffix = part.split(word, maxsplit=1)
-            if prefix.strip():
-                new_result.append((prefix.strip(), None))
-            new_result.append((word, unit))
-            if suffix.strip():
-                new_result.append((suffix.strip(), None))
-            found = True
-        result = new_result
-    return result
-
-
 class RatingWebApp:
     def __init__(self, deck: Deck, deck_filename: str) -> None:
         self._deck = deck
@@ -172,8 +152,7 @@ class RatingWebApp:
             all_buttons = []
 
             with row_container:
-                parts = split_elements(self._card.sentence, self._card.unit_tags or {})
-                for part, unit in parts:
+                for part, unit in self._card.split_into_parts():
                     if unit is None:
                         ui.label(part).classes("self-center text-lg p-2")
                     else:
@@ -212,7 +191,10 @@ class RatingWebApp:
 
 def open_deck() -> tuple[Deck, str]:
     parser = argparse.ArgumentParser(description="Learn language cards.")
-    target_choices = {l.writing_system: l for l in languages.SUPPORTED_LANGUAGES}
+    target_choices = {}
+    for code_name in languages.LANGUAGE_DATA:
+        language = languages.LANGUAGES[code_name]
+        target_choices[language.writing_system] = language
     native_choices = {l.writing_system: l for l in languages.LANGUAGES.values()}
     difficulties = [str(d) for d in Difficulty]
     parser.add_argument(
