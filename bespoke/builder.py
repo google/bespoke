@@ -270,7 +270,7 @@ class DeckBuilder:
             )
             sentence_producer.register_card(card)
             self._created_count += 1
-            if self._created_count % 1000 == 0 or self._created_count = 100:
+            if self._created_count % 1000 == 0 or self._created_count == 100:
                 elapsed = datetime.now() - self._start_time
                 time_string = str(elapsed).split('.')[0]
                 print(f"{self._created_count:>5} cards after : {time_string}")

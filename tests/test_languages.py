@@ -21,7 +21,7 @@ class TestLanguageData(unittest.TestCase):
         language = languages.JAPANESE
         vocabulary_a1 = language.vocabulary(Difficulty.A1)
         full_vocabulary = language.full_vocabulary()
-        self.assertEqual(vocabulary_a1, full_vocabulary[:len(vocabulary_a1)])
+        self.assertEqual(vocabulary_a1, full_vocabulary[: len(vocabulary_a1)])
 
     def test_grammar(self) -> None:
         language = languages.JAPANESE

@@ -62,9 +62,7 @@ class Language(pydantic.BaseModel):
 
     def full_vocabulary(self) -> list[str]:
         data = LANGUAGE_DATA[self.code_name]
-        return [
-            word for d in Difficulty for word in data.vocabulary(d)
-        ]
+        return [word for d in Difficulty for word in data.vocabulary(d)]
 
     def grammar(self, difficulty: Difficulty) -> list[str]:
         return LANGUAGE_DATA[self.code_name].grammar(difficulty)
@@ -96,6 +94,7 @@ def _read_all_difficulties(prefix: str) -> dict[Difficulty, list[str]]:
 
 class LanguageData:
     """Lazily initialized vocabulary and grammar lists."""
+
     def __init__(self, code_name: str) -> None:
         self._code_name = code_name
         self._vocabulary = {}
@@ -193,5 +192,6 @@ _SUPPORTED_LANGUAGES = [
     TRAD_CHINESE,
 ]
 LANGUAGE_DATA = {
-    language.code_name: LanguageData(language.code_name) for language in _SUPPORTED_LANGUAGES
+    language.code_name: LanguageData(language.code_name)
+    for language in _SUPPORTED_LANGUAGES
 }

@@ -43,7 +43,6 @@ DIFFICULTY_EXPLANATIONS = {
 }
 
 
-
 client = genai.Client(api_key=os.environ.get("GEMINI_API_KEY"))
 
 standard_retry = tenacity.retry(

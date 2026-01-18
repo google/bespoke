@@ -66,7 +66,9 @@ class TestSentenceProducer(unittest.IsolatedAsyncioTestCase):
     @patch("bespoke.builder.llm.create_sentences", side_effect=mock_create_sentences)
     async def test_basic_create(self, mock_llm):
         cards_per_call = 8
-        sentence_producer = builder.SentenceProducer(languages.JAPANESE, cards_per_unit=1, cards_per_call=cards_per_call)
+        sentence_producer = builder.SentenceProducer(
+            languages.JAPANESE, cards_per_unit=1, cards_per_call=cards_per_call
+        )
         self.assertFalse(sentence_producer.done())
         builders, grammar = await sentence_producer.create()
         self.assertEqual(len(builders), cards_per_call)
@@ -76,7 +78,9 @@ class TestSentenceProducer(unittest.IsolatedAsyncioTestCase):
     @patch("bespoke.builder.llm.create_sentences", side_effect=mock_create_sentences)
     async def test_double_create(self, mock_llm):
         cards_per_call = 1
-        sentence_producer = builder.SentenceProducer(languages.JAPANESE, cards_per_unit=1, cards_per_call=cards_per_call)
+        sentence_producer = builder.SentenceProducer(
+            languages.JAPANESE, cards_per_unit=1, cards_per_call=cards_per_call
+        )
         builders, grammar1 = await sentence_producer.create()
         builder1 = builders[0]
         builders, grammar2 = await sentence_producer.create()
