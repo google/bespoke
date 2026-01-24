@@ -58,18 +58,14 @@ class RatingWebApp:
         self._show_front()
 
     def _render_sentence(self, text: str, large: bool = True) -> None:
-        style = (
-            "font-size: 30px; padding: 20px;"
-            if large
-            else "font-size: 18px; padding: 10px;"
-        )
+        size_classes = "text-3xl p-5" if large else "text-lg p-2.5"
         html_content = f"""
-      <div style="{style} background-color: white; border-radius: 8px;
-        color: black; text-align: center; font-family: sans-serif;
-        box-shadow: 2px 2px 5px rgba(0,0,0,0.2);">
-        {text}
-      </div>
-    """
+            <div class="{size_classes} bg-white dark:bg-gray-700 rounded-lg
+                text-black dark:text-white text-center font-sans shadow-md">
+                {text}
+            </div>
+        """
+
         ui.html(html_content, sanitize=False)
 
     def _render_audio_player(
@@ -101,7 +97,9 @@ class RatingWebApp:
         with self.main_container:
             match self._mode:
                 case Mode.LISTEN:
-                    with ui.card().classes("w-full items-center bg-gray-100"):
+                    with ui.card().classes(
+                        "w-full items-center bg-gray-100 dark:bg-zinc-800"
+                    ):
                         self._render_audio_player(
                             "Play:", self._card.audio_filename, autoplay=True
                         )
@@ -110,18 +108,22 @@ class RatingWebApp:
                         )
                 case Mode.SPEAK:
                     ui.label("Speak the sentence!").classes(
-                        "text-gray-500 text-xl font-mono"
+                        "text-gray-500 dark:text-gray-400 text-xl font-mono"
                     )
-                    with ui.card().classes("w-full items-center bg-gray-100"):
+                    with ui.card().classes(
+                        "w-full items-center bg-gray-100 dark:bg-zinc-800"
+                    ):
                         self._render_audio_player("", self._card.native_audio_filename)
                     self._render_sentence(self._card.native_sentence)
                 case Mode.READ:
                     self._render_sentence(self._card.sentence)
                 case Mode.WRITE:
                     ui.label("Write the sentence!").classes(
-                        "text-gray-500 text-xl font-mono"
+                        "text-gray-500 dark:text-gray-400 text-xl font-mono"
                     )
-                    with ui.card().classes("w-full items-center bg-gray-100"):
+                    with ui.card().classes(
+                        "w-full items-center bg-gray-100 dark:bg-zinc-800"
+                    ):
                         self._render_audio_player("", self._card.native_audio_filename)
                     self._render_sentence(self._card.native_sentence)
 
@@ -141,7 +143,7 @@ class RatingWebApp:
 
         with self.main_container:
             # 1. Playback Section
-            with ui.card().classes("w-full items-center bg-gray-100"):
+            with ui.card().classes("w-full items-center bg-gray-100 dark:bg-zinc-800"):
                 autoplay = self._mode != Mode.LISTEN
                 self._render_audio_player(
                     "Play:", self._card.audio_filename, autoplay=autoplay
@@ -152,11 +154,15 @@ class RatingWebApp:
             # 2. Text Section
             self._render_sentence(self._card.sentence)
             if self._card.phonetic:
-                ui.label(self._card.phonetic).classes("text-gray-500 text-xl font-mono")
+                ui.label(self._card.phonetic).classes(
+                    "text-gray-500 dark:text-gray-400 text-xl font-mono"
+                )
             self._render_sentence(self._card.native_sentence, large=False)
 
             # 3. Rating Section
-            ui.label("Rate specific words:").classes("text-sm text-gray-400 mt-4")
+            ui.label("Rate specific words:").classes(
+                "text-sm text-gray-400 dark:text-gray-300 mt-4"
+            )
             row_container = ui.row().classes("wrap justify-center gap-2 w-full")
             all_buttons = []
 
@@ -168,7 +174,9 @@ class RatingWebApp:
                         with ui.column().classes("items-center gap-0"):
                             btn = self._create_color_cycling_button(part, unit)
                             all_buttons.append((unit, btn))
-                            ui.label(unit).style("font-size: 10px; color: #888;")
+                            ui.label(unit).classes(
+                                "text-[10px] text-[#888] dark:text-gray-400"
+                            )
 
             # 4. Controls
             ui.separator().classes("my-4")
@@ -275,9 +283,12 @@ deck, deck_filename = open_deck()
 
 @ui.page("/")
 def index():
-    ui.query("body").classes("bg-gray-50 m-0 p-0")
+    ui.dark_mode(value="auto")
+    ui.query("body").classes("bg-gray-50 dark:bg-zinc-900 m-0 p-0")
     with ui.column().classes("w-full items-center p-8"):
-        ui.label("Bespoke").classes("text-3xl font-light text-gray-600 mb-6")
+        ui.label("Bespoke").classes(
+            "text-3xl font-light text-gray-600 dark:text-gray-300 mb-6"
+        )
         RatingWebApp(deck, deck_filename)
 
 
