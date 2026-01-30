@@ -35,7 +35,7 @@ export GEMINI_API_KEY=your_key_here
 uv run create.py --target="Japanese" --native="English"
 ```
 
-You can also use other models, see `bespoke/llm.py`.
+You can also use other models, see [llm.py](bespoke/llm.py).
 The quality of generated cards varies between providers and models.
 
 ## How to start learning
