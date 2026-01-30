@@ -20,6 +20,8 @@ Change the implementation of these functions while keeping their signature.
 
 from google import genai
 from google.genai import types
+import httpx
+import litellm
 import numpy as np
 import os
 import pydantic
@@ -30,9 +32,31 @@ from bespoke.languages import Difficulty
 from bespoke.languages import Language
 from bespoke.languages import UnitTags
 
-SPEAK_MODEL = "gemini-2.5-flash-native-audio-preview-12-2025"
-TEXT_MODEL = "gemini-2.5-flash-lite"
-VOICES = ["Aoede", "Puck", "Charon", "Kore", "Fenrir", "Leda", "Orus", "Zephyr"]
+litellm.suppress_debug_info = True
+
+GEMINI_TEXT_MODEL = "gemini/gemini-2.5-flash-lite"
+GEMINI_SPEAK_MODEL = "gemini-2.5-flash-native-audio-preview-12-2025"
+GEMINI_VOICES = ["Aoede", "Puck", "Charon", "Kore", "Fenrir", "Leda", "Orus", "Zephyr"]
+
+OPENROUTER_TEXT_MODEL = "openrouter/google/gemma-2-9b-it"
+
+OPENAI_TEXT_MODEL = "gpt-4o-mini"
+OPENAI_SPEAK_MODEL = "tts-1"
+OPENAI_VOICES = ["alloy", "echo", "fable", "onyx", "nova", "shimmer"]
+
+ELEVENLABS_MODEL = "eleven_multilingual_v2"
+ELEVENLABS_VOICES = [
+    "21m00Tcm4TlvDq8ikWAM",  # Rachel
+    "AZnzlk1XvdvUeBnXmlld",  # Domi
+    "EXAVITQu4vr4xnSDxMaL",  # Bella
+    "ErXwobaYiN019PkySvjV",  # Antoni
+    "MF3mGyEYCl7XYWbV9V6O",  # Elli
+    "TxGEqnHWrfWFTfGW9XjX",  # Josh
+    "VR6AewLTigWg4xSOukaG",  # Arnold
+    "pNInz6obpgDQGcFmaJgB",  # Adam
+    "yoZ06aMxZJJ28mfd3POQ",  # Sam
+]
+
 DIFFICULTY_EXPLANATIONS = {
     Difficulty.A1: "Beginner, understands and uses simple phrases and sentences.",
     Difficulty.A2: "Basic knowledge of frequently used expressions in areas of immediate relevance.",
@@ -42,51 +66,67 @@ DIFFICULTY_EXPLANATIONS = {
     Difficulty.C2: "Near native, understands virtually everything heard or read with ease.",
 }
 
-
-client = genai.Client(api_key=os.environ.get("GEMINI_API_KEY"))
-
 standard_retry = tenacity.retry(
     stop=tenacity.stop_after_attempt(3),
     wait=tenacity.wait_random_exponential(multiplier=4, min=5, max=300),
 )
 
 
+def _get_provider_config() -> dict:
+    """Returns provider configuration based on environment variables."""
+    if os.environ.get("GEMINI_API_KEY"):
+        return {
+            "provider": "gemini",
+            "text_model": GEMINI_TEXT_MODEL,
+        }
+    elif os.environ.get("OPENROUTER_API_KEY"):
+        return {
+            "provider": "openrouter",
+            "text_model": OPENROUTER_TEXT_MODEL,
+        }
+    elif os.environ.get("OPENAI_API_KEY"):
+        return {
+            "provider": "openai",
+            "text_model": OPENAI_TEXT_MODEL,
+        }
+    else:
+        raise ValueError(
+            "No API key found. Please set GEMINI_API_KEY, OPENROUTER_API_KEY or OPENAI_API_KEY."
+        )
+
+
 async def translate(sentence: str, target_language: Language) -> str:
+    config = _get_provider_config()
     prompt = (
         "Translate the following sentence to "
         f"{target_language.writing_system}: \n{sentence} \n"
         "Only respond with the translation, no introduction or explanations."
     )
-    config = types.GenerateContentConfig(
-        response_modalities=["TEXT"],
-        thinking_config=types.ThinkingConfig(thinking_budget=0),
+
+    response = await litellm.acompletion(
+        model=config["text_model"],
+        messages=[{"role": "user", "content": prompt}],
     )
-    response = await client.aio.models.generate_content(
-        model=TEXT_MODEL,
-        contents=[prompt],
-        config=config,
-    )
-    return response.text.strip()
+    return response.choices[0].message.content.strip()
 
 
 async def to_phonetic(sentence: str, language: Language) -> str | None:
     if not language.phonetic_system:
         return None
+
+    config = _get_provider_config()
     prompt = (
         "Take the following sentence and convert it to "
         f"{language.phonetic_system}. "
         "Don't add any introduction or explanations, just the pure response. "
         f"The sentence is: \n{sentence}"
     )
-    response = await client.aio.models.generate_content(
-        model=TEXT_MODEL,
-        contents=[prompt],
-        config=types.GenerateContentConfig(
-            response_modalities=["TEXT"],
-            thinking_config=types.ThinkingConfig(thinking_budget=0),
-        ),
+
+    response = await litellm.acompletion(
+        model=config["text_model"],
+        messages=[{"role": "user", "content": prompt}],
     )
-    return response.text.strip()
+    return response.choices[0].message.content.strip()
 
 
 @standard_retry
@@ -96,6 +136,7 @@ async def create_sentences(
     grammar: str,
     units: list[str],
 ) -> list[str]:
+    config = _get_provider_config()
     difficulty_explanation = DIFFICULTY_EXPLANATIONS[difficulty]
     if language.live_code in ["cmn-CN", "ja-JP"]:
         spaces = "spaces or "
@@ -116,22 +157,23 @@ async def create_sentences(
         f"The target difficulty of the sentence is {difficulty}. "
         f"This difficulty level is defined as: \n{difficulty_explanation}"
     )
-    config = types.GenerateContentConfig(
-        response_modalities=["TEXT"],
-        temperature=2.0,
-        thinking_config=types.ThinkingConfig(thinking_budget=0),
+
+    if config["provider"] == "openrouter":
+        temperature = 1.0
+    else:
+        temperature = 2.0
+    response = await litellm.acompletion(
+        model=config["text_model"],
+        messages=[{"role": "user", "content": prompt}],
+        temperature=temperature,
     )
-    response = await client.aio.models.generate_content(
-        model=TEXT_MODEL,
-        contents=[prompt],
-        config=config,
-    )
-    sentences = [s.strip() for s in response.text.strip().split("\n")]
+    sentences = [
+        s.strip() for s in response.choices[0].message.content.strip().split("\n")
+    ]
     return [s for s in sentences if s]
 
 
-# This workarond is unfortunately necessary, see:
-# https://github.com/googleapis/python-genai/issues/460
+# Inner helper class for structured LLM output
 class UnitTagSchema(pydantic.BaseModel):
     occurance: str
     dictionary_entry: str
@@ -147,7 +189,8 @@ async def tag_sentence(
     sentence: str,
     language: Language,
     hint: list[str],
-) -> list[str, str]:
+) -> list[tuple[str, str]]:
+    config = _get_provider_config()
     if hint:
         hint_prompt = (
             f" Some examples of dictionary words are: \n{' \n'.join(hint)} \n"
@@ -174,21 +217,21 @@ async def tag_sentence(
         "Add all alternative tags, both complex and in parts."
         f"{hint_prompt}{phonetic_prompt}"
     )
-    config = types.GenerateContentConfig(
-        response_mime_type="application/json",
-        response_schema=UnitTagsSchema,
-        temperature=2.0,
-        thinking_config=types.ThinkingConfig(thinking_budget=0),
+
+    if config["provider"] == "openrouter":
+        temperature = 1.0
+    else:
+        temperature = 2.0
+    response = await litellm.acompletion(
+        model=config["text_model"],
+        messages=[{"role": "user", "content": prompt}],
+        response_format=UnitTagsSchema,
+        temperature=temperature,
     )
-    response = await client.aio.models.generate_content(
-        model=TEXT_MODEL,
-        contents=[prompt],
-        config=config,
-    )
-    # Return value allows duplicates, therefore not dictionary.
+    content = response.choices[0].message.content
+    parsed = UnitTagsSchema.model_validate_json(content)
     return [
-        (tag.occurance, tag.dictionary_entry)
-        for tag in response.parsed.occurance_vocabulary_map
+        (tag.occurance, tag.dictionary_entry) for tag in parsed.occurance_vocabulary_map
     ]
 
 
@@ -198,63 +241,93 @@ async def speak(
     *,
     slowly: bool = False,
 ) -> np.ndarray:
-    voice_name = random.choice(VOICES)
-    voice_config = types.VoiceConfig(
-        prebuilt_voice_config=types.PrebuiltVoiceConfig(
-            voice_name=voice_name,
-        )
-    )
-    # Native audio is not officially supported for some languages:
-    # See https://ai.google.dev/gemini-api/docs/live-guide#supported-languages
-    # It still works without a live code though.
-    if language.live_code in [
-        "en-GB",
-        "es-ES",
-        "gu-IN",
-        "cmn-CN",
-        "en-AU",
-        "fr-CA",
-        "kn-IN",
-        "ml-IN",
-    ]:
-        speech_config = types.SpeechConfig(
-            voice_config=voice_config,
-        )
-    else:
-        speech_config = types.SpeechConfig(
-            voice_config=voice_config,
-            language_code=language.live_code,
-        )
-    config = types.LiveConnectConfig(
-        response_modalities=["AUDIO"],
-        speech_config=speech_config,
-    )
-    async with client.aio.live.connect(
-        model=SPEAK_MODEL,
-        config=config,
-    ) as session:
-        if slowly:
-            text_input = f"Speak slowly in {language.name}: \n{sentence}"
-        else:
-            text_input = (
-                "You are a voice actor, and your output will be used directly. "
-                f"Speak the following sentence in {language.name}: \n{sentence}"
-            )
-        await session.send_client_content(
-            turns=types.Content(role="user", parts=[types.Part(text=text_input)])
-        )
+    config = _get_provider_config()
 
-        audio_data = []
-        async for message in session.receive():
-            if (
-                message.server_content.model_turn
-                and message.server_content.model_turn.parts
-            ):
-                for part in message.server_content.model_turn.parts:
-                    if part.inline_data:
-                        audio_data.append(
-                            np.frombuffer(part.inline_data.data, dtype=np.int16)
-                        )
-        if not audio_data:
-            return np.array([], dtype=np.int16)
-        return np.concatenate(audio_data)
+    if config["provider"] == "gemini":
+        client = genai.Client(api_key=os.environ.get("GEMINI_API_KEY"))
+        voice_name = random.choice(GEMINI_VOICES)
+        voice_config = types.VoiceConfig(
+            prebuilt_voice_config=types.PrebuiltVoiceConfig(
+                voice_name=voice_name,
+            )
+        )
+        # Native audio is not officially supported for some languages:
+        # See https://ai.google.dev/gemini-api/docs/live-guide#supported-languages
+        # It still works without a live code though.
+        if language.live_code in [
+            "en-GB",
+            "es-ES",
+            "gu-IN",
+            "cmn-CN",
+            "en-AU",
+            "fr-CA",
+            "kn-IN",
+            "ml-IN",
+        ]:
+            speech_config = types.SpeechConfig(
+                voice_config=voice_config,
+            )
+        else:
+            speech_config = types.SpeechConfig(
+                voice_config=voice_config,
+                language_code=language.live_code,
+            )
+        config_live = types.LiveConnectConfig(
+            response_modalities=["AUDIO"],
+            speech_config=speech_config,
+        )
+        async with client.aio.live.connect(
+            model=GEMINI_SPEAK_MODEL,
+            config=config_live,
+        ) as session:
+            if slowly:
+                text_input = f"Speak slowly in {language.name}: \n{sentence}"
+            else:
+                text_input = (
+                    "You are a voice actor, and your output will be used directly. "
+                    f"Speak the following sentence in {language.name}: \n{sentence}"
+                )
+            await session.send_client_content(
+                turns=types.Content(role="user", parts=[types.Part(text=text_input)])
+            )
+            audio_data = []
+            async for message in session.receive():
+                if (
+                    message.server_content.model_turn
+                    and message.server_content.model_turn.parts
+                ):
+                    for part in message.server_content.model_turn.parts:
+                        if part.inline_data:
+                            audio_data.append(
+                                np.frombuffer(part.inline_data.data, dtype=np.int16)
+                            )
+            if not audio_data:
+                return np.array([], dtype=np.int16)
+            return np.concatenate(audio_data)
+
+    elif config["provider"] in ["openrouter", "openai"]:
+        if api_key := os.environ.get("ELEVENLABS_API_KEY"):
+            voice_id = random.choice(ELEVENLABS_VOICES)
+            url = f"https://api.elevenlabs.io/v1/text-to-speech/{voice_id}?output_format=pcm_16000"
+            headers = {"xi-api-key": api_key, "Content-Type": "application/json"}
+            data = {"text": sentence, "model_id": ELEVENLABS_MODEL}
+            async with httpx.AsyncClient() as client:
+                response = await client.post(url, headers=headers, json=data)
+                response.raise_for_status()
+                return np.frombuffer(response.content, dtype=np.int16)
+
+        if api_key := os.environ.get("OPENAI_API_KEY"):
+            voice_name = random.choice(OPENAI_VOICES)
+            response = await litellm.aspeech(
+                model=OPENAI_SPEAK_MODEL,
+                voice=voice_name,
+                input=sentence,
+                api_key=api_key,
+            )
+            return np.frombuffer(response.content, dtype=np.int16)
+
+        print("No audio provider available")
+        return np.array([], dtype=np.int16)
+
+    print("No provider found")
+    return np.array([], dtype=np.int16)

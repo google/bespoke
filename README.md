@@ -19,7 +19,15 @@ The command below runs Bespoke with
 [uv](https://docs.astral.sh/uv/getting-started/installation/).
 You can also use a different package manager that can read pyproject.toml.
 
-You need ffmpeg installed and a Gemini API key. Set it and run:
+You need ffmpeg installed and an API key.
+Depending on what keys you export, the model will be chosen.
+You can use:
+
+- `GEMINI_API_KEY`
+- `OPENROUTER_API_KEY` and `ELEVENLABS_API_KEY` (text and speech)
+- `OPENAI_API_KEY`
+
+Example run commands:
 
 ```
 apt-get install ffmpeg
@@ -27,13 +35,13 @@ export GEMINI_API_KEY=your_key_here
 uv run create.py --target="Japanese" --native="English"
 ```
 
-You can also use other LLMs if you replace the implementations in
-`bespoke/llm.py`.
+You can also use other models, see `bespoke/llm.py`.
+The quality of generated cards varies between providers and models.
 
 ## How to start learning
 
 First, you need to either create or import cards for your language.
-From here on, you won't need ffmpeg and a Gemini API key anymore.
+From here on, you won't need ffmpeg or your API key anymore.
 Run this command and a tab should open in your web browser:
 
 ```

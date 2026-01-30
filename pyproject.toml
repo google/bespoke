@@ -11,6 +11,8 @@ requires-python = ">=3.13"
 dependencies = [
     "aiofiles",
     "google-genai",
+    "httpx",
+    "litellm",
     "nicegui",
     "numpy",
     "pydantic",
