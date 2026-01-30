@@ -202,7 +202,7 @@ class SentenceProducer:
 
 
 class DeckBuilder:
-    MAX_PARALLELISM = 64
+    MAX_PARALLELISM = 16
 
     def __init__(
         self,

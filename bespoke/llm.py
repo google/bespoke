@@ -31,7 +31,7 @@ from bespoke.languages import Language
 from bespoke.languages import UnitTags
 
 SPEAK_MODEL = "gemini-2.5-flash-native-audio-preview-12-2025"
-TEXT_MODEL = "gemini-2.0-flash"
+TEXT_MODEL = "gemini-2.5-flash-lite"
 VOICES = ["Aoede", "Puck", "Charon", "Kore", "Fenrir", "Leda", "Orus", "Zephyr"]
 DIFFICULTY_EXPLANATIONS = {
     Difficulty.A1: "Beginner, understands and uses simple phrases and sentences.",
@@ -97,11 +97,15 @@ async def create_sentences(
     units: list[str],
 ) -> list[str]:
     difficulty_explanation = DIFFICULTY_EXPLANATIONS[difficulty]
+    if language.live_code in ["cmn-CN", "ja-JP"]:
+        spaces = "spaces or "
+    else:
+        spaces = ""
     prompt = (
         f"Create example sentences in the language {language.writing_system}. "
         f"The output should be exactly {len(units)} lines. "
         "Each line will be interpreted as a sentence. "
-        "Don't add numbering. Don't mark words with spaces or ** etc. "
+        f"Don't add numbering. Don't mark words with {spaces}** etc. "
         "Only respond with the sentences, no introduction or explanations. "
         "The sentences should represent how native speakers naturally talk. \n"
         f"All sentences together should use the following words: \n{units} \n"
