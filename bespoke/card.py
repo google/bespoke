@@ -22,9 +22,7 @@ import numpy as np
 from pathlib import Path
 import pydantic
 from typing import Self
-import os
 
-from bespoke.languages import Difficulty
 from bespoke.languages import Language
 from bespoke.languages import UnitTags
 from bespoke import llm
@@ -88,7 +86,7 @@ def _load_card(directory: Path, card_id: str) -> Card | None:
     try:
         with open(path, "r", encoding="utf-8") as f:
             return Card.model_validate_json(f.read())
-    except pydantic.ValidationError as e:
+    except pydantic.ValidationError:
         print(f"Failed to read card from file '{path}'")
     except OSError as e:
         print(f"An error occurred while accessing '{path}': {e}")
@@ -100,7 +98,7 @@ async def _load_card_async(directory: Path, card_id: str) -> Card | None:
     try:
         async with aiofiles.open(path, mode="r", encoding="utf-8") as f:
             return Card.model_validate_json(await f.read())
-    except pydantic.ValidationError as e:
+    except pydantic.ValidationError:
         print(f"Failed to read card from file '{path}'")
     except OSError as e:
         print(f"An error occurred while accessing '{path}': {e}")
@@ -180,7 +178,7 @@ class CardIndex:
         try:
             with open(obj._index_path, "r", encoding="utf-8") as f:
                 obj._index = json.load(f)
-        except:
+        except Exception:
             print(f"Unable to open {obj._index_path}, creating empty CardIndex.")
         return obj
 
@@ -205,7 +203,7 @@ class CardIndex:
             card_filenames.add(card.slow_audio_filename)
             card_filenames.add(card.native_audio_filename)
             if card.audio_filename not in audio_filenames:
-                print(f"Missing target audio file for card '{card.id}'")
+                print(f"Missing target audio file for '{card.id}'")
             if card.slow_audio_filename not in audio_filenames:
                 print(f"Missing slow audio file for '{card.id}'")
             if card.native_audio_filename not in audio_filenames:

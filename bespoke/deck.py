@@ -161,7 +161,7 @@ class Deck:
 
         # Step 4: Highest urgency.
         if not target_states:
-            raise ValueError(f"No units found")
+            raise ValueError("No units found")
         unit, state = max(target_states, key=lambda s: s[1].urgency)
         return state.mode, unit
 

@@ -14,11 +14,11 @@
 
 """The Bespoke API."""
 
-from bespoke.builder import DeckBuilder
-from bespoke.card import Card
-from bespoke.card import CardIndex
-from bespoke.deck import Deck
-from bespoke.languages import Difficulty
-from bespoke.languages import Language
-from bespoke.languages import UnitTags
-from bespoke.urgency import Mode
+from bespoke.builder import DeckBuilder as DeckBuilder
+from bespoke.card import Card as Card
+from bespoke.card import CardIndex as CardIndex
+from bespoke.deck import Deck as Deck
+from bespoke.languages import Difficulty as Difficulty
+from bespoke.languages import Language as Language
+from bespoke.languages import UnitTags as UnitTags
+from bespoke.urgency import Mode as Mode

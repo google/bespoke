@@ -15,7 +15,7 @@
 """Simple user interface for learning."""
 
 import argparse
-from nicegui import ui, app
+from nicegui import ui
 import os
 from pathlib import Path
 import sys
@@ -227,7 +227,9 @@ def open_deck() -> tuple[Deck, str]:
     for code_name in languages.LANGUAGE_DATA:
         language = languages.LANGUAGES[code_name]
         target_choices[language.writing_system] = language
-    native_choices = {l.writing_system: l for l in languages.LANGUAGES.values()}
+    native_choices = {
+        lang.writing_system: lang for lang in languages.LANGUAGES.values()
+    }
     difficulties = [str(d) for d in Difficulty]
     parser.add_argument(
         "--target",

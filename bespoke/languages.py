@@ -31,7 +31,6 @@ from enum import StrEnum
 from pathlib import Path
 import pydantic
 from typing import Self
-import os
 
 
 UnitTags = dict[str, str]

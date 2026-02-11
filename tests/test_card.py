@@ -13,15 +13,12 @@
 # limitations under the License.
 
 import unittest
-from unittest.mock import AsyncMock, patch
 
 from bespoke import Card
-from bespoke import languages
 
 
 class TestCard(unittest.TestCase):
     def test_split_into_parts(self) -> None:
-        language = languages.LANGUAGES["japanese"]
         card = Card(
             id="test",
             sentence="大学生は学生より年上です。",

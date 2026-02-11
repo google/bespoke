@@ -13,7 +13,6 @@
 # limitations under the License.
 
 import unittest
-from unittest.mock import AsyncMock, patch
 
 from bespoke import Difficulty
 from bespoke import languages

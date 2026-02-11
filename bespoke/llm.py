@@ -30,7 +30,6 @@ import tenacity
 
 from bespoke.languages import Difficulty
 from bespoke.languages import Language
-from bespoke.languages import UnitTags
 
 litellm.suppress_debug_info = True
 

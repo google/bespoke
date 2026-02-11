@@ -18,13 +18,11 @@ import asyncio
 from collections import defaultdict
 from datetime import datetime
 import random
-from typing import Iterator
 
 from bespoke.card import Card
 from bespoke.card import CardIndex
 from bespoke.languages import Difficulty
 from bespoke.languages import Language
-from bespoke.languages import UnitTags
 from bespoke import llm
 
 

@@ -16,7 +16,6 @@
 
 import argparse
 import asyncio
-import os
 
 from bespoke import CardIndex
 from bespoke import DeckBuilder
@@ -44,7 +43,9 @@ def main():
     for code_name in languages.LANGUAGE_DATA:
         language = languages.LANGUAGES[code_name]
         target_choices[language.writing_system] = language
-    native_choices = {l.writing_system: l for l in languages.LANGUAGES.values()}
+    native_choices = {
+        lang.writing_system: lang for lang in languages.LANGUAGES.values()
+    }
     parser.add_argument(
         "--target",
         type=str,
