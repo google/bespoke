@@ -23,7 +23,7 @@ jobs:
       - name: Update uv lockfile
         run: |
           uv sync --upgrade
-          
+
       - name: Commit and Push changes
         run: |
           git config user.name "github-actions[bot]"

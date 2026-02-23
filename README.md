@@ -52,6 +52,9 @@ After learning your first card, your can keep learning with a simple
 `uv run learn.py`, or use the full command to choose languages, difficulty and
 modes.
 
+Due to browser restrictions, the first card will not auto play sound.
+All cards after the first will work as expected.
+
 ## Supported languages
 
 You can find instructions in [languages.py](bespoke/languages.py) to add
