@@ -56,8 +56,6 @@ class Language(pydantic.BaseModel):
     phonetic_system: str | None
     # Used for filenames etc. and needs to be unique
     code_name: str
-    # From https://ai.google.dev/gemini-api/docs/live-guide#supported-languages
-    live_code: str
 
     def vocabulary(self, difficulty: Difficulty) -> list[str]:
         return LANGUAGE_DATA[self.code_name].vocabulary(difficulty)

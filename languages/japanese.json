@@ -2,6 +2,5 @@
     "name": "Japanese",
     "writing_system": "Japanese",
     "phonetic_system": "Hiragana",
-    "code_name": "japanese",
-    "live_code": "ja-JP"
+    "code_name": "japanese"
 }

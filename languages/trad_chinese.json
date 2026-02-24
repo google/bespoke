@@ -2,6 +2,5 @@
     "name": "Chinese",
     "writing_system": "Traditional Chinese",
     "phonetic_system": "Pinyin",
-    "code_name": "trad_chinese",
-    "live_code": "cmn-CN"
+    "code_name": "trad_chinese"
 }

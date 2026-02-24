@@ -34,7 +34,7 @@ from bespoke.languages import Language
 litellm.suppress_debug_info = True
 
 GEMINI_TEXT_MODEL = "gemini/gemini-2.5-flash-lite"
-GEMINI_SPEAK_MODEL = "gemini-2.5-flash-native-audio-preview-12-2025"
+GEMINI_SPEAK_MODEL = "gemini-2.5-flash-preview-tts"
 GEMINI_VOICES = ["Aoede", "Puck", "Charon", "Kore", "Fenrir", "Leda", "Orus", "Zephyr"]
 
 OPENROUTER_TEXT_MODEL = "openrouter/google/gemma-2-9b-it"
@@ -137,7 +137,7 @@ async def create_sentences(
 ) -> list[str]:
     config = _get_provider_config()
     difficulty_explanation = DIFFICULTY_EXPLANATIONS[difficulty]
-    if language.live_code in ["cmn-CN", "ja-JP"]:
+    if language.name in ["Chinese", "Japanese"]:
         spaces = "spaces or "
     else:
         spaces = ""
@@ -236,7 +236,6 @@ async def tag_sentence(
 
 async def speak(
     sentence: str,
-    language: Language,
     *,
     slowly: bool = False,
 ) -> np.ndarray:
@@ -245,64 +244,39 @@ async def speak(
     if config["provider"] == "gemini":
         client = genai.Client(api_key=os.environ.get("GEMINI_API_KEY"))
         voice_name = random.choice(GEMINI_VOICES)
-        voice_config = types.VoiceConfig(
-            prebuilt_voice_config=types.PrebuiltVoiceConfig(
-                voice_name=voice_name,
-            )
-        )
-        # Native audio is not officially supported for some languages:
-        # See https://ai.google.dev/gemini-api/docs/live-guide#supported-languages
-        # It still works without a live code though.
-        if language.live_code in [
-            "en-GB",
-            "es-ES",
-            "gu-IN",
-            "cmn-CN",
-            "en-AU",
-            "fr-CA",
-            "kn-IN",
-            "ml-IN",
-        ]:
-            speech_config = types.SpeechConfig(
-                voice_config=voice_config,
-            )
+        if slowly:
+            instruction = "Speak slowly: "
         else:
-            speech_config = types.SpeechConfig(
-                voice_config=voice_config,
-                language_code=language.live_code,
-            )
-        config_live = types.LiveConnectConfig(
-            response_modalities=["AUDIO"],
-            speech_config=speech_config,
+            instruction = "Speak like a voice actor: "
+        text = f"{instruction}{sentence}"
+        response = await client.aio.models.generate_content(
+            model="gemini-2.5-flash-preview-tts",
+            contents=[
+                types.Content(
+                    role="user",
+                    parts=[
+                        types.Part.from_text(text=text),
+                    ],
+                ),
+            ],
+            config=types.GenerateContentConfig(
+                response_modalities=["AUDIO"],
+                speech_config=types.SpeechConfig(
+                    voice_config=types.VoiceConfig(
+                        prebuilt_voice_config=types.PrebuiltVoiceConfig(
+                            voice_name=voice_name,
+                        )
+                    )
+                ),
+            ),
         )
-        async with client.aio.live.connect(
-            model=GEMINI_SPEAK_MODEL,
-            config=config_live,
-        ) as session:
-            if slowly:
-                text_input = f"Speak slowly in {language.name}: \n{sentence}"
-            else:
-                text_input = (
-                    "You are a voice actor, and your output will be used directly. "
-                    f"Speak the following sentence in {language.name}: \n{sentence}"
-                )
-            await session.send_client_content(
-                turns=types.Content(role="user", parts=[types.Part(text=text_input)])
-            )
-            audio_data = []
-            async for message in session.receive():
-                if (
-                    message.server_content.model_turn
-                    and message.server_content.model_turn.parts
-                ):
-                    for part in message.server_content.model_turn.parts:
-                        if part.inline_data:
-                            audio_data.append(
-                                np.frombuffer(part.inline_data.data, dtype=np.int16)
-                            )
-            if not audio_data:
-                return np.array([], dtype=np.int16)
-            return np.concatenate(audio_data)
+        audio_data = []
+        for part in response.candidates[0].content.parts:
+            if part.inline_data:
+                audio_data.append(np.frombuffer(part.inline_data.data, dtype=np.int16))
+        if not audio_data:
+            return np.array([], dtype=np.int16)
+        return np.concatenate(audio_data)
 
     elif config["provider"] in ["openrouter", "openai"]:
         if api_key := os.environ.get("ELEVENLABS_API_KEY"):

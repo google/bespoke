@@ -143,10 +143,9 @@ async def _write_audio_file(
     *,
     directory: Path,
     sentence: str,
-    language: Language,
     slowly: bool,
 ) -> str:
-    audio = await llm.speak(sentence, language, slowly=slowly)
+    audio = await llm.speak(sentence, slowly=slowly)
     sentence_hash = hashlib.sha256(sentence.encode("utf-8")).hexdigest()
     if slowly:
         suffix = "_slow"
@@ -265,19 +264,16 @@ class CardIndex:
         audio_filename = await _write_audio_file(
             directory=self._card_directory,
             sentence=sentence,
-            language=self._target_language,
             slowly=False,
         )
         slow_audio_filename = await _write_audio_file(
             directory=self._card_directory,
             sentence=sentence,
-            language=self._target_language,
             slowly=True,
         )
         native_audio_filename = await _write_audio_file(
             directory=self._card_directory,
             sentence=native_sentence,
-            language=self._native_language,
             slowly=False,
         )
         phonetic = await llm.to_phonetic(sentence, self._target_language)
