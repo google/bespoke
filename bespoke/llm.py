@@ -94,6 +94,7 @@ def _get_provider_config() -> dict:
         )
 
 
+@standard_retry
 async def translate(sentence: str, target_language: Language) -> str:
     config = _get_provider_config()
     prompt = (
@@ -109,6 +110,7 @@ async def translate(sentence: str, target_language: Language) -> str:
     return response.choices[0].message.content.strip()
 
 
+@standard_retry
 async def to_phonetic(sentence: str, language: Language) -> str | None:
     if not language.phonetic_system:
         return None
@@ -234,6 +236,7 @@ async def tag_sentence(
     ]
 
 
+@standard_retry
 async def speak(
     sentence: str,
     *,
@@ -271,11 +274,13 @@ async def speak(
             ),
         )
         audio_data = []
+        if response.candidates[0] is None:
+            raise ValueError("Missing content")
         for part in response.candidates[0].content.parts:
             if part.inline_data:
                 audio_data.append(np.frombuffer(part.inline_data.data, dtype=np.int16))
         if not audio_data:
-            return np.array([], dtype=np.int16)
+            raise ValueError("Empty response")
         return np.concatenate(audio_data)
 
     elif config["provider"] in ["openrouter", "openai"]:
