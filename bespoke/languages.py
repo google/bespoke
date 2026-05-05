@@ -33,9 +33,9 @@ import pydantic
 from typing import Self
 
 
-UnitTags = dict[str, str]
+UnitTags = dict[str, tuple[str, int, int] | str]
 
-DATA_DIR = Path("languages")
+DATA_DIR = Path(__file__).resolve().parent.parent / "languages"
 
 
 class Difficulty(StrEnum):
@@ -70,7 +70,7 @@ class Language(pydantic.BaseModel):
     @classmethod
     def load(cls, path: Path | str) -> Self:
         with open(path, "r", encoding="utf-8") as f:
-            return cls.model_validate_json(f.read())
+            return Language.model_validate_json(f.read())
 
     def has_data(self) -> bool:
         for prefix in ["vocabulary", "grammar"]:
@@ -94,8 +94,8 @@ class LanguageData:
 
     def __init__(self, code_name: str) -> None:
         self._code_name = code_name
-        self._vocabulary: dict[Difficulty, list[str]] = {}
-        self._grammar: dict[Difficulty, list[str]] = {}
+        self._vocabulary = {}
+        self._grammar = {}
 
     def _initialize(self) -> None:
         if self._vocabulary:

@@ -14,12 +14,11 @@
 
 """Class that represent flash cards."""
 
-import aiofiles  # type: ignore
+import aiofiles
 import asyncio
 import hashlib
 import json
 import numpy as np
-import os
 from pathlib import Path
 import pydantic
 from typing import Self
@@ -51,14 +50,15 @@ class Card(pydantic.BaseModel):
             if unit is None:
                 parts.append(occurance)
             else:
-                parts.append(f"[{occurance}]({unit})")
+                entry_str = unit[0] if isinstance(unit, tuple) else unit
+                parts.append(f"[{occurance}]({entry_str})")
         return f"Card: {''.join(parts)} = {self.native_sentence}"
 
     def split_into_parts(self) -> list[tuple[str, str | None]]:
         sorted_tags = list(self.unit_tags.items())
         sorted_tags.sort(key=lambda x: len(x[1]), reverse=True)
         sorted_tags.sort(key=lambda x: len(x[0]), reverse=True)
-        result: list[tuple[str, str | None]] = [(self.sentence, None)]
+        result = [(self.sentence, None)]
         for word, unit in sorted_tags:
             new_result = []
             found = False
@@ -69,7 +69,8 @@ class Card(pydantic.BaseModel):
                 prefix, suffix = part.split(word, maxsplit=1)
                 if prefix.strip():
                     new_result.append((prefix.strip(), None))
-                new_result.append((word, unit))
+                formatted_unit = f"{unit[0]}_{unit[1]}_{unit[2]}" if isinstance(unit, tuple) else unit
+                new_result.append((word, formatted_unit))
                 if suffix.strip():
                     new_result.append((suffix.strip(), None))
                 found = True
@@ -141,21 +142,19 @@ async def _write_ogg(audio: np.ndarray, filename: str, bitrate="16k") -> None:
 
 
 async def _write_audio_file(
-    llm_client: llm.LlmClient,
     *,
     directory: Path,
     sentence: str,
     slowly: bool,
 ) -> str:
+    audio = await llm.speak(sentence, slowly=slowly)
     sentence_hash = hashlib.sha256(sentence.encode("utf-8")).hexdigest()
     if slowly:
         suffix = "_slow"
     else:
         suffix = ""
     filename = str(directory / f"{sentence_hash}{suffix}.ogg")
-    if not os.path.exists(filename):
-        audio = await llm_client.speak(sentence, slowly=slowly)
-        await _write_ogg(audio, filename)
+    await _write_ogg(audio, filename)
     return filename
 
 
@@ -171,7 +170,7 @@ class CardIndex:
         native = native_language.code_name
         self._index_path = CARDS_DIR / f"index_{target}_{native}.json"
         self._card_directory = CARDS_DIR / f"{target}_{native}"
-        self._index: dict[str, list[str]] = {}
+        self._index = {}
         self._card_directory.mkdir(parents=True, exist_ok=True)
 
     @classmethod
@@ -220,6 +219,9 @@ class CardIndex:
 
     def cards(self, unit: str) -> list[Card]:
         card_ids = self._index.get(unit, [])
+        if not card_ids and "_" in unit:
+            base = unit.split("_")[0]
+            card_ids = self._index.get(base, [])
         cards = []
         for card_id in card_ids:
             card = _load_card(self._card_directory, card_id)
@@ -247,7 +249,11 @@ class CardIndex:
         return [card for card in cards if card is not None]
 
     def size(self, unit: str) -> int:
-        return len(self._index.get(unit, []))
+        count = len(self._index.get(unit, []))
+        if not count and "_" in unit:
+            base = unit.split("_")[0]
+            count = len(self._index.get(base, []))
+        return count
 
     def _add(self, card: Card) -> None:
         for unit in card.units:
@@ -258,33 +264,57 @@ class CardIndex:
     @llm.standard_retry
     async def create_card(
         self,
-        llm_client: llm.LlmClient,
         sentence: str,
         unit_tags: UnitTags,
         notes: list[str] = [],
+        overwrite: bool = False,
     ) -> Card:
         id = hashlib.sha256(sentence.encode("utf-8")).hexdigest()
-        native_sentence = await llm_client.translate(sentence, self._native_language)
+
+        if not overwrite:
+            existing_card = _load_card(self._card_directory, id)
+            if existing_card is not None:
+                if (
+                    Path(existing_card.audio_filename).exists()
+                    and Path(existing_card.slow_audio_filename).exists()
+                    and Path(existing_card.native_audio_filename).exists()
+                ):
+                    units = list(
+                        set(
+                            [
+                                f"{val[0]}_{val[1]}_{val[2]}" if isinstance(val, tuple) else val
+                                for val in unit_tags.values()
+                            ]
+                        )
+                    )
+                    updated_card = existing_card.model_copy(
+                        update={
+                            "units": units,
+                            "unit_tags": unit_tags,
+                            "notes": notes,
+                        }
+                    )
+                    updated_card.write_json(self._card_directory)
+                    self._add(updated_card)
+                    return updated_card
+        native_sentence = await llm.translate(sentence, self._native_language)
         audio_filename = await _write_audio_file(
-            llm_client,
             directory=self._card_directory,
             sentence=sentence,
             slowly=False,
         )
         slow_audio_filename = await _write_audio_file(
-            llm_client,
             directory=self._card_directory,
             sentence=sentence,
             slowly=True,
         )
         native_audio_filename = await _write_audio_file(
-            llm_client,
             directory=self._card_directory,
             sentence=native_sentence,
             slowly=False,
         )
-        phonetic = await llm_client.to_phonetic(sentence, self._target_language)
-        units = list(set(unit_tags.values()))
+        phonetic = await llm.to_phonetic(sentence, self._target_language)
+        units = list(set([f"{val[0]}_{val[1]}_{val[2]}" if isinstance(val, tuple) else val for val in unit_tags.values()]))
         card = Card(
             id=id,
             sentence=sentence,

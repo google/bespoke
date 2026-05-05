@@ -26,6 +26,21 @@ from bespoke import Difficulty
 from bespoke import Mode
 from bespoke import languages
 
+import json
+DICTIONARY = {}
+try:
+    base_dir = Path(__file__).resolve().parent
+    print("Loading primary dictionary into learn.py...")
+    with open(base_dir / "dict-by-title.json", "r", encoding="utf-8") as f:
+        DICTIONARY.update(json.load(f))
+    print("Successfully loaded primary dictionary into learn.py")
+    print("Loading grammar dictionary into learn.py...")
+    with open(base_dir / "dict-grammar-missing.json", "r", encoding="utf-8") as f:
+        DICTIONARY.update(json.load(f))
+    print(f"Successfully loaded dictionaries into learn.py. Total size: {len(DICTIONARY)} keys")
+except Exception as e:
+    print(f"Error loading dictionaries in learn.py: {e}")
+
 
 COLOR_MAP = {
     3: "positive",  # Green
@@ -89,6 +104,31 @@ class RatingWebApp:
             rating = SCORE_ROTATION.get(self._ratings[unit], initial_rating)
             self._ratings[unit] = rating
             b.props(f"color={COLOR_MAP[rating]}")
+            meaning = "Meaning not found in dictionary."
+            try:
+                w = unit.split("_")[0]
+                if w in DICTIONARY:
+                    h_idx = 0
+                    d_idx = 0
+                    if "_" in unit:
+                        parts = unit.split("_")
+                        if len(parts) >= 3:
+                            h_idx = int(parts[1])
+                            d_idx = int(parts[2])
+                    
+                    # Ensure indices are within bounds safely
+                    heteronyms = DICTIONARY[w]
+                    if h_idx < len(heteronyms):
+                        defs = heteronyms[h_idx].get("definitions", [])
+                        if d_idx < len(defs):
+                            meaning = defs[d_idx].get("def", "No definition text provided.")
+                        elif defs:
+                            meaning = defs[0].get("def", "No definition text provided.")
+            except Exception as e:
+                print(f"Error getting definition for {unit}: {e}")
+                
+            if hasattr(self, "def_label"):
+                self.def_label.text = f"Meaning of '{word}': {meaning}"
 
         return btn
 
@@ -178,6 +218,9 @@ class RatingWebApp:
                             ui.label(unit).classes(
                                 "text-[10px] text-[#888] dark:text-gray-400"
                             )
+            self.def_label = ui.label("Click any word above to inspect its meaning...").classes(
+                "text-sm text-blue-600 dark:text-blue-400 mt-4 p-3 bg-blue-50 dark:bg-zinc-900 rounded w-full text-center font-medium shadow-inner"
+            )
 
             # 4. Controls
             ui.separator().classes("my-4")

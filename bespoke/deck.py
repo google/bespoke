@@ -107,6 +107,9 @@ class Deck:
             if (touched + TOUCH_MARGIN) / (i + TOUCH_MARGIN) < MINIMUM_TOUCH_RATIO:
                 has_reached_threshold = True
             history = self._ratings.get(unit)
+            if history is None and "_" in unit:
+                base = unit.split("_")[0]
+                history = self._ratings.get(base)
             if history is None or _is_untouched(history):
                 is_touched = i < self._start_index
                 if is_touched:
@@ -186,7 +189,11 @@ class Deck:
         days = (current_time - np.array(timestamps)) / 60.0 / 60.0 / 24.0
         score -= CARD_USAGE_FACTOR * np.sum(np.exp(-CARD_USAGE_DECAY * days)).item()
         for unit in card.units:
-            state = urgency_states[unit]
+            state = urgency_states.get(unit)
+            if state is None:
+                state = urgency_states.get(f"{unit}_0_0")
+            if state is None:
+                state = UrgencyState(is_touched=False, needs_introduction=False, is_target=False, urgency=0.0, mode=self._modes[0])
             if not state.is_target:
                 score -= NONTARGET_PENALTY
             if not state.is_touched:
