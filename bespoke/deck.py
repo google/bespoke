@@ -38,6 +38,7 @@ from bespoke.languages import Difficulty
 from bespoke.languages import Language
 from bespoke.languages import LANGUAGES
 from bespoke.urgency import Mode
+from bespoke.unit import Unit, WordUnit
 from bespoke.urgency import Rating
 from bespoke.urgency import compute_urgency
 from bespoke.urgency import needs_introduction
@@ -93,7 +94,9 @@ class Deck:
         self._modes = list(Mode)
         self._assume_known: Difficulty | None = None
         self._start_index = 0
-        self._full_vocabulary = target_language.full_vocabulary()
+        self._full_vocabulary: list[Unit] = [
+            WordUnit(w) for w in target_language.full_vocabulary()
+        ]
         self._difficulty_map = {}
         for difficulty in Difficulty:
             for word in self._target_language.vocabulary(difficulty):
@@ -106,12 +109,12 @@ class Deck:
         for i, unit in enumerate(self._full_vocabulary):
             if (touched + TOUCH_MARGIN) / (i + TOUCH_MARGIN) < MINIMUM_TOUCH_RATIO:
                 has_reached_threshold = True
-            history = self._ratings.get(unit)
+            history = self._ratings.get(unit.id())
             if history is None or _is_untouched(history):
                 is_touched = i < self._start_index
                 if is_touched:
                     touched += 1
-                urgency_states[unit] = UrgencyState(
+                urgency_states[unit.id()] = UrgencyState(
                     is_touched=is_touched,
                     needs_introduction=False,
                     is_target=not has_reached_threshold,
@@ -126,7 +129,7 @@ class Deck:
             introduction_mode = needs_introduction(history, self._modes)
             if introduction_mode is not None:
                 mode = introduction_mode
-            urgency_states[unit] = UrgencyState(
+            urgency_states[unit.id()] = UrgencyState(
                 is_touched=True,
                 needs_introduction=introduction_mode is not None,
                 is_target=not has_reached_threshold,
@@ -143,33 +146,33 @@ class Deck:
         for unit in self._full_vocabulary:
             if not self._card_index.size(unit):
                 continue
-            state = urgency_states[unit]
+            state = urgency_states[unit.id()]
             if state.is_target:
-                target_states.append((unit, state))
+                target_states.append((unit.id(), state))
             else:
                 # Optimization, from here, nothing is a target.
                 break
 
         # Step 1: Return the first urgent unit.
-        for unit, state in target_states:
+        for unit_id, state in target_states:
             if state.urgency > 0.0:
-                return state.mode, unit
+                return state.mode, unit_id
 
         # Step 2: Touched and needs introduction.
-        for unit, state in target_states:
+        for unit_id, state in target_states:
             if state.needs_introduction:
-                return state.mode, unit
+                return state.mode, unit_id
 
         # Step 3: Untouched, but a target.
-        for unit, state in target_states:
+        for unit_id, state in target_states:
             if not state.is_touched:
-                return state.mode, unit
+                return state.mode, unit_id
 
         # Step 4: Highest urgency.
         if not target_states:
             raise ValueError("No units found")
-        unit, state = max(target_states, key=lambda s: s[1].urgency)
-        return state.mode, unit
+        unit_id, state = max(target_states, key=lambda s: s[1].urgency)
+        return state.mode, unit_id
 
     def _score_card(
         self,
@@ -206,12 +209,12 @@ class Deck:
         current_time = datetime.now().timestamp()
         urgency_states = self._compute_urgencies(current_time)
         mode, unit = self._choose_task(urgency_states)
-        cards = self._card_index.cards(unit)
+        cards = self._card_index.cards(WordUnit(unit))
         if not cards:
             print(f"No cards found for unit '{unit}', showing any card.")
-            self.rate(unit, mode, 0)
-            for unit in self._full_vocabulary:
-                cards = self._card_index.cards(unit)
+            self.rate(WordUnit(unit), mode, 0)
+            for u in self._full_vocabulary:
+                cards = self._card_index.cards(u)
                 if cards:
                     break
         random.shuffle(cards)
@@ -222,12 +225,12 @@ class Deck:
         _, best_card = max(scored_cards, key=lambda pair: pair[0])
         return mode, best_card
 
-    def rate(self, unit: str, mode: Mode, score: int) -> None:
+    def rate(self, unit: Unit, mode: Mode, score: int) -> None:
         time = datetime.now().timestamp()
         rating = Rating(mode=mode, time=time, score=score)
-        ratings = self._ratings.get(unit, [])
+        ratings = self._ratings.get(unit.id(), [])
         ratings.append(rating)
-        self._ratings[unit] = ratings
+        self._ratings[unit.id()] = ratings
 
     def log_usage(self, card_id: str, is_reported: bool = False) -> None:
         usages = self._card_id_uses.get(card_id, [])

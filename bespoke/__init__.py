@@ -22,3 +22,6 @@ from bespoke.languages import Difficulty as Difficulty
 from bespoke.languages import Language as Language
 from bespoke.languages import UnitTags as UnitTags
 from bespoke.urgency import Mode as Mode
+from bespoke.unit import Unit as Unit
+from bespoke.unit import WordUnit as WordUnit
+from bespoke.unit import UnitIndex as UnitIndex

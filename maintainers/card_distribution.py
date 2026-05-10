@@ -20,6 +20,7 @@ import asyncio
 from bespoke import CardIndex
 from bespoke import Language
 from bespoke import languages
+from bespoke.unit import WordUnit
 
 
 def find_missing_units(card_index: CardIndex, language: Language) -> None:
@@ -30,7 +31,7 @@ def find_missing_units(card_index: CardIndex, language: Language) -> None:
     print("Units that don't appear in cards:")
     count = 0
     for unit in full_vocabulary:
-        size = card_index.size(unit)
+        size = card_index.size(WordUnit(unit))
         total += size
         if not size:
             print(unit)

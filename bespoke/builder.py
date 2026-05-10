@@ -25,6 +25,7 @@ from bespoke.languages import Difficulty
 from bespoke.languages import UnitTags
 from bespoke.languages import Language
 from bespoke import llm
+from bespoke.unit import Unit, WordUnit
 
 
 class UnitTagsBuilder:
@@ -84,12 +85,14 @@ class UnitProducer:
         self._cards_per_unit = cards_per_unit
         self._card_count: dict[str, int] = defaultdict(int)
         self._fitting_count: dict[str, int] = defaultdict(int)
-        self._units_remaining = {d: language.vocabulary(d) for d in Difficulty}
+        self._units_remaining: dict[Difficulty, list[Unit]] = {
+            d: [WordUnit(w) for w in language.vocabulary(d)] for d in Difficulty
+        }
         # Lazy initialization to allow register to affect the first draw / done.
-        self._unit_pools: dict[Difficulty, list[str]] = {}
+        self._unit_pools: dict[Difficulty, list[Unit]] = {}
         self._done = False
 
-    def draw(self, count: int) -> tuple[list[str], Difficulty]:
+    def draw(self, count: int) -> tuple[list[Unit], Difficulty]:
         """Returns random units that need more cards.
 
         You may not call draw when done.
@@ -110,10 +113,10 @@ class UnitProducer:
         assert chosen_difficulty is not None
         return units, chosen_difficulty
 
-    def register(self, unit: str, is_fitting: bool) -> None:
-        self._card_count[unit] += 1
+    def register(self, unit: Unit, is_fitting: bool) -> None:
+        self._card_count[unit.id()] += 1
         if is_fitting:
-            self._fitting_count[unit] += 1
+            self._fitting_count[unit.id()] += 1
 
     def done(self) -> bool:
         if not self._unit_pools:
@@ -126,10 +129,10 @@ class UnitProducer:
         for difficulty in Difficulty:
             remaining = []
             for unit in self._units_remaining[difficulty]:
-                if self._fitting_count[unit] < self._cards_per_unit:
+                if self._fitting_count[unit.id()] < self._cards_per_unit:
                     remaining.append(unit)
                     size += 1
-                    total += self._card_count[unit]
+                    total += self._card_count[unit.id()]
             self._units_remaining[difficulty] = remaining
         self._done = not size
         if self._done:
@@ -139,7 +142,7 @@ class UnitProducer:
         for difficulty in Difficulty:
             unit_pool = []
             for unit in self._units_remaining[difficulty]:
-                if self._card_count[unit] < count_average + self.DRAW_BUFFER:
+                if self._card_count[unit.id()] < count_average + self.DRAW_BUFFER:
                     unit_pool.append(unit)
             self._unit_pools[difficulty] = unit_pool
 
@@ -176,7 +179,7 @@ class SentenceProducer:
             grammar=grammar,
             units=units,
         )
-        return [UnitTagsBuilder(s, units) for s in sentences], grammar
+        return [UnitTagsBuilder(s, [u.id() for u in units]) for s in sentences], grammar
 
     def register_card(self, card: Card) -> None:
         difficulties = {u: self._difficulty_map[u] for u in card.units}
@@ -185,7 +188,7 @@ class SentenceProducer:
         )
         for unit, difficulty in difficulties.items():
             is_fitting = difficulty == max_difficulty
-            self._unit_producer.register(unit, is_fitting)
+            self._unit_producer.register(WordUnit(unit), is_fitting)
 
     def done(self) -> bool:
         return self._unit_producer.done()

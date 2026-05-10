@@ -27,6 +27,7 @@ from typing import Self
 from bespoke.languages import Language
 from bespoke.languages import UnitTags
 from bespoke import llm
+from bespoke.unit import Unit
 
 CARDS_DIR = Path("cards")
 
@@ -218,8 +219,8 @@ class CardIndex:
         with open(self._index_path, "w", encoding="utf-8") as f:
             json.dump(self._index, f)
 
-    def cards(self, unit: str) -> list[Card]:
-        card_ids = self._index.get(unit, [])
+    def cards(self, unit: Unit) -> list[Card]:
+        card_ids = self._index.get(unit.id(), [])
         cards = []
         for card_id in card_ids:
             card = _load_card(self._card_directory, card_id)
@@ -227,8 +228,8 @@ class CardIndex:
                 cards.append(card)
         return cards
 
-    async def cards_async(self, unit: str) -> list[Card]:
-        card_ids = self._index.get(unit, [])
+    async def cards_async(self, unit: Unit) -> list[Card]:
+        card_ids = self._index.get(unit.id(), [])
         tasks = []
         for card_id in card_ids:
             tasks.append(_load_card_async(self._card_directory, card_id))
@@ -246,8 +247,8 @@ class CardIndex:
         cards = await asyncio.gather(*tasks)
         return [card for card in cards if card is not None]
 
-    def size(self, unit: str) -> int:
-        return len(self._index.get(unit, []))
+    def size(self, unit: Unit) -> int:
+        return len(self._index.get(unit.id(), []))
 
     def _add(self, card: Card) -> None:
         for unit in card.units:

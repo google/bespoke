@@ -18,6 +18,7 @@ from bespoke import Difficulty
 from bespoke import builder
 from bespoke import languages
 from tests import fakes
+from bespoke.unit import WordUnit
 
 
 class TestUnitTagsBuilder(unittest.TestCase):
@@ -55,9 +56,9 @@ class TestUnitProducer(unittest.TestCase):
         vocabulary = language.vocabulary(Difficulty.A1)
         count = 4
         for unit in vocabulary[:-count]:
-            unit_producer.register(unit, True)
+            unit_producer.register(WordUnit(unit), True)
         units, difficulty = unit_producer.draw(count)
-        self.assertEqual(set(units), set(vocabulary[-count:]))
+        self.assertEqual(set(u.id() for u in units), set(vocabulary[-count:]))
         self.assertEqual(difficulty, Difficulty.A1)
 
     def test_register_all_done(self) -> None:
@@ -66,7 +67,7 @@ class TestUnitProducer(unittest.TestCase):
         for difficulty in Difficulty:
             vocabulary = language.vocabulary(difficulty)
             for unit in vocabulary:
-                unit_producer.register(unit, True)
+                unit_producer.register(WordUnit(unit), True)
         self.assertTrue(unit_producer.done())
 
 

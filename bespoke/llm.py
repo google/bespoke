@@ -28,6 +28,7 @@ import tenacity
 import typing
 from bespoke.languages import Difficulty
 from bespoke.languages import Language
+from bespoke.unit import Unit
 
 
 DIFFICULTY_EXPLANATIONS = {
@@ -71,7 +72,7 @@ class LlmClient(abc.ABC):
         language: Language,
         difficulty: Difficulty,
         grammar: str,
-        units: list[str],
+        units: list[Unit],
     ) -> list[str]:
         """Creates sentences using specific vocabulary and grammar."""
 
@@ -163,13 +164,14 @@ class GeminiLlmClient(LlmClient):
         language: Language,
         difficulty: Difficulty,
         grammar: str,
-        units: list[str],
+        units: list[Unit],
     ) -> list[str]:
         difficulty_explanation = DIFFICULTY_EXPLANATIONS[difficulty]
         if language.name in ["Chinese", "Japanese"]:
             spaces = "or with spaces "
         else:
             spaces = ""
+        unit_infos = [u.definition() for u in units]
         prompt = (
             f"Create example sentences in the language {language.writing_system}. "
             f"The output should be exactly {len(units)} lines. "
@@ -177,8 +179,8 @@ class GeminiLlmClient(LlmClient):
             f"Don't add numbering. Don't mark words as bold {spaces}etc. "
             "Only respond with the sentences, no introduction or explanations. "
             "The sentences should represent how native speakers naturally talk. \n"
-            f"All sentences together should use the following words: \n{units} \n"
-            "All words should occur. "
+            f"All sentences together should use the following words as defined: \n{unit_infos} \n"
+            "All words should occur with the meaning matching their definition. "
             "If the word is part of a longer compound word, don't use the compound. "
             "Make the sentences unique and different. "
             f"All sentences should use this grammar concept: \n{grammar} \n"
@@ -365,13 +367,14 @@ class OpenRouterElevenLabsLlmClient(LlmClient):
         language: Language,
         difficulty: Difficulty,
         grammar: str,
-        units: list[str],
+        units: list[Unit],
     ) -> list[str]:
         difficulty_explanation = DIFFICULTY_EXPLANATIONS[difficulty]
         if language.name in ["Chinese", "Japanese"]:
             spaces = "or with spaces "
         else:
             spaces = ""
+        unit_infos = [u.definition() for u in units]
         prompt = (
             f"Create example sentences in the language {language.writing_system}. "
             f"The output should be exactly {len(units)} lines. "
@@ -379,8 +382,8 @@ class OpenRouterElevenLabsLlmClient(LlmClient):
             f"Don't add numbering. Don't mark words as bold {spaces}etc. "
             "Only respond with the sentences, no introduction or explanations. "
             "The sentences should represent how native speakers naturally talk. \n"
-            f"All sentences together should use the following words: \n{units} \n"
-            "All words should occur. "
+            f"All sentences together should use the following words as defined: \n{unit_infos} \n"
+            "All words should occur with the meaning matching their definition. "
             "If the word is part of a longer compound word, don't use the compound. "
             "Make the sentences unique and different. "
             f"All sentences should use this grammar concept: \n{grammar} \n"
@@ -522,13 +525,14 @@ class OpenAiLlmClient(LlmClient):
         language: Language,
         difficulty: Difficulty,
         grammar: str,
-        units: list[str],
+        units: list[Unit],
     ) -> list[str]:
         difficulty_explanation = DIFFICULTY_EXPLANATIONS[difficulty]
         if language.name in ["Chinese", "Japanese"]:
             spaces = "or with spaces "
         else:
             spaces = ""
+        unit_infos = [u.definition() for u in units]
         prompt = (
             f"Create example sentences in the language {language.writing_system}. "
             f"The output should be exactly {len(units)} lines. "
@@ -536,8 +540,8 @@ class OpenAiLlmClient(LlmClient):
             f"Don't add numbering. Don't mark words as bold {spaces}etc. "
             "Only respond with the sentences, no introduction or explanations. "
             "The sentences should represent how native speakers naturally talk. \n"
-            f"All sentences together should use the following words: \n{units} \n"
-            "All words should occur. "
+            f"All sentences together should use the following words as defined: \n{unit_infos} \n"
+            "All words should occur with the meaning matching their definition. "
             "If the word is part of a longer compound word, don't use the compound. "
             "Make the sentences unique and different. "
             f"All sentences should use this grammar concept: \n{grammar} \n"

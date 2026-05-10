@@ -21,6 +21,7 @@ from bespoke import Difficulty
 from bespoke import Language
 from bespoke import UnitTags
 from bespoke import llm
+from bespoke.unit import Unit
 
 
 FAKE_VOCABULARY = {
@@ -112,8 +113,8 @@ class FakeCardIndex:
     def save(self) -> None:
         pass
 
-    def cards(self, unit: str) -> list[Card]:
-        return self._cards.get(unit, [])
+    def cards(self, unit: Unit) -> list[Card]:
+        return self._cards.get(unit.id(), [])
 
     async def all_cards(self) -> list[Card]:
         unique_cards = {}
@@ -122,7 +123,7 @@ class FakeCardIndex:
                 unique_cards[card.id] = card
         return list(unique_cards.values())
 
-    def size(self, unit: str) -> int:
+    def size(self, unit: Unit) -> int:
         return len(self.cards(unit))
 
     async def create_card(
@@ -151,11 +152,11 @@ class FakeLlmClient(llm.LlmClient):
         language: Language,
         difficulty: Difficulty,
         grammar: str,
-        units: list[str],
+        units: list[Unit],
     ) -> list[str]:
         prefix = "." * random.randint(1, 4)
         suffix = "." * random.randint(1, 4)
-        return [f"{prefix}{unit}{suffix}" for unit in units]
+        return [f"{prefix}{unit.name()}{suffix}" for unit in units]
 
     async def tag_sentence(
         self,

@@ -19,6 +19,7 @@ from bespoke import Difficulty
 from bespoke import Mode
 from bespoke import languages
 from tests import fakes
+from bespoke.unit import WordUnit
 
 
 class TestDeck(unittest.TestCase):
@@ -42,7 +43,7 @@ class TestDeck(unittest.TestCase):
         mode, card = deck.draw()
         unit = target.vocabulary(Difficulty.A1)[0]
         self.assertEqual(card.units, [unit])
-        deck.rate(unit, mode, 3)
+        deck.rate(WordUnit(unit), mode, 3)
         _mode, card = deck.draw()
         unit = target.vocabulary(Difficulty.A1)[1]
         self.assertEqual(card.units, [unit])

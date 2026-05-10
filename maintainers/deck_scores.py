@@ -19,6 +19,7 @@ import datetime
 
 from bespoke import Deck
 from bespoke import languages
+from bespoke.unit import WordUnit
 
 
 def show_ratings(deck: Deck, unit: str) -> None:
@@ -58,7 +59,7 @@ def show_cards(deck: Deck) -> None:
     print(f"              Mode: {state.mode}")
     print("")
 
-    cards = deck._card_index.cards(unit)
+    cards = deck._card_index.cards(WordUnit(unit))
     card_scores = []
     for card in cards:
         score = deck._score_card(card, urgency_states, current_time)
