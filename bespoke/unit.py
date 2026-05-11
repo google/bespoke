@@ -15,6 +15,7 @@
 """Extensible unit design for learned items."""
 
 from abc import ABC, abstractmethod
+from bespoke.languages import Difficulty
 
 
 class Unit(ABC):
@@ -32,12 +33,21 @@ class Unit(ABC):
     def definition(self) -> str:
         """Unique explanation of the meaning in the unit's own language."""
 
+    @abstractmethod
+    def difficulty(self) -> Difficulty | None:
+        """Get the difficulty level of the unit."""
+
+    @abstractmethod
+    def translation(self) -> str | None:
+        """Get the translation of the unit in the native language."""
+
 
 class WordUnit(Unit):
     """Simple implementation that uses words as base knowledge."""
 
-    def __init__(self, word: str) -> None:
+    def __init__(self, word: str, difficulty: Difficulty | None = None) -> None:
         self._word = word
+        self._difficulty = difficulty
 
     def id(self) -> str:
         return self._word
@@ -47,6 +57,12 @@ class WordUnit(Unit):
 
     def definition(self) -> str:
         return self._word
+
+    def difficulty(self) -> Difficulty | None:
+        return self._difficulty
+
+    def translation(self) -> str | None:
+        return None
 
     def __eq__(self, other: object) -> bool:
         if not isinstance(other, WordUnit):
@@ -58,6 +74,48 @@ class WordUnit(Unit):
 
     def __str__(self) -> str:
         return self._word
+
+
+class DictionaryUnit(Unit):
+    """Unit implementation that disambiguates homonyms using definitions."""
+
+    def __init__(
+        self,
+        name: str,
+        definition: str,
+        difficulty: Difficulty | None = None,
+        translation: str | None = None,
+    ) -> None:
+        self._name = name
+        self._definition = definition
+        self._difficulty = difficulty
+        self._translation = translation
+
+    def id(self) -> str:
+        return self._definition
+
+    def name(self) -> str:
+        return self._name
+
+    def definition(self) -> str:
+        return self._definition
+
+    def difficulty(self) -> Difficulty | None:
+        return self._difficulty
+
+    def translation(self) -> str | None:
+        return self._translation
+
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, DictionaryUnit):
+            return NotImplemented
+        return self._definition == other._definition
+
+    def __hash__(self) -> int:
+        return hash(self._definition)
+
+    def __str__(self) -> str:
+        return self._definition
 
 
 class UnitIndex:

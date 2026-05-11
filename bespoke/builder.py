@@ -86,7 +86,8 @@ class UnitProducer:
         self._card_count: dict[str, int] = defaultdict(int)
         self._fitting_count: dict[str, int] = defaultdict(int)
         self._units_remaining: dict[Difficulty, list[Unit]] = {
-            d: [WordUnit(w) for w in language.vocabulary(d)] for d in Difficulty
+            d: [WordUnit(w, difficulty=d) for w in language.vocabulary(d)]
+            for d in Difficulty
         }
         # Lazy initialization to allow register to affect the first draw / done.
         self._unit_pools: dict[Difficulty, list[Unit]] = {}

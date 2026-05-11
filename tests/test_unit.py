@@ -14,16 +14,32 @@
 
 import unittest
 
-from bespoke.unit import WordUnit, UnitIndex
+from bespoke.unit import WordUnit, DictionaryUnit, UnitIndex
+from bespoke.languages import Difficulty
 
 
 class TestUnit(unittest.TestCase):
     def test_word_unit(self) -> None:
-        unit = WordUnit("test")
+        unit = WordUnit("test", difficulty=Difficulty.A1)
         self.assertEqual(unit.id(), "test")
         self.assertEqual(unit.name(), "test")
         self.assertEqual(unit.definition(), "test")
+        self.assertEqual(unit.difficulty(), Difficulty.A1)
         self.assertEqual(str(unit), "test")
+
+    def test_dictionary_unit(self) -> None:
+        unit = DictionaryUnit(
+            name="test_name",
+            definition="test_def",
+            difficulty=Difficulty.A1,
+            translation="test_native",
+        )
+        self.assertEqual(unit.id(), "test_def")
+        self.assertEqual(unit.name(), "test_name")
+        self.assertEqual(unit.definition(), "test_def")
+        self.assertEqual(unit.difficulty(), Difficulty.A1)
+        self.assertEqual(unit.translation(), "test_native")
+        self.assertEqual(str(unit), "test_def")
 
     def test_unit_index(self) -> None:
         index = UnitIndex()
