@@ -31,7 +31,8 @@ async def create(
 ) -> None:
     card_index = CardIndex.load(target, native)
     llm_client = llm.get_llm_client()
-    deck_builder = DeckBuilder(target, card_index, llm_client)
+    grammar = languages.load_grammar(target.code_name)
+    deck_builder = DeckBuilder(target, card_index, llm_client, grammar)
     await deck_builder.create_cards(
         cards_per_unit=cards_per_unit,
         cards_per_call=cards_per_call,

@@ -77,7 +77,11 @@ class TestSentenceProducer(unittest.IsolatedAsyncioTestCase):
         language = fakes.fake_language()
         llm_client = fakes.FakeLlmClient()
         sentence_producer = builder.SentenceProducer(
-            language, llm_client, cards_per_unit=1, cards_per_call=cards_per_call
+            language,
+            llm_client,
+            fakes.FAKE_GRAMMAR,
+            cards_per_unit=1,
+            cards_per_call=cards_per_call,
         )
         self.assertFalse(sentence_producer.done())
         builders, grammar = await sentence_producer.create()
@@ -90,7 +94,11 @@ class TestSentenceProducer(unittest.IsolatedAsyncioTestCase):
         language = fakes.fake_language()
         llm_client = fakes.FakeLlmClient()
         sentence_producer = builder.SentenceProducer(
-            language, llm_client, cards_per_unit=1, cards_per_call=cards_per_call
+            language,
+            llm_client,
+            fakes.FAKE_GRAMMAR,
+            cards_per_unit=1,
+            cards_per_call=cards_per_call,
         )
         builders, grammar1 = await sentence_producer.create()
         builder1 = builders[0]
@@ -105,7 +113,12 @@ class TestDeckBuilder(unittest.IsolatedAsyncioTestCase):
         language = fakes.fake_language()
         card_index = fakes.FakeCardIndex(language)
         llm_client = fakes.FakeLlmClient()
-        deck_builder = builder.DeckBuilder(language, card_index, llm_client)  # type: ignore
+        deck_builder = builder.DeckBuilder(
+            language,
+            card_index,  # type: ignore
+            llm_client,
+            fakes.FAKE_GRAMMAR,
+        )
         vocabulary_size = len(language.full_vocabulary())
         index_size = len(await card_index.all_cards())
         self.assertEqual(index_size, vocabulary_size)

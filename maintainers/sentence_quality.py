@@ -90,6 +90,7 @@ async def start_experiment(
 ) -> None:
     if difficulty is not None:
         language = isolate_difficulty(language, difficulty)
+    grammar = languages.load_grammar(language.code_name)
     async with asyncio.TaskGroup() as tg:
         for name, llm_client in LLM_CLIENTS.items():
             if difficulty is not None:
@@ -97,6 +98,7 @@ async def start_experiment(
             producer = builder.SentenceProducer(
                 language,
                 llm_client,
+                grammar,
                 cards_per_unit=1,
                 cards_per_call=cards_per_call,
             )

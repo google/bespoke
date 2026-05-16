@@ -155,12 +155,14 @@ class SentenceProducer:
         self,
         language: Language,
         llm_client: llm.LlmClient,
+        grammar: dict[Difficulty, list[str]],
         *,
         cards_per_unit: int,
         cards_per_call: int,
     ) -> None:
         self._language = language
         self._llm_client = llm_client
+        self._grammar = grammar
         self._cards_per_call = cards_per_call
         self._unit_producer = UnitProducer(language, cards_per_unit)
         self._grammar_pools: dict[Difficulty, list[str]] = {}
@@ -198,7 +200,7 @@ class SentenceProducer:
         grammar_pool = self._grammar_pools.get(difficulty, [])
         if not grammar_pool:
             for d in Difficulty:
-                grammar_pool += self._language.grammar(d)
+                grammar_pool += list(self._grammar.get(d, []))
                 if d == difficulty:
                     break
             random.shuffle(grammar_pool)
@@ -215,10 +217,12 @@ class DeckBuilder:
         target_language: Language,
         card_index: CardIndex,
         llm_client: llm.LlmClient,
+        grammar: dict[Difficulty, list[str]],
     ) -> None:
         self._language = target_language
         self._card_index = card_index
         self._llm_client = llm_client
+        self._grammar = grammar
         self._full_vocabulary = self._language.full_vocabulary()
         self._duplicates: set[str] = set()
         self._start_time: datetime | None = None
@@ -234,6 +238,7 @@ class DeckBuilder:
         sentence_producer = SentenceProducer(
             self._language,
             self._llm_client,
+            self._grammar,
             cards_per_unit=cards_per_unit,
             cards_per_call=cards_per_call,
         )

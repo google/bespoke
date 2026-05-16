@@ -21,12 +21,14 @@ If you want to be able to learn the language, additionally navigate to
 -> `DATA_DIR` -> `language.code_name`
 and add the files:
 
-- `vocabulary_{difficulty}.txt` for all difficulties with vocabulary.
-- `grammar_{difficulty}.txt` with grammar concepts in the language.
+- `vocabulary.csv` with entries for at least A1.
+- `grammar_{difficulty}.txt` with grammar concepts in the language, at least A1.
 
-The txt files have one entry per line. You need at least the files for A1.
+The txt files are one entry per line.
+The csv is a table with name, definition and difficulty.
 """
 
+import csv
 from enum import StrEnum
 from pathlib import Path
 import pydantic
@@ -64,66 +66,56 @@ class Language(pydantic.BaseModel):
         data = LANGUAGE_DATA[self.code_name]
         return [word for d in Difficulty for word in data.vocabulary(d)]
 
-    def grammar(self, difficulty: Difficulty) -> list[str]:
-        return LANGUAGE_DATA[self.code_name].grammar(difficulty)
-
     @classmethod
     def load(cls, path: Path | str) -> Self:
         with open(path, "r", encoding="utf-8") as f:
             return cls.model_validate_json(f.read())
 
     def has_data(self) -> bool:
-        for prefix in ["vocabulary", "grammar"]:
-            path = DATA_DIR / self.code_name / f"{prefix}_{Difficulty.A1}.txt"
-            if not path.exists():
-                return False
-        return True
-
-
-def _read_textfile(path: Path | str) -> list[str]:
-    try:
-        with open(path, "r", encoding="utf-8") as f:
-            return [line.strip() for line in f if line.strip()]
-    except FileNotFoundError:
-        print(f"Unreadable file '{path}'")
-        return []
+        path = DATA_DIR / self.code_name / "vocabulary.csv"
+        return path.exists()
 
 
 class LanguageData:
-    """Lazily initialized vocabulary and grammar lists."""
+    """Lazily initialized vocabulary lists from CSV."""
 
     def __init__(self, code_name: str) -> None:
         self._code_name = code_name
         self._vocabulary: dict[Difficulty, list[str]] = {}
-        self._grammar: dict[Difficulty, list[str]] = {}
 
     def _initialize(self) -> None:
         if self._vocabulary:
             return
-        self._vocabulary = self._read_all_difficulties("vocabulary")
-        self._grammar = self._read_all_difficulties("grammar")
+
+        csv_path = DATA_DIR / self._code_name / "vocabulary.csv"
+        if not csv_path.exists():
+            print(f"File not found: {csv_path}")
+            return
+
+        self._vocabulary = {d: [] for d in Difficulty}
+
+        with open(csv_path, "r", encoding="utf-8") as f:
+            reader = csv.DictReader(f)
+            for row in reader:
+                word = row["name"]
+                difficulty = Difficulty(row["difficulty"])
+                self._vocabulary[difficulty].append(word)
 
     def vocabulary(self, difficulty: Difficulty) -> list[str]:
         self._initialize()
         return self._vocabulary[difficulty]
 
-    def grammar(self, difficulty: Difficulty) -> list[str]:
-        self._initialize()
-        return self._grammar[difficulty]
 
-    def _read_all_difficulties(self, prefix: str) -> dict[Difficulty, list[str]]:
-        content = {}
-        all_content = set()
-        for difficulty in Difficulty:
-            path = DATA_DIR / self._code_name / f"{prefix}_{difficulty}.txt"
-            wordlist = _read_textfile(path)
-            filtered = []
-            for word in wordlist:
-                if word not in all_content:
-                    all_content.add(word)
-                    filtered.append(word)
-            content[difficulty] = filtered
-        return content
+def load_grammar(code_name: str) -> dict[Difficulty, list[str]]:
+    grammar = {}
+    for difficulty in Difficulty:
+        path = DATA_DIR / code_name / f"grammar_{difficulty}.txt"
+        if path.exists():
+            with open(path, "r", encoding="utf-8") as f:
+                grammar[difficulty] = [line.strip() for line in f if line.strip()]
+        else:
+            grammar[difficulty] = []
+    return grammar
 
 
 _ALL_LANGUAGES = [Language.load(path) for path in DATA_DIR.glob("*.json")]

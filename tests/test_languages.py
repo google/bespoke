@@ -36,14 +36,14 @@ class TestLanguageData(unittest.TestCase):
         full_vocabulary = language.full_vocabulary()
         self.assertEqual(vocabulary_a1, full_vocabulary[: len(vocabulary_a1)])
 
-    def test_grammar(self) -> None:
-        language = languages.LANGUAGES["japanese"]
+    def test_load_grammar(self) -> None:
+        grammar = languages.load_grammar("japanese")
         for d1 in Difficulty:
             for d2 in Difficulty:
                 if d1 == d2:
                     continue
-                grammar1 = language.grammar(d1)
-                grammar2 = language.grammar(d2)
+                grammar1 = grammar[d1]
+                grammar2 = grammar[d2]
                 self.assertTrue(set(grammar1).isdisjoint(grammar2))
 
 
