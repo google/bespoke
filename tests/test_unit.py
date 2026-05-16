@@ -14,8 +14,10 @@
 
 import unittest
 
-from bespoke.unit import WordUnit, DictionaryUnit, UnitIndex
-from bespoke.languages import Difficulty
+from bespoke import DictionaryUnit
+from bespoke import Difficulty
+from bespoke import UnitIndex
+from bespoke import WordUnit
 
 
 class TestUnit(unittest.TestCase):
@@ -43,8 +45,8 @@ class TestUnit(unittest.TestCase):
 
     def test_unit_index(self) -> None:
         index = UnitIndex()
-        unit1 = WordUnit("apple")
-        unit2 = WordUnit("banana")
+        unit1 = WordUnit("apple", Difficulty.A1)
+        unit2 = WordUnit("banana", Difficulty.A1)
 
         index.add(unit1)
         index.add(unit2)

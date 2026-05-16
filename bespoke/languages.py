@@ -29,24 +29,19 @@ The csv is a table with name, definition and difficulty.
 """
 
 import csv
-from enum import StrEnum
+
 from pathlib import Path
 import pydantic
 from typing import Self
+from bespoke.unit import DictionaryUnit
+from bespoke.unit import Unit
+from bespoke.unit import WordUnit
+from bespoke.difficulty import Difficulty
 
 
 UnitTags = dict[str, str]
 
 DATA_DIR = Path("languages")
-
-
-class Difficulty(StrEnum):
-    A1 = "A1"
-    A2 = "A2"
-    B1 = "B1"
-    B2 = "B2"
-    C1 = "C1"
-    C2 = "C2"
 
 
 class Language(pydantic.BaseModel):
@@ -59,12 +54,8 @@ class Language(pydantic.BaseModel):
     # Used for filenames etc. and needs to be unique
     code_name: str
 
-    def vocabulary(self, difficulty: Difficulty) -> list[str]:
-        return LANGUAGE_DATA[self.code_name].vocabulary(difficulty)
-
-    def full_vocabulary(self) -> list[str]:
-        data = LANGUAGE_DATA[self.code_name]
-        return [word for d in Difficulty for word in data.vocabulary(d)]
+    def units(self) -> list[Unit]:
+        return LANGUAGE_DATA[self.code_name].units()
 
     @classmethod
     def load(cls, path: Path | str) -> Self:
@@ -81,10 +72,10 @@ class LanguageData:
 
     def __init__(self, code_name: str) -> None:
         self._code_name = code_name
-        self._vocabulary: dict[Difficulty, list[str]] = {}
+        self._units: list[Unit] = []
 
     def _initialize(self) -> None:
-        if self._vocabulary:
+        if self._units:
             return
 
         csv_path = DATA_DIR / self._code_name / "vocabulary.csv"
@@ -92,18 +83,35 @@ class LanguageData:
             print(f"File not found: {csv_path}")
             return
 
-        self._vocabulary = {d: [] for d in Difficulty}
-
         with open(csv_path, "r", encoding="utf-8") as f:
             reader = csv.DictReader(f)
-            for row in reader:
-                word = row["name"]
-                difficulty = Difficulty(row["difficulty"])
-                self._vocabulary[difficulty].append(word)
+            rows = list(reader)
+            if not rows:
+                return
 
-    def vocabulary(self, difficulty: Difficulty) -> list[str]:
+            use_definition = bool(rows[0].get("definition"))
+            for row in rows:
+                word = row["name"]
+                definition = row.get("definition", "")
+                difficulty = Difficulty(row["difficulty"])
+                if use_definition:
+                    if not definition:
+                        raise ValueError(
+                            f"Missing definition for word '{word}' in {csv_path}"
+                        )
+                    self._units.append(
+                        DictionaryUnit(
+                            name=word, definition=definition, difficulty=difficulty
+                        )
+                    )
+                else:
+                    if definition:
+                        print(f"Unexpected definition for word '{word}' in {csv_path}")
+                    self._units.append(WordUnit(word, difficulty=difficulty))
+
+    def units(self) -> list[Unit]:
         self._initialize()
-        return self._vocabulary[difficulty]
+        return self._units
 
 
 def load_grammar(code_name: str) -> dict[Difficulty, list[str]]:

@@ -15,7 +15,7 @@
 """Extensible unit design for learned items."""
 
 from abc import ABC, abstractmethod
-from bespoke.languages import Difficulty
+from bespoke.difficulty import Difficulty
 
 
 class Unit(ABC):
@@ -34,7 +34,7 @@ class Unit(ABC):
         """Unique explanation of the meaning in the unit's own language."""
 
     @abstractmethod
-    def difficulty(self) -> Difficulty | None:
+    def difficulty(self) -> Difficulty:
         """Get the difficulty level of the unit."""
 
     @abstractmethod
@@ -45,7 +45,7 @@ class Unit(ABC):
 class WordUnit(Unit):
     """Simple implementation that uses words as base knowledge."""
 
-    def __init__(self, word: str, difficulty: Difficulty | None = None) -> None:
+    def __init__(self, word: str, difficulty: Difficulty) -> None:
         self._word = word
         self._difficulty = difficulty
 
@@ -58,7 +58,7 @@ class WordUnit(Unit):
     def definition(self) -> str:
         return self._word
 
-    def difficulty(self) -> Difficulty | None:
+    def difficulty(self) -> Difficulty:
         return self._difficulty
 
     def translation(self) -> str | None:
@@ -83,7 +83,7 @@ class DictionaryUnit(Unit):
         self,
         name: str,
         definition: str,
-        difficulty: Difficulty | None = None,
+        difficulty: Difficulty,
         translation: str | None = None,
     ) -> None:
         self._name = name
@@ -100,7 +100,7 @@ class DictionaryUnit(Unit):
     def definition(self) -> str:
         return self._definition
 
-    def difficulty(self) -> Difficulty | None:
+    def difficulty(self) -> Difficulty:
         return self._difficulty
 
     def translation(self) -> str | None:
@@ -124,6 +124,10 @@ class UnitIndex:
     def __init__(self) -> None:
         self._units_by_id: dict[str, Unit] = {}
         self._units_by_name: dict[str, list[Unit]] = {}
+
+    def has_dictionary_data(self) -> bool:
+        """Returns True if any unit in the index is a DictionaryUnit."""
+        return any(isinstance(u, DictionaryUnit) for u in self._units_by_id.values())
 
     def add(self, unit: Unit) -> None:
         self._units_by_id[unit.id()] = unit

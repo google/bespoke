@@ -20,18 +20,16 @@ import asyncio
 from bespoke import CardIndex
 from bespoke import Language
 from bespoke import languages
-from bespoke.unit import WordUnit
 
 
 def find_missing_units(card_index: CardIndex, language: Language) -> None:
-    full_vocabulary = language.full_vocabulary()
     total = 0
     max_size = 0
     max_unit = ""
     print("Units that don't appear in cards:")
     count = 0
-    for unit in full_vocabulary:
-        size = card_index.size(WordUnit(unit))
+    for unit in language.units():
+        size = card_index.size(unit)
         total += size
         if not size:
             print(unit)
@@ -40,7 +38,7 @@ def find_missing_units(card_index: CardIndex, language: Language) -> None:
             max_size = size
             max_unit = unit
     print(f"In total, {count} units are untagged on all cards.")
-    print(f"Average number of cards per unit: {total / len(full_vocabulary)}")
+    print(f"Average number of cards per unit: {total / len(language.units())}")
     print(f"Highest number of cards is {max_size} for {max_unit}")
 
 

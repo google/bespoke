@@ -38,7 +38,8 @@ from bespoke.languages import Difficulty
 from bespoke.languages import Language
 from bespoke.languages import LANGUAGES
 from bespoke.urgency import Mode
-from bespoke.unit import Unit, WordUnit
+from bespoke.unit import Unit
+from bespoke.unit import UnitIndex
 from bespoke.urgency import Rating
 from bespoke.urgency import compute_urgency
 from bespoke.urgency import needs_introduction
@@ -94,19 +95,15 @@ class Deck:
         self._modes = list(Mode)
         self._assume_known: Difficulty | None = None
         self._start_index = 0
-        self._full_vocabulary: list[Unit] = [
-            WordUnit(w) for w in target_language.full_vocabulary()
-        ]
-        self._difficulty_map = {}
-        for difficulty in Difficulty:
-            for word in self._target_language.vocabulary(difficulty):
-                self._difficulty_map[word] = difficulty
+        self._unit_index = UnitIndex()
+        for unit in self._target_language.units():
+            self._unit_index.add(unit)
 
     def _compute_urgencies(self, current_time: float) -> dict[str, UrgencyState]:
         urgency_states = {}
         touched = 0
         has_reached_threshold = False
-        for i, unit in enumerate(self._full_vocabulary):
+        for i, unit in enumerate(self._target_language.units()):
             if (touched + TOUCH_MARGIN) / (i + TOUCH_MARGIN) < MINIMUM_TOUCH_RATIO:
                 has_reached_threshold = True
             history = self._ratings.get(unit.id())
@@ -143,7 +140,7 @@ class Deck:
         urgency_states: dict[str, UrgencyState],
     ) -> tuple[Mode, str]:
         target_states = []
-        for unit in self._full_vocabulary:
+        for unit in self._target_language.units():
             if not self._card_index.size(unit):
                 continue
             state = urgency_states[unit.id()]
@@ -198,7 +195,8 @@ class Deck:
                 score += INTRODUCTION_BONUS
             if state.urgency > 0.0:
                 score += URGENCY_BONUS
-            unit_difficulty = self._difficulty_map.get(unit, Difficulty.A1)
+            vocab_unit = self._unit_index.get_by_id(unit)
+            unit_difficulty = vocab_unit.difficulty() if vocab_unit else Difficulty.A1
             if unit_difficulty == self._difficulty:
                 score += DIFFICULTY_MATCH_BONUS
             elif unit_difficulty > self._difficulty:
@@ -208,13 +206,16 @@ class Deck:
     def draw(self) -> tuple[Mode, Card]:
         current_time = datetime.now().timestamp()
         urgency_states = self._compute_urgencies(current_time)
-        mode, unit = self._choose_task(urgency_states)
-        cards = self._card_index.cards(WordUnit(unit))
+        mode, unit_id = self._choose_task(urgency_states)
+        unit = self._unit_index.get_by_id(unit_id)
+        if unit is None:
+            raise ValueError(f"Unit {unit_id} not found in index")
+        cards = self._card_index.cards(unit)
         if not cards:
-            print(f"No cards found for unit '{unit}', showing any card.")
-            self.rate(WordUnit(unit), mode, 0)
-            for u in self._full_vocabulary:
-                cards = self._card_index.cards(u)
+            print(f"No cards found for unit '{unit_id}', showing any card.")
+            self.rate(unit, mode, 0)
+            for vocab_unit in self._target_language.units():
+                cards = self._card_index.cards(vocab_unit)
                 if cards:
                     break
         random.shuffle(cards)
@@ -250,11 +251,12 @@ class Deck:
         self._start_index = 0
         if difficulty is None:
             return
+        units = self._target_language.units()
         for d in Difficulty:
-            self._start_index += len(self._target_language.vocabulary(d))
+            self._start_index += len([unit for unit in units if unit.difficulty() == d])
             if d == difficulty:
                 break
-        if self._start_index >= len(self._full_vocabulary):
+        if self._start_index >= len(units):
             print("Cannot set minimum difficulty.")
             self._assume_known = None
             self._start_index = 0

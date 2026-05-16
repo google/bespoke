@@ -15,28 +15,10 @@
 import unittest
 
 from bespoke import Difficulty
+from bespoke import UnitIndex
 from bespoke import builder
 from bespoke import languages
 from tests import fakes
-from bespoke.unit import WordUnit
-
-
-class TestUnitTagsBuilder(unittest.TestCase):
-    def test_long_then_short(self) -> None:
-        language = languages.LANGUAGES["japanese"]
-        full_vocubulary = language.full_vocabulary()
-        sentence = "大学生です。"
-        long = "大学生"
-        short = "学生"
-        unit_tags_builder = builder.UnitTagsBuilder(sentence, [])
-        unit_tags_builder.add_filtered([(long, long)], full_vocubulary)
-        unit_tags = dict(unit_tags_builder.unit_tags)
-        self.assertIn(long, unit_tags)
-        for _ in range(builder.UnitTagsBuilder.DONE_AFTER):
-            self.assertFalse(unit_tags_builder.done())
-            unit_tags_builder.add_filtered([(short, short)], full_vocubulary)
-            self.assertEqual(unit_tags, unit_tags_builder.unit_tags)
-        self.assertTrue(unit_tags_builder.done())
 
 
 class TestUnitProducer(unittest.TestCase):
@@ -53,21 +35,23 @@ class TestUnitProducer(unittest.TestCase):
     def test_draw_ignores_initial(self) -> None:
         language = languages.LANGUAGES["japanese"]
         unit_producer = builder.UnitProducer(language, 1)
-        vocabulary = language.vocabulary(Difficulty.A1)
+        vocabulary = [u for u in language.units() if u.difficulty() == Difficulty.A1]
         count = 4
-        for unit in vocabulary[:-count]:
-            unit_producer.register(WordUnit(unit), True)
+        for u in vocabulary[:-count]:
+            unit_producer.register(u, True)
         units, difficulty = unit_producer.draw(count)
-        self.assertEqual(set(u.id() for u in units), set(vocabulary[-count:]))
+        self.assertEqual(
+            set(u.id() for u in units), set(u.id() for u in vocabulary[-count:])
+        )
         self.assertEqual(difficulty, Difficulty.A1)
 
     def test_register_all_done(self) -> None:
         language = languages.LANGUAGES["japanese"]
         unit_producer = builder.UnitProducer(language, 1)
         for difficulty in Difficulty:
-            vocabulary = language.vocabulary(difficulty)
-            for unit in vocabulary:
-                unit_producer.register(WordUnit(unit), True)
+            vocabulary = [u for u in language.units() if u.difficulty() == difficulty]
+            for u in vocabulary:
+                unit_producer.register(u, True)
         self.assertTrue(unit_producer.done())
 
 
@@ -76,10 +60,15 @@ class TestSentenceProducer(unittest.IsolatedAsyncioTestCase):
         cards_per_call = 8
         language = fakes.fake_language()
         llm_client = fakes.FakeLlmClient()
+        unit_index = UnitIndex()
+        for unit in language.units():
+            unit_index.add(unit)
+
         sentence_producer = builder.SentenceProducer(
             language,
             llm_client,
             fakes.FAKE_GRAMMAR,
+            unit_index,
             cards_per_unit=1,
             cards_per_call=cards_per_call,
         )
@@ -93,10 +82,15 @@ class TestSentenceProducer(unittest.IsolatedAsyncioTestCase):
         cards_per_call = 1
         language = fakes.fake_language()
         llm_client = fakes.FakeLlmClient()
+        unit_index = UnitIndex()
+        for unit in language.units():
+            unit_index.add(unit)
+
         sentence_producer = builder.SentenceProducer(
             language,
             llm_client,
             fakes.FAKE_GRAMMAR,
+            unit_index,
             cards_per_unit=1,
             cards_per_call=cards_per_call,
         )
@@ -119,7 +113,7 @@ class TestDeckBuilder(unittest.IsolatedAsyncioTestCase):
             llm_client,
             fakes.FAKE_GRAMMAR,
         )
-        vocabulary_size = len(language.full_vocabulary())
+        vocabulary_size = len(language.units())
         index_size = len(await card_index.all_cards())
         self.assertEqual(index_size, vocabulary_size)
 

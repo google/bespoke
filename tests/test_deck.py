@@ -19,7 +19,6 @@ from bespoke import Difficulty
 from bespoke import Mode
 from bespoke import languages
 from tests import fakes
-from bespoke.unit import WordUnit
 
 
 class TestDeck(unittest.TestCase):
@@ -30,9 +29,9 @@ class TestDeck(unittest.TestCase):
         deck = Deck(target, native, index)  # type: ignore
         deck.set_modes([Mode.LISTEN, Mode.SPEAK])
         mode, card = deck.draw()
-        unit = target.vocabulary(Difficulty.A1)[0]
+        unit = [u for u in target.units() if u.difficulty() == Difficulty.A1][0]
         self.assertEqual(mode, Mode.LISTEN)
-        self.assertEqual(card.sentence, unit)
+        self.assertEqual(card.sentence, unit.name())
 
     def test_rate(self) -> None:
         target = languages.LANGUAGES["japanese"]
@@ -41,12 +40,12 @@ class TestDeck(unittest.TestCase):
         deck = Deck(target, native, index)  # type: ignore
         deck.set_modes([Mode.LISTEN, Mode.SPEAK])
         mode, card = deck.draw()
-        unit = target.vocabulary(Difficulty.A1)[0]
-        self.assertEqual(card.units, [unit])
-        deck.rate(WordUnit(unit), mode, 3)
+        unit_a1_0 = [u for u in target.units() if u.difficulty() == Difficulty.A1][0]
+        self.assertEqual(card.units, [unit_a1_0.id()])
+        deck.rate(unit_a1_0, mode, 3)
         _mode, card = deck.draw()
-        unit = target.vocabulary(Difficulty.A1)[1]
-        self.assertEqual(card.units, [unit])
+        unit_a1_1 = [u for u in target.units() if u.difficulty() == Difficulty.A1][1]
+        self.assertEqual(card.units, [unit_a1_1.id()])
 
     def test_assume_known(self) -> None:
         target = languages.LANGUAGES["japanese"]
@@ -55,8 +54,8 @@ class TestDeck(unittest.TestCase):
         deck = Deck(target, native, index)  # type: ignore
         deck.set_assume_known(Difficulty.A2)
         _mode, card = deck.draw()
-        unit = target.vocabulary(Difficulty.B1)[0]
-        self.assertEqual(card.sentence, unit)
+        unit = [u for u in target.units() if u.difficulty() == Difficulty.B1][0]
+        self.assertEqual(card.sentence, unit.name())
 
 
 if __name__ == "__main__":

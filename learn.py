@@ -25,7 +25,6 @@ from bespoke import Deck
 from bespoke import Difficulty
 from bespoke import Mode
 from bespoke import languages
-from bespoke.unit import WordUnit
 
 
 COLOR_MAP = {
@@ -199,8 +198,10 @@ class RatingWebApp:
             ).props("color=primary size=lg").classes("w-full")
 
     def _finalize(self, is_reported) -> None:
-        for unit, rating in self._ratings.items():
-            self._deck.rate(WordUnit(unit), self._mode, rating)
+        for unit_id, rating in self._ratings.items():
+            unit = self._deck.get_unit(unit_id)
+            if unit:
+                self._deck.rate(unit, self._mode, rating)
         self._deck.log_usage(self._card.id, is_reported=is_reported)
         self._deck.save(self._deck_filename)
 

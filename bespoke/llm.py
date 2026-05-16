@@ -57,6 +57,16 @@ class UnitTagsSchema(pydantic.BaseModel):
     occurance_vocabulary_map: list[UnitTagSchema]
 
 
+class DisambiguatedTagSchema(pydantic.BaseModel):
+    occurance: str
+    word: str
+    index: int
+
+
+class DisambiguatedTagsSchema(pydantic.BaseModel):
+    tags: list[DisambiguatedTagSchema]
+
+
 class LlmClient(abc.ABC):
     @abc.abstractmethod
     async def translate(self, sentence: str, language: Language) -> str:
@@ -84,6 +94,15 @@ class LlmClient(abc.ABC):
         hint: list[str],
     ) -> list[tuple[str, str]]:
         """Tags words in a sentence with their dictionary form."""
+
+    @abc.abstractmethod
+    async def tag_sentence_disambiguated(
+        self,
+        sentence: str,
+        language: Language,
+        hints: str,
+    ) -> list[tuple[str, str, int]]:
+        """Tags sentence with disambiguation."""
 
     @abc.abstractmethod
     async def speak(
@@ -249,6 +268,44 @@ class GeminiLlmClient(LlmClient):
             (tag.occurance, tag.dictionary_entry)
             for tag in parsed.occurance_vocabulary_map
         ]
+
+    @standard_retry
+    async def tag_sentence_disambiguated(
+        self,
+        sentence: str,
+        language: Language,
+        hints: str,
+    ) -> list[tuple[str, str, int]]:
+        if language.phonetic_system is not None:
+            phonetic_prompt = (
+                f" Write the tags in {language.writing_system}, "
+                f"not {language.phonetic_system}."
+            )
+        else:
+            phonetic_prompt = ""
+
+        prompt = (
+            f"Given is a sentence in {language.writing_system}: \n{sentence} \n"
+            "Segment it into non-overlapping consecutive words such that each word exists as a key in the provided dictionary hints. \n"
+            "For each word, identify the correct `index` of the definition that matches its meaning in the context of the sentence. \n"
+            "The concatenation of all `occurance` strings MUST NOT exceed the length of the original sentence, and there must be NO overlapping parts. \n"
+            "Exclude punctuation unless it's part of the dictionary word itself. \n"
+            f"Dictionary hints:\n{hints}\n"
+            f"{phonetic_prompt}"
+        )
+
+        response = await self._client.aio.models.generate_content(
+            model=self.TEXT_MODEL,
+            contents=[prompt],
+            config=self._genai.types.GenerateContentConfig(
+                response_mime_type="application/json",
+                response_schema=DisambiguatedTagsSchema,
+            ),
+        )
+        if response.parsed is None:
+            raise ValueError("Missing content")
+        parsed = typing.cast(DisambiguatedTagsSchema, response.parsed)
+        return [(tag.occurance, tag.word, tag.index) for tag in parsed.tags]
 
     @standard_retry
     async def speak(
@@ -448,6 +505,42 @@ class OpenRouterElevenLabsLlmClient(LlmClient):
             for tag in parsed.occurance_vocabulary_map
         ]
 
+    async def tag_sentence_disambiguated(
+        self,
+        sentence: str,
+        language: Language,
+        hints: str,
+    ) -> list[tuple[str, str, int]]:
+        if language.phonetic_system is not None:
+            phonetic_prompt = (
+                f" Write the tags in {language.writing_system}, "
+                f"not {language.phonetic_system}."
+            )
+        else:
+            phonetic_prompt = ""
+
+        prompt = (
+            f"Given is a sentence in {language.writing_system}: \n{sentence} \n"
+            "Segment it into non-overlapping consecutive words such that each word exists as a key in the provided dictionary hints. \n"
+            "For each word, identify the correct `index` of the definition that matches its meaning in the context of the sentence. \n"
+            "The concatenation of all `occurance` strings MUST NOT exceed the length of the original sentence, and there must be NO overlapping parts. \n"
+            "Exclude punctuation unless it's part of the dictionary word itself. \n"
+            f"Dictionary hints:\n{hints}\n"
+            f"{phonetic_prompt}"
+        )
+
+        import litellm
+
+        response = await litellm.acompletion(
+            model=self.TEXT_MODEL,
+            messages=[{"role": "user", "content": prompt}],
+            response_format=DisambiguatedTagsSchema,
+            api_key=self.openrouter_api_key,
+        )
+        content = response.choices[0].message.content
+        parsed = DisambiguatedTagsSchema.model_validate_json(content)
+        return [(tag.occurance, tag.word, tag.index) for tag in parsed.tags]
+
     @standard_retry
     async def speak(
         self,
@@ -605,6 +698,42 @@ class OpenAiLlmClient(LlmClient):
             (tag.occurance, tag.dictionary_entry)
             for tag in parsed.occurance_vocabulary_map
         ]
+
+    async def tag_sentence_disambiguated(
+        self,
+        sentence: str,
+        language: Language,
+        hints: str,
+    ) -> list[tuple[str, str, int]]:
+        if language.phonetic_system is not None:
+            phonetic_prompt = (
+                f" Write the tags in {language.writing_system}, "
+                f"not {language.phonetic_system}."
+            )
+        else:
+            phonetic_prompt = ""
+
+        prompt = (
+            f"Given is a sentence in {language.writing_system}: \n{sentence} \n"
+            "Segment it into non-overlapping consecutive words such that each word exists as a key in the provided dictionary hints. \n"
+            "For each word, identify the correct `index` of the definition that matches its meaning in the context of the sentence. \n"
+            "The concatenation of all `occurance` strings MUST NOT exceed the length of the original sentence, and there must be NO overlapping parts. \n"
+            "Exclude punctuation unless it's part of the dictionary word itself. \n"
+            f"Dictionary hints:\n{hints}\n"
+            f"{phonetic_prompt}"
+        )
+
+        import litellm
+
+        response = await litellm.acompletion(
+            model=self.TEXT_MODEL,
+            messages=[{"role": "user", "content": prompt}],
+            response_format=DisambiguatedTagsSchema,
+            api_key=self._api_key,
+        )
+        content = response.choices[0].message.content
+        parsed = DisambiguatedTagsSchema.model_validate_json(content)
+        return [(tag.occurance, tag.word, tag.index) for tag in parsed.tags]
 
     @standard_retry
     async def speak(

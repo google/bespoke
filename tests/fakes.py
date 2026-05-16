@@ -19,9 +19,10 @@ import types
 from bespoke import Card
 from bespoke import Difficulty
 from bespoke import Language
+from bespoke import Unit
 from bespoke import UnitTags
+from bespoke import WordUnit
 from bespoke import llm
-from bespoke.unit import Unit
 
 
 FAKE_VOCABULARY = {
@@ -61,20 +62,12 @@ def fake_language() -> Language:
         code_name="japanese",
     )
 
-    def vocabulary(self, difficulty: Difficulty) -> list[str]:
-        return FAKE_VOCABULARY[difficulty]
+    def units(self) -> list[Unit]:
+        return [
+            WordUnit(w, difficulty=d) for d in Difficulty for w in FAKE_VOCABULARY[d]
+        ]
 
-    def full_vocabulary(self) -> list[str]:
-        return [word for d in Difficulty for word in FAKE_VOCABULARY[d]]
-
-    def grammar(self, difficulty: Difficulty) -> list[str]:
-        return FAKE_GRAMMAR[difficulty]
-
-    object.__setattr__(language, "vocabulary", types.MethodType(vocabulary, language))
-    object.__setattr__(
-        language, "full_vocabulary", types.MethodType(full_vocabulary, language)
-    )
-    object.__setattr__(language, "grammar", types.MethodType(grammar, language))
+    object.__setattr__(language, "units", types.MethodType(units, language))
     return language
 
 
@@ -106,9 +99,9 @@ class FakeCardIndex:
         del native_language
         self._target_language = target_language
         self._cards = {}
-        for unit in self._target_language.full_vocabulary():
-            card = _fake_card(unit, {unit: unit}, [])
-            self._cards[unit] = [card]
+        for unit in self._target_language.units():
+            card = _fake_card(unit.name(), {unit.name(): unit.id()}, [])
+            self._cards[unit.id()] = [card]
 
     def save(self) -> None:
         pass
@@ -134,9 +127,9 @@ class FakeCardIndex:
         notes: list[str] = [],
     ) -> Card:
         card = _fake_card(sentence, unit_tags, notes)
-        for unit in card.units:
+        for unit_str in card.units:
             # Intentionally fails if the unit does not exist yet.
-            self._cards[unit].append(card)
+            self._cards[unit_str].append(card)
         return card
 
 
@@ -154,8 +147,8 @@ class FakeLlmClient(llm.LlmClient):
         grammar: str,
         units: list[Unit],
     ) -> list[str]:
-        prefix = "." * random.randint(1, 4)
-        suffix = "." * random.randint(1, 4)
+        prefix = "." * random.randint(1, 100)
+        suffix = "." * random.randint(1, 100)
         return [f"{prefix}{unit.name()}{suffix}" for unit in units]
 
     async def tag_sentence(
@@ -166,6 +159,14 @@ class FakeLlmClient(llm.LlmClient):
     ) -> list[tuple[str, str]]:
         unit = sentence.strip(".")
         return [(unit, unit)]
+
+    async def tag_sentence_disambiguated(
+        self,
+        sentence: str,
+        language: Language,
+        hints: str,
+    ) -> list[tuple[str, str, int]]:
+        return []
 
     async def speak(
         self,
