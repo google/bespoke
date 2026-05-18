@@ -25,7 +25,7 @@ from bespoke import languages
 def find_missing_units(card_index: CardIndex, language: Language) -> None:
     total = 0
     max_size = 0
-    max_unit = ""
+    max_unit = None
     print("Units that don't appear in cards:")
     count = 0
     for unit in language.units():

@@ -58,7 +58,7 @@ def show_cards(deck: Deck) -> None:
     print(f"              Mode: {state.mode}")
     print("")
 
-    unit = deck._unit_index.get_by_id(unit_id)
+    unit = deck._target_language.get_by_id(unit_id)
     cards = []
     if unit:
         cards = deck._card_index.cards(unit)

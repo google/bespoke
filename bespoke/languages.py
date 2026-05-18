@@ -54,33 +54,18 @@ class Language(pydantic.BaseModel):
     # Used for filenames etc. and needs to be unique
     code_name: str
 
-    def units(self) -> list[Unit]:
-        return LANGUAGE_DATA[self.code_name].units()
-
-    @classmethod
-    def load(cls, path: Path | str) -> Self:
-        with open(path, "r", encoding="utf-8") as f:
-            return cls.model_validate_json(f.read())
-
-    def has_data(self) -> bool:
-        path = DATA_DIR / self.code_name / "vocabulary.csv"
-        return path.exists()
-
-
-class LanguageData:
-    """Lazily initialized vocabulary lists from CSV."""
-
-    def __init__(self, code_name: str) -> None:
-        self._code_name = code_name
-        self._units: list[Unit] = []
+    # Private attributes for lazy loading/lookups
+    _units: list[Unit] = pydantic.PrivateAttr(default_factory=list)
+    _units_by_id: dict[str, Unit] = pydantic.PrivateAttr(default_factory=dict)
+    _units_by_name: dict[str, list[Unit]] = pydantic.PrivateAttr(default_factory=dict)
+    _initialized: bool = pydantic.PrivateAttr(default=False)
 
     def _initialize(self) -> None:
-        if self._units:
+        if self._initialized:
             return
 
-        csv_path = DATA_DIR / self._code_name / "vocabulary.csv"
+        csv_path = DATA_DIR / self.code_name / "vocabulary.csv"
         if not csv_path.exists():
-            print(f"File not found: {csv_path}")
             return
 
         with open(csv_path, "r", encoding="utf-8") as f:
@@ -94,24 +79,46 @@ class LanguageData:
                 word = row["name"]
                 definition = row.get("definition", "")
                 difficulty = Difficulty(row["difficulty"])
+                unit: Unit
                 if use_definition:
                     if not definition:
                         raise ValueError(
                             f"Missing definition for word '{word}' in {csv_path}"
                         )
-                    self._units.append(
-                        DictionaryUnit(
-                            name=word, definition=definition, difficulty=difficulty
-                        )
+                    unit = DictionaryUnit(
+                        name=word, definition=definition, difficulty=difficulty
                     )
                 else:
                     if definition:
                         print(f"Unexpected definition for word '{word}' in {csv_path}")
-                    self._units.append(WordUnit(word, difficulty=difficulty))
+                    unit = WordUnit(word, difficulty=difficulty)
+
+                self._units.append(unit)
+                self._units_by_id[unit.id()] = unit
+                self._units_by_name.setdefault(unit.name(), []).append(unit)
+
+        self._initialized = True
 
     def units(self) -> list[Unit]:
         self._initialize()
         return self._units
+
+    def get_by_id(self, unit_id: str) -> Unit | None:
+        self._initialize()
+        return self._units_by_id.get(unit_id)
+
+    def get_by_name(self, name: str) -> list[Unit]:
+        self._initialize()
+        return self._units_by_name.get(name, [])
+
+    @classmethod
+    def load(cls, path: Path | str) -> Self:
+        with open(path, "r", encoding="utf-8") as f:
+            return cls.model_validate_json(f.read())
+
+    def has_data(self) -> bool:
+        path = DATA_DIR / self.code_name / "vocabulary.csv"
+        return path.exists()
 
 
 def load_grammar(code_name: str) -> dict[Difficulty, list[str]]:
@@ -128,8 +135,3 @@ def load_grammar(code_name: str) -> dict[Difficulty, list[str]]:
 
 _ALL_LANGUAGES = [Language.load(path) for path in DATA_DIR.glob("*.json")]
 LANGUAGES = {language.code_name: language for language in _ALL_LANGUAGES}
-LANGUAGE_DATA = {
-    code_name: LanguageData(code_name)
-    for code_name, language in LANGUAGES.items()
-    if language.has_data()
-}

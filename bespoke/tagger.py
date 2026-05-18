@@ -18,7 +18,6 @@ import abc
 from bespoke import languages
 from bespoke import llm
 from bespoke.unit import Unit
-from bespoke.unit import UnitIndex
 
 
 class Tagger(abc.ABC):
@@ -54,12 +53,10 @@ class WordTagger(Tagger):
         self,
         sentence: str,
         hint: list[str],
-        unit_index: UnitIndex,
         language: languages.Language,
     ) -> None:
         self._sentence = sentence
         self._hint = list(hint)
-        self._unit_index = unit_index
         self._language = language
         self._unit_tags: dict[str, Unit] = {}
         self._no_progress_counter = 0
@@ -94,7 +91,7 @@ class WordTagger(Tagger):
         for word, unit_id in all_tags:
             if word not in sentence:
                 continue
-            resolved = self._unit_index.get_by_id(unit_id)
+            resolved = self._language.get_by_id(unit_id)
             if resolved is None:
                 continue
             if unit_id in used_units:
@@ -125,12 +122,10 @@ class DictionaryTagger(Tagger):
         self,
         sentence: str,
         hint: list[str],
-        unit_index: UnitIndex,
         language: languages.Language,
     ) -> None:
         self._sentence = sentence
         self._hint = list(hint)
-        self._unit_index = unit_index
         self._language = language
         self._unit_tags: dict[str, Unit] = {}
         self._done = False
@@ -145,15 +140,19 @@ class DictionaryTagger(Tagger):
         if self._done:
             return
 
-        # Find candidates
-        candidates = [
-            w for w in self._unit_index._units_by_name if w in self.sentence()
-        ]
+        # Find candidates by looking up all substrings of the sentence
+        candidates = set()
+        sentence = self.sentence()
+        for i in range(len(sentence)):
+            for j in range(i + 1, len(sentence) + 1):
+                substring = sentence[i:j]
+                if self._language.get_by_name(substring):
+                    candidates.add(substring)
 
         # Construct hints string
         hint_lines = []
         for word in candidates:
-            units = self._unit_index.get_by_name(word)
+            units = self._language.get_by_name(word)
             for idx, u in enumerate(units):
                 hint_lines.append(f"Word: {word}, Index: {idx} - {u.definition()}")
         hints_str = "\n".join(hint_lines)
@@ -166,7 +165,7 @@ class DictionaryTagger(Tagger):
 
         for occurance, word, idx in results:
             try:
-                units = self._unit_index.get_by_name(word)
+                units = self._language.get_by_name(word)
                 selected_unit = units[idx]
                 self._unit_tags[occurance] = selected_unit
             except IndexError as e:
@@ -179,15 +178,3 @@ class DictionaryTagger(Tagger):
 
     def tags(self) -> dict[str, Unit]:
         return self._unit_tags
-
-
-def create_tagger(
-    sentence: str,
-    hint: list[str],
-    unit_index: UnitIndex,
-    language: languages.Language,
-) -> Tagger:
-    if unit_index.has_dictionary_data():
-        return DictionaryTagger(sentence, hint, unit_index, language)
-    else:
-        return WordTagger(sentence, hint, unit_index, language)

@@ -15,7 +15,7 @@
 import unittest
 from bespoke import DictionaryUnit
 from bespoke import Difficulty
-from bespoke import UnitIndex
+from bespoke import Unit
 from bespoke import WordUnit
 from bespoke import tagger
 from tests import fakes
@@ -34,11 +34,13 @@ class TestWordTagger(unittest.IsolatedAsyncioTestCase):
         hint = ["大学生", "学生"]
         full_vocabulary = ["大学生", "学生"]
 
-        unit_index = UnitIndex()
-        for w in full_vocabulary:
-            unit_index.add(WordUnit(w, Difficulty.A1))
+        fake_units: list[Unit] = [WordUnit(w, Difficulty.A1) for w in full_vocabulary]
+        language._units = fake_units
+        language._units_by_id = {u.id(): u for u in fake_units}
+        language._units_by_name = {u.name(): [u] for u in fake_units}
+        language._initialized = True
 
-        t = tagger.WordTagger(sentence, hint, unit_index, language)
+        t = tagger.WordTagger(sentence, hint, language)
         self.assertFalse(t.done())
 
         await t.progress(llm_client)
@@ -62,11 +64,13 @@ class TestWordTagger(unittest.IsolatedAsyncioTestCase):
         hint: list[str] = []
         full_vocabulary = ["大学生", "学生"]
 
-        unit_index = UnitIndex()
-        for w in full_vocabulary:
-            unit_index.add(WordUnit(w, Difficulty.A1))
+        fake_units: list[Unit] = [WordUnit(w, Difficulty.A1) for w in full_vocabulary]
+        language._units = fake_units
+        language._units_by_id = {u.id(): u for u in fake_units}
+        language._units_by_name = {u.name(): [u] for u in fake_units}
+        language._initialized = True
 
-        t = tagger.WordTagger(sentence, hint, unit_index, language)
+        t = tagger.WordTagger(sentence, hint, language)
         await t.progress(llm_client)
 
         result = t.tags()
@@ -93,17 +97,23 @@ class TestDictionaryTagger(unittest.IsolatedAsyncioTestCase):
         llm_client = FakeDisambiguatedLlmClient()
         sentence = "我是大學生。"
 
-        unit_index = UnitIndex()
+        fake_units: list[Unit] = []
         for word, entries in dictionary_data.items():
             for entry in entries:
                 for d in entry.get("definitions", []):
-                    unit_index.add(
+                    fake_units.append(
                         DictionaryUnit(
                             name=word, definition=d["def"], difficulty=Difficulty.A1
                         )
                     )
+        language._units = fake_units
+        language._units_by_id = {u.id(): u for u in fake_units}
+        language._units_by_name = {}
+        for u in fake_units:
+            language._units_by_name.setdefault(u.name(), []).append(u)
+        language._initialized = True
 
-        t = tagger.DictionaryTagger(sentence, [], unit_index, language)
+        t = tagger.DictionaryTagger(sentence, [], language)
         self.assertFalse(t.done())
 
         await t.progress(llm_client)

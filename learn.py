@@ -24,6 +24,7 @@ from bespoke import CardIndex
 from bespoke import Deck
 from bespoke import Difficulty
 from bespoke import Mode
+from bespoke import Language
 from bespoke import languages
 
 
@@ -43,7 +44,10 @@ SCORE_ROTATION = {
 
 
 class RatingWebApp:
-    def __init__(self, deck: Deck, deck_filename: str) -> None:
+    def __init__(
+        self, target_language: Language, deck: Deck, deck_filename: str
+    ) -> None:
+        self._target_language = target_language
         self._deck = deck
         self._deck_filename = deck_filename
         self._ratings: dict[str, int] = {}
@@ -199,7 +203,7 @@ class RatingWebApp:
 
     def _finalize(self, is_reported) -> None:
         for unit_id, rating in self._ratings.items():
-            unit = self._deck.get_unit(unit_id)
+            unit = self._target_language.get_by_id(unit_id)
             if unit:
                 self._deck.rate(unit, self._mode, rating)
         self._deck.log_usage(self._card.id, is_reported=is_reported)
@@ -227,9 +231,9 @@ def open_deck() -> tuple[Deck, str]:
 
     parser = argparse.ArgumentParser(description="Learn language cards.")
     target_choices = {}
-    for code_name in languages.LANGUAGE_DATA:
-        language = languages.LANGUAGES[code_name]
-        target_choices[language.writing_system] = language
+    for language in languages.LANGUAGES.values():
+        if language.has_data():
+            target_choices[language.writing_system] = language
     native_choices = {
         lang.writing_system: lang for lang in languages.LANGUAGES.values()
     }

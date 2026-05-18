@@ -16,7 +16,7 @@ import unittest
 
 from bespoke import DictionaryUnit
 from bespoke import Difficulty
-from bespoke import UnitIndex
+
 from bespoke import WordUnit
 
 
@@ -42,22 +42,6 @@ class TestUnit(unittest.TestCase):
         self.assertEqual(unit.difficulty(), Difficulty.A1)
         self.assertEqual(unit.translation(), "test_native")
         self.assertEqual(str(unit), "test_def")
-
-    def test_unit_index(self) -> None:
-        index = UnitIndex()
-        unit1 = WordUnit("apple", Difficulty.A1)
-        unit2 = WordUnit("banana", Difficulty.A1)
-
-        index.add(unit1)
-        index.add(unit2)
-
-        self.assertEqual(index.get_by_id("apple"), unit1)
-        self.assertEqual(index.get_by_id("banana"), unit2)
-        self.assertIsNone(index.get_by_id("cherry"))
-
-        self.assertEqual(index.get_by_name("apple"), [unit1])
-        self.assertEqual(index.get_by_name("banana"), [unit2])
-        self.assertEqual(index.get_by_name("cherry"), [])
 
 
 if __name__ == "__main__":

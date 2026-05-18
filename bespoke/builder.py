@@ -24,8 +24,8 @@ from bespoke.card import CardIndex
 from bespoke.languages import Difficulty
 from bespoke.languages import Language
 from bespoke import llm
+from bespoke.unit import DictionaryUnit
 from bespoke.unit import Unit
-from bespoke.unit import UnitIndex
 from bespoke import tagger
 
 
@@ -116,7 +116,6 @@ class SentenceProducer:
         language: Language,
         llm_client: llm.LlmClient,
         grammar: dict[Difficulty, list[str]],
-        unit_index: UnitIndex,
         *,
         cards_per_unit: int,
         cards_per_call: int,
@@ -124,12 +123,13 @@ class SentenceProducer:
         self._language = language
         self._llm_client = llm_client
         self._grammar = grammar
-        self._unit_index = unit_index
         self._cards_per_call = cards_per_call
         self._unit_producer = UnitProducer(language, cards_per_unit)
         self._grammar_pools: dict[Difficulty, list[str]] = {}
         # Data structures to quickly operate on difficulties.
         self._difficulty_order = {d: i for i, d in enumerate(Difficulty)}
+        first_unit = language.units()[0]
+        self._use_dictionary_tagger = isinstance(first_unit, DictionaryUnit)
 
     async def create(self) -> tuple[list[tagger.Tagger], str]:
         units, difficulty = self._unit_producer.draw(self._cards_per_call)
@@ -140,20 +140,19 @@ class SentenceProducer:
             grammar=grammar,
             units=units,
         )
-        return [
-            tagger.create_tagger(
-                s,
-                [unit.id() for unit in units],
-                self._unit_index,
-                self._language,
-            )
-            for s in sentences
-        ], grammar
+        taggers: list[tagger.Tagger] = []
+        for s in sentences:
+            hint_ids = [unit.id() for unit in units]
+            if self._use_dictionary_tagger:
+                taggers.append(tagger.DictionaryTagger(s, hint_ids, self._language))
+            else:
+                taggers.append(tagger.WordTagger(s, hint_ids, self._language))
+        return taggers, grammar
 
     def register_card(self, card: Card) -> None:
         difficulties = {}
         for unit_id in card.units:
-            unit = self._unit_index.get_by_id(unit_id)
+            unit = self._language.get_by_id(unit_id)
             if unit:
                 difficulties[unit_id] = unit.difficulty()
         if not difficulties:
@@ -163,7 +162,7 @@ class SentenceProducer:
         )
         for unit_id, difficulty in difficulties.items():
             is_fitting = difficulty == max_difficulty
-            unit = self._unit_index.get_by_id(unit_id)
+            unit = self._language.get_by_id(unit_id)
             if unit:
                 self._unit_producer.register(unit, is_fitting)
 
@@ -197,9 +196,6 @@ class DeckBuilder:
         self._card_index = card_index
         self._llm_client = llm_client
         self._grammar = grammar
-        self._unit_index = UnitIndex()
-        for unit in self._language.units():
-            self._unit_index.add(unit)
         self._duplicates: set[str] = set()
         self._start_time: datetime | None = None
         self._created_count = 0
@@ -215,7 +211,6 @@ class DeckBuilder:
             self._language,
             self._llm_client,
             self._grammar,
-            self._unit_index,
             cards_per_unit=cards_per_unit,
             cards_per_call=cards_per_call,
         )

@@ -14,7 +14,6 @@
 
 import numpy as np
 import random
-import types
 
 from bespoke import Card
 from bespoke import Difficulty
@@ -62,12 +61,15 @@ def fake_language() -> Language:
         code_name="japanese",
     )
 
-    def units(self) -> list[Unit]:
-        return [
-            WordUnit(w, difficulty=d) for d in Difficulty for w in FAKE_VOCABULARY[d]
-        ]
+    fake_units: list[Unit] = [
+        WordUnit(w, difficulty=d) for d in Difficulty for w in FAKE_VOCABULARY[d]
+    ]
+    language._units = fake_units
+    language._units_by_id = {u.id(): u for u in fake_units}
+    for unit in fake_units:
+        language._units_by_name.setdefault(unit.name(), []).append(unit)
+    language._initialized = True
 
-    object.__setattr__(language, "units", types.MethodType(units, language))
     return language
 
 

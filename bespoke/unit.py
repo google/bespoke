@@ -116,25 +116,3 @@ class DictionaryUnit(Unit):
 
     def __str__(self) -> str:
         return self._definition
-
-
-class UnitIndex:
-    """Allows lookup of a Unit by ID or name."""
-
-    def __init__(self) -> None:
-        self._units_by_id: dict[str, Unit] = {}
-        self._units_by_name: dict[str, list[Unit]] = {}
-
-    def has_dictionary_data(self) -> bool:
-        """Returns True if any unit in the index is a DictionaryUnit."""
-        return any(isinstance(u, DictionaryUnit) for u in self._units_by_id.values())
-
-    def add(self, unit: Unit) -> None:
-        self._units_by_id[unit.id()] = unit
-        self._units_by_name.setdefault(unit.name(), []).append(unit)
-
-    def get_by_id(self, unit_id: str) -> Unit | None:
-        return self._units_by_id.get(unit_id)
-
-    def get_by_name(self, name: str) -> list[Unit]:
-        return self._units_by_name.get(name, [])

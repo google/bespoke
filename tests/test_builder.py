@@ -15,7 +15,6 @@
 import unittest
 
 from bespoke import Difficulty
-from bespoke import UnitIndex
 from bespoke import builder
 from bespoke import languages
 from tests import fakes
@@ -60,15 +59,10 @@ class TestSentenceProducer(unittest.IsolatedAsyncioTestCase):
         cards_per_call = 8
         language = fakes.fake_language()
         llm_client = fakes.FakeLlmClient()
-        unit_index = UnitIndex()
-        for unit in language.units():
-            unit_index.add(unit)
-
         sentence_producer = builder.SentenceProducer(
             language,
             llm_client,
             fakes.FAKE_GRAMMAR,
-            unit_index,
             cards_per_unit=1,
             cards_per_call=cards_per_call,
         )
@@ -82,15 +76,10 @@ class TestSentenceProducer(unittest.IsolatedAsyncioTestCase):
         cards_per_call = 1
         language = fakes.fake_language()
         llm_client = fakes.FakeLlmClient()
-        unit_index = UnitIndex()
-        for unit in language.units():
-            unit_index.add(unit)
-
         sentence_producer = builder.SentenceProducer(
             language,
             llm_client,
             fakes.FAKE_GRAMMAR,
-            unit_index,
             cards_per_unit=1,
             cards_per_call=cards_per_call,
         )

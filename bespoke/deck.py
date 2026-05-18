@@ -39,7 +39,7 @@ from bespoke.languages import Language
 from bespoke.languages import LANGUAGES
 from bespoke.urgency import Mode
 from bespoke.unit import Unit
-from bespoke.unit import UnitIndex
+
 from bespoke.urgency import Rating
 from bespoke.urgency import compute_urgency
 from bespoke.urgency import needs_introduction
@@ -95,9 +95,6 @@ class Deck:
         self._modes = list(Mode)
         self._assume_known: Difficulty | None = None
         self._start_index = 0
-        self._unit_index = UnitIndex()
-        for unit in self._target_language.units():
-            self._unit_index.add(unit)
 
     def _compute_urgencies(self, current_time: float) -> dict[str, UrgencyState]:
         urgency_states = {}
@@ -195,7 +192,7 @@ class Deck:
                 score += INTRODUCTION_BONUS
             if state.urgency > 0.0:
                 score += URGENCY_BONUS
-            vocab_unit = self._unit_index.get_by_id(unit)
+            vocab_unit = self._target_language.get_by_id(unit)
             unit_difficulty = vocab_unit.difficulty() if vocab_unit else Difficulty.A1
             if unit_difficulty == self._difficulty:
                 score += DIFFICULTY_MATCH_BONUS
@@ -207,7 +204,7 @@ class Deck:
         current_time = datetime.now().timestamp()
         urgency_states = self._compute_urgencies(current_time)
         mode, unit_id = self._choose_task(urgency_states)
-        unit = self._unit_index.get_by_id(unit_id)
+        unit = self._target_language.get_by_id(unit_id)
         if unit is None:
             raise ValueError(f"Unit {unit_id} not found in index")
         cards = self._card_index.cards(unit)
