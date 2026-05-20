@@ -172,14 +172,16 @@ class RatingWebApp:
             all_buttons = []
 
             with row_container:
-                for part, unit in self._card.split_into_parts():
-                    if unit is None:
-                        ui.label(part).classes("self-center text-lg p-2")
+                for tag in self._card.split_into_parts():
+                    if not tag.unit_id:
+                        ui.label(tag.occurance).classes("self-center text-lg p-2")
                     else:
                         with ui.column().classes("items-center gap-0"):
-                            btn = self._create_color_cycling_button(part, unit)
-                            all_buttons.append((unit, btn))
-                            ui.label(unit).classes(
+                            btn = self._create_color_cycling_button(
+                                tag.occurance, tag.unit_id
+                            )
+                            all_buttons.append((tag.unit_id, btn))
+                            ui.label(tag.unit_id).classes(
                                 "text-[10px] text-[#888] dark:text-gray-400"
                             )
 

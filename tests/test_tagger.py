@@ -17,6 +17,8 @@ from bespoke import DictionaryUnit
 from bespoke import Difficulty
 from bespoke import Unit
 from bespoke import WordUnit
+from bespoke import UnitTag
+from bespoke import UnitTags
 from bespoke import tagger
 from tests import fakes
 
@@ -26,12 +28,17 @@ class TestWordTagger(unittest.IsolatedAsyncioTestCase):
         language = fakes.fake_language()
 
         class FakeWordLlmClient(fakes.FakeLlmClient):
-            async def tag_sentence(self, sentence: str, language, hint: list[str]):
-                return [("大学生", "大学生")]
+            async def tag_sentence(
+                self, sentence: str, language, hint: list[Unit]
+            ) -> UnitTags:
+                return [UnitTag(occurance="大学生", unit_id="大学生")]
 
         llm_client = FakeWordLlmClient()
         sentence = "大学生です。"
-        hint = ["大学生", "学生"]
+        hint: list[Unit] = [
+            WordUnit("大学生", Difficulty.A1),
+            WordUnit("学生", Difficulty.A1),
+        ]
         full_vocabulary = ["大学生", "学生"]
 
         fake_units: list[Unit] = [WordUnit(w, Difficulty.A1) for w in full_vocabulary]
@@ -49,19 +56,25 @@ class TestWordTagger(unittest.IsolatedAsyncioTestCase):
         self.assertTrue(t.done())
 
         result = t.tags()
-        self.assertIn("大学生", result)
-        self.assertEqual(result["大学生"].id(), "大学生")
+        self.assertEqual(len(result), 1)
+        self.assertEqual(result[0].occurance, "大学生")
+        self.assertEqual(result[0].unit_id, "大学生")
 
     async def test_long_then_short(self) -> None:
         language = fakes.fake_language()
 
         class FakeWordLlmClient(fakes.FakeLlmClient):
-            async def tag_sentence(self, sentence: str, language, hint: list[str]):
-                return [("大学生", "大学生"), ("学生", "学生")]
+            async def tag_sentence(
+                self, sentence: str, language, hint: list[Unit]
+            ) -> UnitTags:
+                return [
+                    UnitTag(occurance="大学生", unit_id="大学生"),
+                    UnitTag(occurance="学生", unit_id="学生"),
+                ]
 
         llm_client = FakeWordLlmClient()
         sentence = "大学生です。"
-        hint: list[str] = []
+        hint: list[Unit] = []
         full_vocabulary = ["大学生", "学生"]
 
         fake_units: list[Unit] = [WordUnit(w, Difficulty.A1) for w in full_vocabulary]
@@ -74,13 +87,16 @@ class TestWordTagger(unittest.IsolatedAsyncioTestCase):
         await t.progress(llm_client)
 
         result = t.tags()
-        self.assertIn("大学生", result)
-        self.assertNotIn("学生", result)
+        self.assertEqual(len(result), 1)
+        self.assertEqual(result[0].occurance, "大学生")
+        occurrences = [tag.occurance for tag in result]
+        self.assertNotIn("学生", occurrences)
 
 
 class TestDictionaryTagger(unittest.IsolatedAsyncioTestCase):
     async def test_dictionary_tagger(self) -> None:
         language = fakes.fake_language()
+        language.name = "Traditional Chinese"
 
         # Fake dictionary data
         dictionary_data = {
@@ -89,10 +105,12 @@ class TestDictionaryTagger(unittest.IsolatedAsyncioTestCase):
         }
 
         class FakeDisambiguatedLlmClient(fakes.FakeLlmClient):
-            async def tag_sentence_disambiguated(
-                self, sentence: str, language, hints: str
-            ):
-                return [("大學生", "大學生", 0)]
+            async def tag_sentence(
+                self, sentence: str, language, hint: list[Unit]
+            ) -> UnitTags:
+                return [
+                    UnitTag(occurance="大學生", unit_id="大學生 - 在大學學習的人。")
+                ]
 
         llm_client = FakeDisambiguatedLlmClient()
         sentence = "我是大學生。"
@@ -120,8 +138,9 @@ class TestDictionaryTagger(unittest.IsolatedAsyncioTestCase):
         self.assertTrue(t.done())
 
         result = t.tags()
-        self.assertIn("大學生", result)
-        self.assertEqual(result["大學生"].id(), "在大學學習的人。")
+        self.assertEqual(len(result), 1)
+        self.assertEqual(result[0].occurance, "大學生")
+        self.assertEqual(result[0].unit_id, "大學生 - 在大學學習的人。")
 
 
 if __name__ == "__main__":

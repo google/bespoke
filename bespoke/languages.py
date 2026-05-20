@@ -36,10 +36,7 @@ from typing import Self
 from bespoke.unit import DictionaryUnit
 from bespoke.unit import Unit
 from bespoke.unit import WordUnit
-from bespoke.difficulty import Difficulty
-
-
-UnitTags = dict[str, str]
+from bespoke.unit import Difficulty
 
 DATA_DIR = Path("languages")
 

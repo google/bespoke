@@ -34,14 +34,12 @@ class TestUnit(unittest.TestCase):
             name="test_name",
             definition="test_def",
             difficulty=Difficulty.A1,
-            translation="test_native",
         )
-        self.assertEqual(unit.id(), "test_def")
+        self.assertEqual(unit.id(), "test_name - test_def")
         self.assertEqual(unit.name(), "test_name")
         self.assertEqual(unit.definition(), "test_def")
         self.assertEqual(unit.difficulty(), Difficulty.A1)
-        self.assertEqual(unit.translation(), "test_native")
-        self.assertEqual(str(unit), "test_def")
+        self.assertEqual(str(unit), "test_name - test_def")
 
 
 if __name__ == "__main__":

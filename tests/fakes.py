@@ -19,6 +19,7 @@ from bespoke import Card
 from bespoke import Difficulty
 from bespoke import Language
 from bespoke import Unit
+from bespoke import UnitTag
 from bespoke import UnitTags
 from bespoke import WordUnit
 from bespoke import llm
@@ -86,7 +87,6 @@ def _fake_card(
         slow_audio_filename="slow.ogg",
         native_audio_filename="native.ogg",
         phonetic="phonetic",
-        units=list(set(unit_tags.values())),
         unit_tags=unit_tags,
         notes=notes,
     )
@@ -102,7 +102,9 @@ class FakeCardIndex:
         self._target_language = target_language
         self._cards = {}
         for unit in self._target_language.units():
-            card = _fake_card(unit.name(), {unit.name(): unit.id()}, [])
+            card = _fake_card(
+                unit.name(), [UnitTag(occurance=unit.name(), unit_id=unit.id())], []
+            )
             self._cards[unit.id()] = [card]
 
     def save(self) -> None:
@@ -129,13 +131,20 @@ class FakeCardIndex:
         notes: list[str] = [],
     ) -> Card:
         card = _fake_card(sentence, unit_tags, notes)
-        for unit_str in card.units:
+        for unit_str in card.unit_ids():
             # Intentionally fails if the unit does not exist yet.
             self._cards[unit_str].append(card)
         return card
 
 
 class FakeLlmClient(llm.LlmClient):
+    async def suggest_names(self, sentence: str, language: Language) -> list[str]:
+        names = []
+        for unit in language.units():
+            if unit.name() in sentence:
+                names.append(unit.name())
+        return names
+
     async def translate(self, sentence: str, language: Language) -> str:
         return f"In {language.name}: {sentence}"
 
@@ -157,10 +166,10 @@ class FakeLlmClient(llm.LlmClient):
         self,
         sentence: str,
         language: Language,
-        hint: list[str],
-    ) -> list[tuple[str, str]]:
+        hint: list[Unit],
+    ) -> UnitTags:
         unit = sentence.strip(".")
-        return [(unit, unit)]
+        return [UnitTag(occurance=unit, unit_id=unit)]
 
     async def tag_sentence_disambiguated(
         self,

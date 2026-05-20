@@ -25,9 +25,10 @@ import pydantic
 from typing import Self
 
 from bespoke.languages import Language
-from bespoke.languages import UnitTags
 from bespoke import llm
 from bespoke.unit import Unit
+from bespoke.unit import UnitTag
+from bespoke.unit import UnitTags
 
 CARDS_DIR = Path("cards")
 
@@ -40,39 +41,42 @@ class Card(pydantic.BaseModel):
     slow_audio_filename: str
     native_audio_filename: str
     phonetic: str | None
-    units: list[str]
     unit_tags: UnitTags
     notes: list[str]
 
     model_config = pydantic.ConfigDict(frozen=True)
 
+    def unit_ids(self) -> list[str]:
+        return list(set(t.unit_id for t in self.unit_tags if t.unit_id))
+
     def __str__(self) -> str:
         parts = []
-        for occurance, unit in self.split_into_parts():
-            if unit is None:
-                parts.append(occurance)
+        for tag in self.split_into_parts():
+            if not tag.unit_id:
+                parts.append(tag.occurance)
             else:
-                parts.append(f"[{occurance}]({unit})")
+                parts.append(f"[{tag.occurance}]({tag.unit_id})")
         return f"Card: {''.join(parts)} = {self.native_sentence}"
 
-    def split_into_parts(self) -> list[tuple[str, str | None]]:
-        sorted_tags = list(self.unit_tags.items())
-        sorted_tags.sort(key=lambda x: len(x[1]), reverse=True)
-        sorted_tags.sort(key=lambda x: len(x[0]), reverse=True)
-        result: list[tuple[str, str | None]] = [(self.sentence, None)]
-        for word, unit in sorted_tags:
+    def split_into_parts(self) -> list[UnitTag]:
+        sorted_tags = list(self.unit_tags)
+        sorted_tags.sort(key=lambda x: len(x.unit_id), reverse=True)
+        sorted_tags.sort(key=lambda x: len(x.occurance), reverse=True)
+        result: list[UnitTag] = [UnitTag(occurance=self.sentence, unit_id="")]
+        for tag in sorted_tags:
+            word = tag.occurance
             new_result = []
             found = False
-            for part, tag in result:
-                if found or tag is not None or word not in part:
-                    new_result.append((part, tag))
+            for part in result:
+                if found or part.unit_id or word not in part.occurance:
+                    new_result.append(part)
                     continue
-                prefix, suffix = part.split(word, maxsplit=1)
+                prefix, suffix = part.occurance.split(word, maxsplit=1)
                 if prefix.strip():
-                    new_result.append((prefix.strip(), None))
-                new_result.append((word, unit))
+                    new_result.append(UnitTag(occurance=prefix.strip(), unit_id=""))
+                new_result.append(tag)
                 if suffix.strip():
-                    new_result.append((suffix.strip(), None))
+                    new_result.append(UnitTag(occurance=suffix.strip(), unit_id=""))
                 found = True
             result = new_result
         return result
@@ -82,29 +86,72 @@ class Card(pydantic.BaseModel):
         with open(path, "w", encoding="utf-8") as f:
             f.write(self.model_dump_json())
 
+    @classmethod
+    def load(cls, directory: Path, card_id: str) -> "Card | None":
+        path = directory / f"{card_id}.json"
+        try:
+            with open(path, "r", encoding="utf-8") as f:
+                content = f.read()
+                try:
+                    return cls.model_validate_json(content)
+                except pydantic.ValidationError:
+                    try:
+                        old_card = OldCard.model_validate_json(content)
+                        return old_card.to_card()
+                    except pydantic.ValidationError:
+                        print(f"Failed to read card from file '{path}'")
+        except OSError as e:
+            print(f"An error occurred while accessing '{path}': {e}")
+        return None
 
-def _load_card(directory: Path, card_id: str) -> Card | None:
-    path = directory / f"{card_id}.json"
-    try:
-        with open(path, "r", encoding="utf-8") as f:
-            return Card.model_validate_json(f.read())
-    except pydantic.ValidationError:
-        print(f"Failed to read card from file '{path}'")
-    except OSError as e:
-        print(f"An error occurred while accessing '{path}': {e}")
-    return None
+    @classmethod
+    async def load_async(cls, directory: Path, card_id: str) -> "Card | None":
+        path = directory / f"{card_id}.json"
+        try:
+            async with aiofiles.open(path, mode="r", encoding="utf-8") as f:
+                content = await f.read()
+                try:
+                    return cls.model_validate_json(content)
+                except pydantic.ValidationError:
+                    try:
+                        old_card = OldCard.model_validate_json(content)
+                        return old_card.to_card()
+                    except pydantic.ValidationError:
+                        print(f"Failed to read card from file '{path}'")
+        except OSError as e:
+            print(f"An error occurred while accessing '{path}': {e}")
+        return None
 
 
-async def _load_card_async(directory: Path, card_id: str) -> Card | None:
-    path = directory / f"{card_id}.json"
-    try:
-        async with aiofiles.open(path, mode="r", encoding="utf-8") as f:
-            return Card.model_validate_json(await f.read())
-    except pydantic.ValidationError:
-        print(f"Failed to read card from file '{path}'")
-    except OSError as e:
-        print(f"An error occurred while accessing '{path}': {e}")
-    return None
+class OldCard(pydantic.BaseModel):
+    id: str
+    sentence: str
+    native_sentence: str
+    audio_filename: str
+    slow_audio_filename: str
+    native_audio_filename: str
+    phonetic: str | None
+    units: list[str]
+    unit_tags: dict[str, str]
+    notes: list[str]
+
+    def to_card(self) -> Card:
+        from bespoke.unit import UnitTag
+
+        new_unit_tags = [
+            UnitTag(occurance=k, unit_id=v) for k, v in self.unit_tags.items()
+        ]
+        return Card(
+            id=self.id,
+            sentence=self.sentence,
+            native_sentence=self.native_sentence,
+            audio_filename=self.audio_filename,
+            slow_audio_filename=self.slow_audio_filename,
+            native_audio_filename=self.native_audio_filename,
+            phonetic=self.phonetic,
+            unit_tags=new_unit_tags,
+            notes=self.notes,
+        )
 
 
 async def _write_ogg(audio: np.ndarray, filename: str, bitrate="16k") -> None:
@@ -223,7 +270,7 @@ class CardIndex:
         card_ids = self._index.get(unit.id(), [])
         cards = []
         for card_id in card_ids:
-            card = _load_card(self._card_directory, card_id)
+            card = Card.load(self._card_directory, card_id)
             if card is not None:
                 cards.append(card)
         return cards
@@ -232,7 +279,7 @@ class CardIndex:
         card_ids = self._index.get(unit.id(), [])
         tasks = []
         for card_id in card_ids:
-            tasks.append(_load_card_async(self._card_directory, card_id))
+            tasks.append(Card.load_async(self._card_directory, card_id))
         cards = await asyncio.gather(*tasks)
         return [card for card in cards if card is not None]
 
@@ -241,7 +288,7 @@ class CardIndex:
 
         async def read_card_file(card_id: str) -> Card | None:
             async with semaphore:
-                return await _load_card_async(self._card_directory, card_id)
+                return await Card.load_async(self._card_directory, card_id)
 
         tasks = [read_card_file(p.stem) for p in self._card_directory.glob("*.json")]
         cards = await asyncio.gather(*tasks)
@@ -251,7 +298,7 @@ class CardIndex:
         return len(self._index.get(unit.id(), []))
 
     def _add(self, card: Card) -> None:
-        for unit in card.units:
+        for unit in card.unit_ids():
             card_ids = self._index.get(unit, [])
             card_ids.append(card.id)
             self._index[unit] = card_ids
@@ -285,7 +332,6 @@ class CardIndex:
             slowly=False,
         )
         phonetic = await llm_client.to_phonetic(sentence, self._target_language)
-        units = list(set(unit_tags.values()))
         card = Card(
             id=id,
             sentence=sentence,
@@ -294,7 +340,6 @@ class CardIndex:
             slow_audio_filename=slow_audio_filename,
             native_audio_filename=native_audio_filename,
             phonetic=phonetic,
-            units=units,
             unit_tags=unit_tags,
             notes=notes,
         )

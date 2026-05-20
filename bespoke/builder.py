@@ -142,16 +142,15 @@ class SentenceProducer:
         )
         taggers: list[tagger.Tagger] = []
         for s in sentences:
-            hint_ids = [unit.id() for unit in units]
             if self._use_dictionary_tagger:
-                taggers.append(tagger.DictionaryTagger(s, hint_ids, self._language))
+                taggers.append(tagger.DictionaryTagger(s, units, self._language))
             else:
-                taggers.append(tagger.WordTagger(s, hint_ids, self._language))
+                taggers.append(tagger.WordTagger(s, units, self._language))
         return taggers, grammar
 
     def register_card(self, card: Card) -> None:
         difficulties = {}
-        for unit_id in card.units:
+        for unit_id in card.unit_ids():
             unit = self._language.get_by_id(unit_id)
             if unit:
                 difficulties[unit_id] = unit.difficulty()
@@ -226,16 +225,16 @@ class DeckBuilder:
             for _ in range(cards_per_unit * 2):
                 if sentence_producer.done():
                     break
-                builders, grammar = await sentence_producer.create()
-                for builder in builders:
-                    if builder.sentence() in self._duplicates:
-                        print(f"Skipping duplicate sentence {builder.sentence()}")
+                taggers, grammar = await sentence_producer.create()
+                for unit_tagger in taggers:
+                    if unit_tagger.sentence() in self._duplicates:
+                        print(f"Skipping duplicate sentence {unit_tagger.sentence()}")
                         continue
-                    self._duplicates.add(builder.sentence())
+                    self._duplicates.add(unit_tagger.sentence())
                     await semaphore.acquire()
                     tg.create_task(
                         self._complete_card(
-                            semaphore, sentence_producer, builder, grammar
+                            semaphore, sentence_producer, unit_tagger, grammar
                         )
                     )
                 self._card_index.save()
@@ -244,25 +243,19 @@ class DeckBuilder:
         self,
         semaphore: asyncio.Semaphore,
         sentence_producer: SentenceProducer,
-        tagger_instance: tagger.Tagger,
+        unit_tagger: tagger.Tagger,
         grammar: str,
     ) -> None:
         try:
-            while not tagger_instance.done():
-                await tagger_instance.progress(self._llm_client)
-
-            unit_tags = tagger_instance.tags()
-
+            unit_tags = await unit_tagger.create(self._llm_client)
             if not unit_tags:
-                print(f"Discarding untagged sentence: '{tagger_instance.sentence()}'")
+                print(f"Discarding untagged sentence: '{unit_tagger.sentence()}'")
                 return
-
-            card_unit_tags = {word: u.id() for word, u in unit_tags.items()}
 
             card = await self._card_index.create_card(
                 self._llm_client,
-                tagger_instance.sentence(),
-                card_unit_tags,
+                unit_tagger.sentence(),
+                unit_tags,
                 notes=[grammar],
             )
             sentence_producer.register_card(card)
@@ -273,6 +266,6 @@ class DeckBuilder:
                 time_string = str(elapsed).split(".")[0]
                 print(f"{self._created_count:>5} cards after : {time_string}")
         except Exception as e:
-            print(f"Error processing sentence '{tagger_instance.sentence()}': {e}")
+            print(f"Error processing sentence '{unit_tagger.sentence()}': {e}")
         finally:
             semaphore.release()

@@ -1,0 +1,12 @@
+{
+  "id": "old_test",
+  "sentence": "大学生は学生より年上です。",
+  "native_sentence": "A university student is older than a student.",
+  "audio_filename": "audio.ogg",
+  "slow_audio_filename": "slow_audio.ogg",
+  "native_audio_filename": "native_audio.ogg",
+  "phonetic": "だいがくせいはがくせいよりとしうえです。",
+  "units": ["学生", "大学生"],
+  "unit_tags": {"学生": "学生", "大学生": "大学生"},
+  "notes": []
+}

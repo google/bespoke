@@ -26,9 +26,8 @@ import numpy as np
 import pydantic
 import tenacity
 import typing
-from bespoke.languages import Difficulty
 from bespoke.languages import Language
-from bespoke.unit import Unit
+from bespoke.unit import Unit, Difficulty, UnitTags
 
 
 DIFFICULTY_EXPLANATIONS = {
@@ -46,15 +45,8 @@ standard_retry = tenacity.retry(
 )
 
 
-# Inner helper class for structured LLM output
-class UnitTagSchema(pydantic.BaseModel):
-    occurance: str
-    dictionary_entry: str
-
-
-# Helper class for structured LLM output
-class UnitTagsSchema(pydantic.BaseModel):
-    occurance_vocabulary_map: list[UnitTagSchema]
+class SuggestedNamesSchema(pydantic.BaseModel):
+    names: list[str]
 
 
 class DisambiguatedTagSchema(pydantic.BaseModel):
@@ -87,22 +79,17 @@ class LlmClient(abc.ABC):
         """Creates sentences using specific vocabulary and grammar."""
 
     @abc.abstractmethod
+    async def suggest_names(self, sentence: str, language: Language) -> list[str]:
+        """Lists all base forms of words in the sentence."""
+
+    @abc.abstractmethod
     async def tag_sentence(
         self,
         sentence: str,
         language: Language,
-        hint: list[str],
-    ) -> list[tuple[str, str]]:
+        hint: list[Unit],
+    ) -> UnitTags:
         """Tags words in a sentence with their dictionary form."""
-
-    @abc.abstractmethod
-    async def tag_sentence_disambiguated(
-        self,
-        sentence: str,
-        language: Language,
-        hints: str,
-    ) -> list[tuple[str, str, int]]:
-        """Tags sentence with disambiguation."""
 
     @abc.abstractmethod
     async def speak(
@@ -190,7 +177,7 @@ class GeminiLlmClient(LlmClient):
             spaces = "or with spaces "
         else:
             spaces = ""
-        unit_infos = [u.definition() for u in units]
+        unit_infos = [str(u) for u in units]
         prompt = (
             f"Create example sentences in the language {language.writing_system}. "
             f"The output should be exactly {len(units)} lines. "
@@ -220,92 +207,52 @@ class GeminiLlmClient(LlmClient):
         return [s for s in sentences if s]
 
     @standard_retry
+    async def suggest_names(self, sentence: str, language: Language) -> list[str]:
+        prompt = (
+            f"Given is a sentence in {language.writing_system}: \n{sentence} \n"
+            "List all base forms of words in the sentence. "
+        )
+
+        response = await self._client.aio.models.generate_content(
+            model=self.TEXT_MODEL,
+            contents=[prompt],
+            config=self._genai.types.GenerateContentConfig(
+                response_mime_type="application/json",
+                response_schema=SuggestedNamesSchema,
+            ),
+        )
+        if response.parsed is None:
+            raise ValueError("Missing content")
+        parsed = typing.cast(SuggestedNamesSchema, response.parsed)
+        return parsed.names
+
+    @standard_retry
     async def tag_sentence(
         self,
         sentence: str,
         language: Language,
-        hint: list[str],
-    ) -> list[tuple[str, str]]:
-        if hint:
-            hint_prompt = (
-                f" Some examples of dictionary words are: \n{' \n'.join(hint)} \n"
-                "Use these words if appropriate, but ignore them if they are "
-                "incorrect tags, even if they appear in the sentence."
-            )
-        else:
-            hint_prompt = ""
-        if language.phonetic_system is not None:
-            phonetic_prompt = (
-                f" Write the tags in {language.writing_system}, "
-                f"not {language.phonetic_system}."
-            )
-        else:
-            phonetic_prompt = ""
+        hint: list[Unit],
+    ) -> UnitTags:
+        hints_str = "\n".join(u.id() for u in hint)
         prompt = (
             f"Given is a sentence in {language.writing_system}: \n{sentence} \n"
-            "I want to tag words in each sentence with vocabulary. "
-            "The tags are a map from the word as written, "
-            f"to the vocabulary unit as in a dictionary. "
-            "Add all missing occurances to the existing map and output it. "
-            "For compound words, idioms or grammatical constructions, "
-            "the dictionary may only contain individual parts. "
-            "Add all alternative tags, both complex and in parts."
-            f"{hint_prompt}{phonetic_prompt}"
+            "I want to tag words in each sentence with vocabulary. \n"
+            "For each unit suggested in the hints, find its occurrence in the sentence. \n"
+            "The tags are a list of occurrences and unit IDs. \n"
+            "Output them in order of occurance, cover the whole sentence without overlap. \n"
+            f"Hints for example unit IDs:\n{hints_str}\n"
         )
-
         response = await self._client.aio.models.generate_content(
             model=self.TEXT_MODEL,
             contents=[prompt],
             config=self._genai.types.GenerateContentConfig(
                 response_mime_type="application/json",
-                response_schema=UnitTagsSchema,
+                response_schema=UnitTags,
             ),
         )
         if response.parsed is None:
             raise ValueError("Missing content")
-        parsed = typing.cast(UnitTagsSchema, response.parsed)
-        return [
-            (tag.occurance, tag.dictionary_entry)
-            for tag in parsed.occurance_vocabulary_map
-        ]
-
-    @standard_retry
-    async def tag_sentence_disambiguated(
-        self,
-        sentence: str,
-        language: Language,
-        hints: str,
-    ) -> list[tuple[str, str, int]]:
-        if language.phonetic_system is not None:
-            phonetic_prompt = (
-                f" Write the tags in {language.writing_system}, "
-                f"not {language.phonetic_system}."
-            )
-        else:
-            phonetic_prompt = ""
-
-        prompt = (
-            f"Given is a sentence in {language.writing_system}: \n{sentence} \n"
-            "Segment it into non-overlapping consecutive words such that each word exists as a key in the provided dictionary hints. \n"
-            "For each word, identify the correct `index` of the definition that matches its meaning in the context of the sentence. \n"
-            "The concatenation of all `occurance` strings MUST NOT exceed the length of the original sentence, and there must be NO overlapping parts. \n"
-            "Exclude punctuation unless it's part of the dictionary word itself. \n"
-            f"Dictionary hints:\n{hints}\n"
-            f"{phonetic_prompt}"
-        )
-
-        response = await self._client.aio.models.generate_content(
-            model=self.TEXT_MODEL,
-            contents=[prompt],
-            config=self._genai.types.GenerateContentConfig(
-                response_mime_type="application/json",
-                response_schema=DisambiguatedTagsSchema,
-            ),
-        )
-        if response.parsed is None:
-            raise ValueError("Missing content")
-        parsed = typing.cast(DisambiguatedTagsSchema, response.parsed)
-        return [(tag.occurance, tag.word, tag.index) for tag in parsed.tags]
+        return typing.cast(UnitTags, response.parsed)
 
     @standard_retry
     async def speak(
@@ -459,87 +406,50 @@ class OpenRouterElevenLabsLlmClient(LlmClient):
         return [s for s in sentences if s]
 
     @standard_retry
-    async def tag_sentence(
-        self,
-        sentence: str,
-        language: Language,
-        hint: list[str],
-    ) -> list[tuple[str, str]]:
-        if hint:
-            hint_prompt = (
-                f" Some examples of dictionary words are: \n{' \n'.join(hint)} \n"
-                "Use these words if appropriate, but ignore them if they are "
-                "incorrect tags, even if they appear in the sentence."
-            )
-        else:
-            hint_prompt = ""
-        if language.phonetic_system is not None:
-            phonetic_prompt = (
-                f" Write the tags in {language.writing_system}, "
-                f"not {language.phonetic_system}."
-            )
-        else:
-            phonetic_prompt = ""
+    async def suggest_names(self, sentence: str, language: Language) -> list[str]:
         prompt = (
             f"Given is a sentence in {language.writing_system}: \n{sentence} \n"
-            "I want to tag words in each sentence with vocabulary. "
-            "The tags are a map from the word as written, "
-            f"to the vocabulary unit as in a dictionary. "
-            "Add all missing occurances to the existing map and output it. "
-            "For compound words, idioms or grammatical constructions, "
-            "the dictionary may only contain individual parts. "
-            "Add all alternative tags, both complex and in parts."
-            f"{hint_prompt}{phonetic_prompt}"
+            "List all base forms of words in the sentence. "
+            "Respond with a JSON list of strings."
         )
 
         response = await self._litellm.acompletion(
             model=self.TEXT_MODEL,
             messages=[{"role": "user", "content": prompt}],
-            response_format=UnitTagsSchema,
+            response_format=SuggestedNamesSchema,
             api_key=self.openrouter_api_key,
         )
         content = response.choices[0].message.content
-        parsed = UnitTagsSchema.model_validate_json(content)
-        return [
-            (tag.occurance, tag.dictionary_entry)
-            for tag in parsed.occurance_vocabulary_map
-        ]
+        parsed = SuggestedNamesSchema.model_validate_json(content)
+        return parsed.names
 
-    async def tag_sentence_disambiguated(
+    @standard_retry
+    async def tag_sentence(
         self,
         sentence: str,
         language: Language,
-        hints: str,
-    ) -> list[tuple[str, str, int]]:
-        if language.phonetic_system is not None:
-            phonetic_prompt = (
-                f" Write the tags in {language.writing_system}, "
-                f"not {language.phonetic_system}."
-            )
-        else:
-            phonetic_prompt = ""
-
+        hint: list[Unit],
+    ) -> UnitTags:
+        hints_str = "\n".join(u.id() for u in hint)
         prompt = (
             f"Given is a sentence in {language.writing_system}: \n{sentence} \n"
-            "Segment it into non-overlapping consecutive words such that each word exists as a key in the provided dictionary hints. \n"
-            "For each word, identify the correct `index` of the definition that matches its meaning in the context of the sentence. \n"
-            "The concatenation of all `occurance` strings MUST NOT exceed the length of the original sentence, and there must be NO overlapping parts. \n"
-            "Exclude punctuation unless it's part of the dictionary word itself. \n"
-            f"Dictionary hints:\n{hints}\n"
-            f"{phonetic_prompt}"
+            "I want to tag words in each sentence with vocabulary. \n"
+            "For each unit suggested in the hints, find its occurrence in the sentence. \n"
+            "The tags are a list of occurrences and unit IDs. \n"
+            "Output them in order of occurance, cover the whole sentence without overlap. \n"
+            f"Hints for example unit IDs:\n{hints_str}\n"
         )
 
-        import litellm
-
-        response = await litellm.acompletion(
+        response = await self._litellm.acompletion(
             model=self.TEXT_MODEL,
             messages=[{"role": "user", "content": prompt}],
-            response_format=DisambiguatedTagsSchema,
+            response_format=UnitTags,
             api_key=self.openrouter_api_key,
         )
+        from pydantic import TypeAdapter
+
         content = response.choices[0].message.content
-        parsed = DisambiguatedTagsSchema.model_validate_json(content)
-        return [(tag.occurance, tag.word, tag.index) for tag in parsed.tags]
+        return TypeAdapter(UnitTags).validate_json(content)
 
     @standard_retry
     async def speak(
@@ -653,87 +563,50 @@ class OpenAiLlmClient(LlmClient):
         return [s for s in sentences if s]
 
     @standard_retry
-    async def tag_sentence(
-        self,
-        sentence: str,
-        language: Language,
-        hint: list[str],
-    ) -> list[tuple[str, str]]:
-        if hint:
-            hint_prompt = (
-                f" Some examples of dictionary words are: \n{' \n'.join(hint)} \n"
-                "Use these words if appropriate, but ignore them if they are "
-                "incorrect tags, even if they appear in the sentence."
-            )
-        else:
-            hint_prompt = ""
-        if language.phonetic_system is not None:
-            phonetic_prompt = (
-                f" Write the tags in {language.writing_system}, "
-                f"not {language.phonetic_system}."
-            )
-        else:
-            phonetic_prompt = ""
+    async def suggest_names(self, sentence: str, language: Language) -> list[str]:
         prompt = (
             f"Given is a sentence in {language.writing_system}: \n{sentence} \n"
-            "I want to tag words in each sentence with vocabulary. "
-            "The tags are a map from the word as written, "
-            f"to the vocabulary unit as in a dictionary. "
-            "Add all missing occurances to the existing map and output it. "
-            "For compound words, idioms or grammatical constructions, "
-            "the dictionary may only contain individual parts. "
-            "Add all alternative tags, both complex and in parts."
-            f"{hint_prompt}{phonetic_prompt}"
+            "List all base forms of words in the sentence. "
+            "Respond with a JSON list of strings."
         )
 
         response = await self._litellm.acompletion(
             model=self.TEXT_MODEL,
             messages=[{"role": "user", "content": prompt}],
-            response_format=UnitTagsSchema,
+            response_format=SuggestedNamesSchema,
             api_key=self._api_key,
         )
         content = response.choices[0].message.content
-        parsed = UnitTagsSchema.model_validate_json(content)
-        return [
-            (tag.occurance, tag.dictionary_entry)
-            for tag in parsed.occurance_vocabulary_map
-        ]
+        parsed = SuggestedNamesSchema.model_validate_json(content)
+        return parsed.names
 
-    async def tag_sentence_disambiguated(
+    @standard_retry
+    async def tag_sentence(
         self,
         sentence: str,
         language: Language,
-        hints: str,
-    ) -> list[tuple[str, str, int]]:
-        if language.phonetic_system is not None:
-            phonetic_prompt = (
-                f" Write the tags in {language.writing_system}, "
-                f"not {language.phonetic_system}."
-            )
-        else:
-            phonetic_prompt = ""
-
+        hint: typing.Sequence[Unit],
+    ) -> UnitTags:
+        hints_str = "\n".join(u.id() for u in hint)
         prompt = (
             f"Given is a sentence in {language.writing_system}: \n{sentence} \n"
-            "Segment it into non-overlapping consecutive words such that each word exists as a key in the provided dictionary hints. \n"
-            "For each word, identify the correct `index` of the definition that matches its meaning in the context of the sentence. \n"
-            "The concatenation of all `occurance` strings MUST NOT exceed the length of the original sentence, and there must be NO overlapping parts. \n"
-            "Exclude punctuation unless it's part of the dictionary word itself. \n"
-            f"Dictionary hints:\n{hints}\n"
-            f"{phonetic_prompt}"
+            "I want to tag words in each sentence with vocabulary. \n"
+            "For each unit suggested in the hints, find its occurrence in the sentence. \n"
+            "The tags are a list of occurrences and unit IDs. \n"
+            "Output them in order of occurance, cover the whole sentence without overlap. \n"
+            f"Hints for example unit IDs:\n{hints_str}\n"
         )
 
-        import litellm
-
-        response = await litellm.acompletion(
+        response = await self._litellm.acompletion(
             model=self.TEXT_MODEL,
             messages=[{"role": "user", "content": prompt}],
-            response_format=DisambiguatedTagsSchema,
+            response_format=UnitTags,
             api_key=self._api_key,
         )
+        from pydantic import TypeAdapter
+
         content = response.choices[0].message.content
-        parsed = DisambiguatedTagsSchema.model_validate_json(content)
-        return [(tag.occurance, tag.word, tag.index) for tag in parsed.tags]
+        return TypeAdapter(UnitTags).validate_json(content)
 
     @standard_retry
     async def speak(

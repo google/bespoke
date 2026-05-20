@@ -41,11 +41,11 @@ class TestDeck(unittest.TestCase):
         deck.set_modes([Mode.LISTEN, Mode.SPEAK])
         mode, card = deck.draw()
         unit_a1_0 = [u for u in target.units() if u.difficulty() == Difficulty.A1][0]
-        self.assertEqual(card.units, [unit_a1_0.id()])
+        self.assertEqual(card.unit_ids(), [unit_a1_0.id()])
         deck.rate(unit_a1_0, mode, 3)
         _mode, card = deck.draw()
         unit_a1_1 = [u for u in target.units() if u.difficulty() == Difficulty.A1][1]
-        self.assertEqual(card.units, [unit_a1_1.id()])
+        self.assertEqual(card.unit_ids(), [unit_a1_1.id()])
 
     def test_assume_known(self) -> None:
         target = languages.LANGUAGES["japanese"]

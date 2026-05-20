@@ -15,7 +15,17 @@
 """Extensible unit design for learned items."""
 
 from abc import ABC, abstractmethod
-from bespoke.difficulty import Difficulty
+from enum import StrEnum
+import pydantic
+
+
+class Difficulty(StrEnum):
+    A1 = "A1"
+    A2 = "A2"
+    B1 = "B1"
+    B2 = "B2"
+    C1 = "C1"
+    C2 = "C2"
 
 
 class Unit(ABC):
@@ -37,10 +47,6 @@ class Unit(ABC):
     def difficulty(self) -> Difficulty:
         """Get the difficulty level of the unit."""
 
-    @abstractmethod
-    def translation(self) -> str | None:
-        """Get the translation of the unit in the native language."""
-
 
 class WordUnit(Unit):
     """Simple implementation that uses words as base knowledge."""
@@ -60,9 +66,6 @@ class WordUnit(Unit):
 
     def difficulty(self) -> Difficulty:
         return self._difficulty
-
-    def translation(self) -> str | None:
-        return None
 
     def __eq__(self, other: object) -> bool:
         if not isinstance(other, WordUnit):
@@ -84,15 +87,13 @@ class DictionaryUnit(Unit):
         name: str,
         definition: str,
         difficulty: Difficulty,
-        translation: str | None = None,
     ) -> None:
         self._name = name
         self._definition = definition
         self._difficulty = difficulty
-        self._translation = translation
 
     def id(self) -> str:
-        return self._definition
+        return f"{self._name} - {self._definition}"
 
     def name(self) -> str:
         return self._name
@@ -103,16 +104,21 @@ class DictionaryUnit(Unit):
     def difficulty(self) -> Difficulty:
         return self._difficulty
 
-    def translation(self) -> str | None:
-        return self._translation
-
     def __eq__(self, other: object) -> bool:
         if not isinstance(other, DictionaryUnit):
             return NotImplemented
         return self._definition == other._definition
 
     def __hash__(self) -> int:
-        return hash(self._definition)
+        return hash(self.id())
 
     def __str__(self) -> str:
-        return self._definition
+        return self.id()
+
+
+class UnitTag(pydantic.BaseModel):
+    occurance: str
+    unit_id: str
+
+
+UnitTags = list[UnitTag]

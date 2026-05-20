@@ -18,9 +18,10 @@ from bespoke.builder import DeckBuilder as DeckBuilder
 from bespoke.card import Card as Card
 from bespoke.card import CardIndex as CardIndex
 from bespoke.deck import Deck as Deck
-from bespoke.languages import Difficulty as Difficulty
 from bespoke.languages import Language as Language
-from bespoke.languages import UnitTags as UnitTags
+from bespoke.unit import Difficulty as Difficulty
+from bespoke.unit import UnitTag as UnitTag
+from bespoke.unit import UnitTags as UnitTags
 from bespoke.urgency import Mode as Mode
 from bespoke.unit import DictionaryUnit as DictionaryUnit
 from bespoke.unit import Unit as Unit

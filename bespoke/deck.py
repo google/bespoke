@@ -182,7 +182,7 @@ class Deck:
                 score -= REPORT_PENALTY
         days = (current_time - np.array(timestamps)) / 60.0 / 60.0 / 24.0
         score -= CARD_USAGE_FACTOR * np.sum(np.exp(-CARD_USAGE_DECAY * days)).item()
-        for unit in card.units:
+        for unit in card.unit_ids():
             state = urgency_states[unit]
             if not state.is_target:
                 score -= NONTARGET_PENALTY
