@@ -43,13 +43,11 @@ def find_missing_units(card_index: CardIndex, language: Language) -> None:
 
 
 def main():
-    for data in languages.LANGUAGE_DATA.values():
-        data._initialize()
     parser = argparse.ArgumentParser(description="Test script.")
     target_choices = {}
-    for code_name in languages.LANGUAGE_DATA:
-        language = languages.LANGUAGES[code_name]
-        target_choices[language.writing_system] = language
+    for language in languages.LANGUAGES.values():
+        if language.has_data():
+            target_choices[language.writing_system] = language
     native_choices = {
         lang.writing_system: lang for lang in languages.LANGUAGES.values()
     }
