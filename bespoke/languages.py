@@ -57,7 +57,7 @@ class Language(pydantic.BaseModel):
     _units_by_name: dict[str, list[Unit]] = pydantic.PrivateAttr(default_factory=dict)
     _initialized: bool = pydantic.PrivateAttr(default=False)
 
-    def _initialize(self) -> None:
+    def _initialize(self, use_definition: bool | None = None) -> None:
         if self._initialized:
             return
 
@@ -71,7 +71,8 @@ class Language(pydantic.BaseModel):
             if not rows:
                 return
 
-            use_definition = bool(rows[0].get("definition"))
+            if use_definition is None:
+                use_definition = bool(rows[0].get("definition"))
             for row in rows:
                 word = row["name"]
                 definition = row.get("definition", "")
@@ -86,8 +87,6 @@ class Language(pydantic.BaseModel):
                         name=word, definition=definition, difficulty=difficulty
                     )
                 else:
-                    if definition:
-                        print(f"Unexpected definition for word '{word}' in {csv_path}")
                     unit = WordUnit(word, difficulty=difficulty)
 
                 self._units.append(unit)
@@ -95,6 +94,9 @@ class Language(pydantic.BaseModel):
                 self._units_by_name.setdefault(unit.name(), []).append(unit)
 
         self._initialized = True
+
+    def initialize(self, use_definition: bool) -> None:
+        self._initialize(use_definition=use_definition)
 
     def units(self) -> list[Unit]:
         self._initialize()
