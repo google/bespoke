@@ -16,7 +16,6 @@
 
 import argparse
 from nicegui import ui
-import csv
 import os
 from pathlib import Path
 import sys
@@ -51,13 +50,11 @@ class RatingWebApp:
         target_language: Language,
         deck: Deck,
         deck_filename: str,
-        translated_definitions: dict[str, str],
     ) -> None:
         self._target_language = target_language
         self._deck = deck
         self._deck_filename = deck_filename
         self._ratings: dict[str, int] = {}
-        self._translated_definitions = translated_definitions
 
         self.main_container = ui.column().classes(
             "w-full max-w-2xl mx-auto items-center gap-4 p-4"
@@ -105,7 +102,7 @@ class RatingWebApp:
 
             u = self._target_language.get_by_id(unit)
             if isinstance(u, DictionaryUnit):
-                translated_definition = self._translated_definitions.get(unit)
+                translated_definition = self._deck.translated_definition(unit)
                 if translated_definition:
                     def_label.text = translated_definition
                 elif u.definition():
@@ -322,20 +319,10 @@ def open_deck() -> tuple[Deck, str]:
     deck.set_modes(modes)
     deck.set_assume_known(args.assume_known)
 
-    translated_definitions: dict[str, str] = {}
-    definitions_file = (
-        Path("cards") / f"definitions_{target.code_name}_{native.code_name}.csv"
-    )
-    if definitions_file.exists():
-        with open(definitions_file, "r", encoding="utf-8") as f:
-            reader = csv.DictReader(f)
-            for row in reader:
-                translated_definitions[row["unit_id"]] = row["translated_definition"]
-
-    return deck, deck_filename, translated_definitions
+    return deck, deck_filename
 
 
-deck, deck_filename, translated_definitions = open_deck()
+deck, deck_filename = open_deck()
 
 
 @ui.page("/")
@@ -346,7 +333,7 @@ def index():
         ui.label("Bespoke").classes(
             "text-3xl font-light text-gray-600 dark:text-gray-300 mb-6"
         )
-        RatingWebApp(deck._target_language, deck, deck_filename, translated_definitions)
+        RatingWebApp(deck._target_language, deck, deck_filename)
 
 
 ui.run(title="Bespoke", favicon="🐝")

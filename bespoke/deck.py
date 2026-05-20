@@ -24,6 +24,7 @@ Card choice notes:
 - Red (1): Stops and shortens green intervals, high urgency if last.
 """
 
+import csv
 from datetime import datetime
 import json
 import numpy as np
@@ -95,6 +96,22 @@ class Deck:
         self._modes = list(Mode)
         self._assume_known: Difficulty | None = None
         self._start_index = 0
+
+        self._translated_definitions: dict[str, str] = {}
+        definitions_file = (
+            Path("cards")
+            / f"definitions_{target_language.code_name}_{native_language.code_name}.csv"
+        )
+        if definitions_file.exists():
+            with open(definitions_file, "r", encoding="utf-8") as f:
+                reader = csv.DictReader(f)
+                for row in reader:
+                    self._translated_definitions[row["unit_id"]] = row[
+                        "translated_definition"
+                    ]
+
+    def translated_definition(self, unit_id: str) -> str:
+        return self._translated_definitions.get(unit_id, "")
 
     def _compute_urgencies(self, current_time: float) -> dict[str, UrgencyState]:
         urgency_states = {}

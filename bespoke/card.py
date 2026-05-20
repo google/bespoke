@@ -49,6 +49,37 @@ class Card(pydantic.BaseModel):
     def unit_ids(self) -> list[str]:
         return list(set(t.unit_id for t in self.unit_tags if t.unit_id))
 
+    @pydantic.model_validator(mode="after")
+    def _verify_tags_sorted(self) -> "Card":
+        sentence_index = 0
+        for tag in self.unit_tags:
+            start_idx = self.sentence.find(tag.occurance, sentence_index)
+            if start_idx < 0:
+                raise ValueError(
+                    f"Tag occurance '{tag.occurance}' not found in sentence after index {sentence_index}"
+                )
+            sentence_index = start_idx + len(tag.occurance)
+        return self
+
+    def split_into_parts(self) -> list[UnitTag]:
+        parts = []
+        sentence_index = 0
+        for tag in self.unit_tags:
+            start_idx = self.sentence.find(tag.occurance, sentence_index)
+            if start_idx >= 0:
+                if start_idx > sentence_index:
+                    parts.append(
+                        UnitTag(
+                            occurance=self.sentence[sentence_index:start_idx],
+                            unit_id="",
+                        )
+                    )
+                parts.append(tag)
+                sentence_index = start_idx + len(tag.occurance)
+        if sentence_index < len(self.sentence):
+            parts.append(UnitTag(occurance=self.sentence[sentence_index:], unit_id=""))
+        return parts
+
     def __str__(self) -> str:
         parts = []
         for tag in self.split_into_parts():
@@ -57,29 +88,6 @@ class Card(pydantic.BaseModel):
             else:
                 parts.append(f"[{tag.occurance}]({tag.unit_id})")
         return f"Card: {''.join(parts)} = {self.native_sentence}"
-
-    def split_into_parts(self) -> list[UnitTag]:
-        sorted_tags = list(self.unit_tags)
-        sorted_tags.sort(key=lambda x: len(x.unit_id), reverse=True)
-        sorted_tags.sort(key=lambda x: len(x.occurance), reverse=True)
-        result: list[UnitTag] = [UnitTag(occurance=self.sentence, unit_id="")]
-        for tag in sorted_tags:
-            word = tag.occurance
-            new_result = []
-            found = False
-            for part in result:
-                if found or part.unit_id or word not in part.occurance:
-                    new_result.append(part)
-                    continue
-                prefix, suffix = part.occurance.split(word, maxsplit=1)
-                if prefix.strip():
-                    new_result.append(UnitTag(occurance=prefix.strip(), unit_id=""))
-                new_result.append(tag)
-                if suffix.strip():
-                    new_result.append(UnitTag(occurance=suffix.strip(), unit_id=""))
-                found = True
-            result = new_result
-        return result
 
     def write_json(self, directory: Path) -> None:
         path = directory / f"{self.id}.json"
@@ -136,11 +144,10 @@ class OldCard(pydantic.BaseModel):
     notes: list[str]
 
     def to_card(self) -> Card:
-        from bespoke.unit import UnitTag
-
         new_unit_tags = [
             UnitTag(occurance=k, unit_id=v) for k, v in self.unit_tags.items()
         ]
+        new_unit_tags.sort(key=lambda tag: self.sentence.find(tag.occurance))
         return Card(
             id=self.id,
             sentence=self.sentence,

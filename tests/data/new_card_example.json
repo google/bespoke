@@ -7,8 +7,8 @@
   "native_audio_filename": "native_audio.ogg",
   "phonetic": "だいがくせいはがくせいよりとしうえです。",
   "unit_tags": [
-    {"occurance": "学生", "unit_id": "学生"},
-    {"occurance": "大学生", "unit_id": "大学生"}
+    {"occurance": "大学生", "unit_id": "大学生"},
+    {"occurance": "学生", "unit_id": "学生"}
   ],
   "notes": []
 }
