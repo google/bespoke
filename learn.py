@@ -26,6 +26,7 @@ from bespoke import Difficulty
 from bespoke import Mode
 from bespoke import Language
 from bespoke import languages
+from bespoke import DictionaryUnit
 
 
 COLOR_MAP = {
@@ -83,7 +84,9 @@ class RatingWebApp:
             else:
                 ui.icon("volume_off", color="grey").tooltip(f"Missing file: {filename}")
 
-    def _create_color_cycling_button(self, word: str, unit: str) -> ui.button:
+    def _create_color_cycling_button(
+        self, word: str, unit: str, def_label: ui.label
+    ) -> ui.button:
         initial_rating = 0
         self._ratings[unit] = initial_rating
         btn = ui.button(word, on_click=lambda e: cycle(e.sender))
@@ -93,6 +96,12 @@ class RatingWebApp:
             rating = SCORE_ROTATION.get(self._ratings[unit], initial_rating)
             self._ratings[unit] = rating
             b.props(f"color={COLOR_MAP[rating]}")
+
+            u = self._target_language.get_by_id(unit)
+            if isinstance(u, DictionaryUnit) and u.definition():
+                def_label.text = u.definition()
+            else:
+                def_label.text = ""
 
         return btn
 
@@ -169,20 +178,23 @@ class RatingWebApp:
                 "text-sm text-gray-400 dark:text-gray-300 mt-4"
             )
             row_container = ui.row().classes("wrap justify-center gap-2 w-full")
+            definition_label = ui.label("").classes(
+                "w-full text-center text-sm text-gray-800 dark:text-gray-300 h-6 mt-2"
+            )
             all_buttons = []
 
             with row_container:
                 for tag in self._card.split_into_parts():
                     if not tag.unit_id:
-                        ui.label(tag.occurance).classes("self-center text-lg p-2")
+                        ui.label(tag.occurance).classes("self-center text-lg p-2 text-black dark:text-white")
                     else:
                         with ui.column().classes("items-center gap-0"):
                             btn = self._create_color_cycling_button(
-                                tag.occurance, tag.unit_id
+                                tag.occurance, tag.unit_id, definition_label
                             )
                             all_buttons.append((tag.unit_id, btn))
                             ui.label(tag.unit_id).classes(
-                                "text-[10px] text-[#888] dark:text-gray-400"
+                                "text-[10px] text-gray-700 dark:text-gray-400"
                             )
 
             # 4. Controls
@@ -197,7 +209,7 @@ class RatingWebApp:
                 ui.button("All Success", on_click=make_all_green).props(
                     "outline color=positive"
                 )
-                report_switch = ui.switch("Report Error")
+                report_switch = ui.switch("Report Error").classes("text-black dark:text-white")
 
             ui.button(
                 "Next", on_click=lambda: self._finalize(report_switch.value)
@@ -308,7 +320,7 @@ def index():
         ui.label("Bespoke").classes(
             "text-3xl font-light text-gray-600 dark:text-gray-300 mb-6"
         )
-        RatingWebApp(deck, deck_filename)
+        RatingWebApp(deck._target_language, deck, deck_filename)
 
 
 ui.run(title="Bespoke", favicon="🐝")
