@@ -13,134 +13,170 @@
 # limitations under the License.
 
 import unittest
-from bespoke import DictionaryUnit
 from bespoke import Difficulty
 from bespoke import Unit
 from bespoke import WordUnit
+from bespoke import DictionaryUnit
 from bespoke import UnitTag
 from bespoke import UnitTags
 from bespoke import tagger
 from tests import fakes
 
 
-class TestWordTagger(unittest.IsolatedAsyncioTestCase):
-    async def test_word_tagger(self) -> None:
-        language = fakes.fake_language()
+class TestCleanLength(unittest.TestCase):
+    def test_clean_length(self) -> None:
+        self.assertEqual(tagger.clean_length("Hello"), 5)
+        self.assertEqual(tagger.clean_length("Hello World"), 10)
+        self.assertEqual(tagger.clean_length("Hello, World!"), 10)
+        self.assertEqual(tagger.clean_length("こんにちは"), 5)
+        self.assertEqual(tagger.clean_length("こんにちは、世界！"), 7)
+        self.assertEqual(tagger.clean_length(""), 0)
+        self.assertEqual(tagger.clean_length("   "), 0)
+        self.assertEqual(tagger.clean_length("!!!"), 0)
 
-        class FakeWordLlmClient(fakes.FakeLlmClient):
+
+class TestCreateTags(unittest.IsolatedAsyncioTestCase):
+    async def test_create_tags_basic(self) -> None:
+        language = fakes.fake_language()
+        language.code_name = "english"
+
+        class FakeLlmClient(fakes.FakeLlmClient):
             async def tag_sentence(
                 self, sentence: str, language, hint: list[Unit]
             ) -> UnitTags:
-                return [UnitTag(occurance="大学生", unit_id="大学生")]
+                return [
+                    UnitTag(occurance="cat", unit_id="cat"),
+                    UnitTag(occurance="mat", unit_id="mat"),
+                ]
 
-        llm_client = FakeWordLlmClient()
-        sentence = "大学生です。"
-        hint: list[Unit] = [
-            WordUnit("大学生", Difficulty.A1),
-            WordUnit("学生", Difficulty.A1),
+        llm_client = FakeLlmClient()
+        sentence = "The cat sat on the mat."
+        units: list[Unit] = [
+            WordUnit("cat", Difficulty.A1),
+            WordUnit("mat", Difficulty.A1),
         ]
-        full_vocabulary = ["大学生", "学生"]
-
-        fake_units: list[Unit] = [WordUnit(w, Difficulty.A1) for w in full_vocabulary]
-        language._units = fake_units
-        language._units_by_id = {u.id(): u for u in fake_units}
-        language._units_by_name = {u.name(): [u] for u in fake_units}
+        language._units = units
+        language._units_by_id = {u.id(): u for u in units}
+        language._units_by_name = {u.name(): [u] for u in units}
         language._initialized = True
 
-        t = tagger.WordTagger(sentence, hint, language)
-        self.assertFalse(t.done())
+        result = await tagger.create_tags(sentence, units, language, llm_client)
+        self.assertEqual(len(result), 2)
+        self.assertEqual(result[0].occurance, "cat")
+        self.assertEqual(result[1].occurance, "mat")
 
-        await t.progress(llm_client)
-        self.assertFalse(t.done())
-        await t.progress(llm_client)
-        self.assertTrue(t.done())
-
-        result = t.tags()
-        self.assertEqual(len(result), 1)
-        self.assertEqual(result[0].occurance, "大学生")
-        self.assertEqual(result[0].unit_id, "大学生")
-
-    async def test_long_then_short(self) -> None:
+    async def test_create_tags_german(self) -> None:
         language = fakes.fake_language()
+        language.code_name = "german"
 
-        class FakeWordLlmClient(fakes.FakeLlmClient):
+        class FakeLlmClient(fakes.FakeLlmClient):
             async def tag_sentence(
                 self, sentence: str, language, hint: list[Unit]
             ) -> UnitTags:
                 return [
-                    UnitTag(occurance="大学生", unit_id="大学生"),
-                    UnitTag(occurance="学生", unit_id="学生"),
+                    UnitTag(occurance="gehe", unit_id="gehen - schrittweises bewegen")
                 ]
 
-        llm_client = FakeWordLlmClient()
-        sentence = "大学生です。"
-        hint: list[Unit] = []
-        full_vocabulary = ["大学生", "学生"]
+            async def suggest_names(self, sentence: str, language) -> list[str]:
+                return ["gehen"]
 
-        fake_units: list[Unit] = [WordUnit(w, Difficulty.A1) for w in full_vocabulary]
-        language._units = fake_units
-        language._units_by_id = {u.id(): u for u in fake_units}
-        language._units_by_name = {u.name(): [u] for u in fake_units}
+        llm_client = FakeLlmClient()
+        sentence = "Ich gehe."
+        units: list[Unit] = [
+            DictionaryUnit("gehen", "schrittweises bewegen", Difficulty.A1)
+        ]
+        language._units = units
+        language._units_by_id = {u.id(): u for u in units}
+        language._units_by_name = {u.name(): [u] for u in units}
         language._initialized = True
 
-        t = tagger.WordTagger(sentence, hint, language)
-        await t.progress(llm_client)
-
-        result = t.tags()
+        result = await tagger.create_tags(sentence, [], language, llm_client)
         self.assertEqual(len(result), 1)
-        self.assertEqual(result[0].occurance, "大学生")
-        occurrences = [tag.occurance for tag in result]
-        self.assertNotIn("学生", occurrences)
+        self.assertEqual(result[0].occurance, "gehe")
+        self.assertEqual(result[0].unit_id, "gehen - schrittweises bewegen")
 
-
-class TestDictionaryTagger(unittest.IsolatedAsyncioTestCase):
-    async def test_dictionary_tagger(self) -> None:
+    async def test_create_tags_chinese(self) -> None:
         language = fakes.fake_language()
-        language.name = "Traditional Chinese"
+        language.code_name = "simp_chinese"
 
-        # Fake dictionary data
-        dictionary_data = {
-            "學生": [{"definitions": [{"def": "在學校學習的人。"}]}],
-            "大學生": [{"definitions": [{"def": "在大學學習的人。"}]}],
-        }
-
-        class FakeDisambiguatedLlmClient(fakes.FakeLlmClient):
+        class FakeLlmClient(fakes.FakeLlmClient):
             async def tag_sentence(
                 self, sentence: str, language, hint: list[Unit]
             ) -> UnitTags:
-                return [
-                    UnitTag(occurance="大學生", unit_id="大學生 - 在大學學習的人。")
-                ]
+                return [UnitTag(occurance="大學生", unit_id="大學生")]
 
-        llm_client = FakeDisambiguatedLlmClient()
+        llm_client = FakeLlmClient()
         sentence = "我是大學生。"
-
-        fake_units: list[Unit] = []
-        for word, entries in dictionary_data.items():
-            for entry in entries:
-                for d in entry.get("definitions", []):
-                    fake_units.append(
-                        DictionaryUnit(
-                            name=word, definition=d["def"], difficulty=Difficulty.A1
-                        )
-                    )
-        language._units = fake_units
-        language._units_by_id = {u.id(): u for u in fake_units}
-        language._units_by_name = {}
-        for u in fake_units:
-            language._units_by_name.setdefault(u.name(), []).append(u)
+        units: list[Unit] = [WordUnit("大學生", Difficulty.A1)]
+        language._units = units
+        language._units_by_id = {u.id(): u for u in units}
+        language._units_by_name = {u.name(): [u] for u in units}
         language._initialized = True
 
-        t = tagger.DictionaryTagger(sentence, [], language)
-        self.assertFalse(t.done())
-
-        await t.progress(llm_client)
-        self.assertTrue(t.done())
-
-        result = t.tags()
+        result = await tagger.create_tags(sentence, units, language, llm_client)
         self.assertEqual(len(result), 1)
         self.assertEqual(result[0].occurance, "大學生")
-        self.assertEqual(result[0].unit_id, "大學生 - 在大學學習的人。")
+
+    async def test_create_tags_not_in_dictionary(self) -> None:
+        language = fakes.fake_language()
+        language.code_name = "english"
+
+        class FakeLlmClient(fakes.FakeLlmClient):
+            async def tag_sentence(
+                self, sentence: str, language, hint: list[Unit]
+            ) -> UnitTags:
+                return [
+                    UnitTag(occurance="cat", unit_id="cat"),
+                    UnitTag(occurance="unknown", unit_id="unknown"),
+                ]
+
+        llm_client = FakeLlmClient()
+        sentence = "The cat is unknown."
+        units: list[Unit] = [WordUnit("cat", Difficulty.A1)]
+        language._units = units
+        language._units_by_id = {u.id(): u for u in units}
+        language._units_by_name = {u.name(): [u] for u in units}
+        language._initialized = True
+
+        result = await tagger.create_tags(sentence, units, language, llm_client)
+        self.assertEqual(len(result), 1)
+        self.assertEqual(result[0].occurance, "cat")
+
+    async def test_create_tags_merge_logic(self) -> None:
+        language = fakes.fake_language()
+        language.code_name = "english"
+
+        class FakeLlmClient(fakes.FakeLlmClient):
+            def __init__(self):
+                self.round = 0
+
+            async def tag_sentence(
+                self, sentence: str, language, hint: list[Unit]
+            ) -> UnitTags:
+                self.round += 1
+                if self.round == 1:
+                    return [UnitTag(occurance="cat", unit_id="cat")]
+                else:
+                    return [UnitTag(occurance="mat", unit_id="mat")]
+
+            async def suggest_names(self, sentence: str, language) -> list[str]:
+                return []
+
+        llm_client = FakeLlmClient()
+        sentence = "The cat sat on the mat."
+        units: list[Unit] = [
+            WordUnit("cat", Difficulty.A1),
+            WordUnit("mat", Difficulty.A1),
+        ]
+        language._units = units
+        language._units_by_id = {u.id(): u for u in units}
+        language._units_by_name = {u.name(): [u] for u in units}
+        language._initialized = True
+
+        result = await tagger.create_tags(sentence, units, language, llm_client)
+        self.assertEqual(len(result), 2)
+        self.assertEqual(result[0].occurance, "cat")
+        self.assertEqual(result[1].occurance, "mat")
 
 
 if __name__ == "__main__":

@@ -67,8 +67,8 @@ class TestSentenceProducer(unittest.IsolatedAsyncioTestCase):
             cards_per_call=cards_per_call,
         )
         self.assertFalse(sentence_producer.done())
-        builders, grammar = await sentence_producer.create()
-        self.assertEqual(len(builders), cards_per_call)
+        sentences, units, grammar = await sentence_producer.create()
+        self.assertEqual(len(sentences), cards_per_call)
         self.assertTrue(grammar)
         self.assertFalse(sentence_producer.done())
 
@@ -83,11 +83,9 @@ class TestSentenceProducer(unittest.IsolatedAsyncioTestCase):
             cards_per_unit=1,
             cards_per_call=cards_per_call,
         )
-        builders, grammar1 = await sentence_producer.create()
-        builder1 = builders[0]
-        builders, grammar2 = await sentence_producer.create()
-        builder2 = builders[0]
-        self.assertNotEqual(builder1.sentence, builder2.sentence)
+        sentences1, units1, grammar1 = await sentence_producer.create()
+        sentences2, units2, grammar2 = await sentence_producer.create()
+        self.assertNotEqual(sentences1[0], sentences2[0])
         self.assertNotEqual(grammar1, grammar2)
 
 

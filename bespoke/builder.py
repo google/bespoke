@@ -24,7 +24,6 @@ from bespoke.card import CardIndex
 from bespoke.languages import Difficulty
 from bespoke.languages import Language
 from bespoke import llm
-from bespoke.unit import DictionaryUnit
 from bespoke.unit import Unit
 from bespoke import tagger
 
@@ -128,10 +127,8 @@ class SentenceProducer:
         self._grammar_pools: dict[Difficulty, list[str]] = {}
         # Data structures to quickly operate on difficulties.
         self._difficulty_order = {d: i for i, d in enumerate(Difficulty)}
-        first_unit = language.units()[0]
-        self._use_dictionary_tagger = isinstance(first_unit, DictionaryUnit)
 
-    async def create(self) -> tuple[list[tagger.Tagger], str]:
+    async def create(self) -> tuple[list[str], list[Unit], str]:
         units, difficulty = self._unit_producer.draw(self._cards_per_call)
         grammar = self._sample_grammar(difficulty)
         sentences = await self._llm_client.create_sentences(
@@ -140,13 +137,7 @@ class SentenceProducer:
             grammar=grammar,
             units=units,
         )
-        taggers: list[tagger.Tagger] = []
-        for s in sentences:
-            if self._use_dictionary_tagger:
-                taggers.append(tagger.DictionaryTagger(s, units, self._language))
-            else:
-                taggers.append(tagger.WordTagger(s, units, self._language))
-        return taggers, grammar
+        return sentences, units, grammar
 
     def register_card(self, card: Card) -> None:
         difficulties = {}
@@ -225,16 +216,16 @@ class DeckBuilder:
             for _ in range(cards_per_unit * 2):
                 if sentence_producer.done():
                     break
-                taggers, grammar = await sentence_producer.create()
-                for unit_tagger in taggers:
-                    if unit_tagger.sentence() in self._duplicates:
-                        print(f"Skipping duplicate sentence {unit_tagger.sentence()}")
+                sentences, units, grammar = await sentence_producer.create()
+                for sentence in sentences:
+                    if sentence in self._duplicates:
+                        print(f"Skipping duplicate sentence {sentence}")
                         continue
-                    self._duplicates.add(unit_tagger.sentence())
+                    self._duplicates.add(sentence)
                     await semaphore.acquire()
                     tg.create_task(
                         self._complete_card(
-                            semaphore, sentence_producer, unit_tagger, grammar
+                            semaphore, sentence_producer, sentence, units, grammar
                         )
                     )
                 self._card_index.save()
@@ -243,18 +234,24 @@ class DeckBuilder:
         self,
         semaphore: asyncio.Semaphore,
         sentence_producer: SentenceProducer,
-        unit_tagger: tagger.Tagger,
+        sentence: str,
+        units: list[Unit],
         grammar: str,
     ) -> None:
         try:
-            unit_tags = await unit_tagger.create(self._llm_client)
+            unit_tags = await tagger.create_tags(
+                sentence=sentence,
+                hint=units,
+                language=self._language,
+                llm_client=self._llm_client,
+            )
             if not unit_tags:
-                print(f"Discarding untagged sentence: '{unit_tagger.sentence()}'")
+                print(f"Discarding untagged sentence: '{sentence}'")
                 return
 
             card = await self._card_index.create_card(
                 self._llm_client,
-                unit_tagger.sentence(),
+                sentence,
                 unit_tags,
                 notes=[grammar],
             )
@@ -266,6 +263,6 @@ class DeckBuilder:
                 time_string = str(elapsed).split(".")[0]
                 print(f"{self._created_count:>5} cards after : {time_string}")
         except Exception as e:
-            print(f"Error processing sentence '{unit_tagger.sentence()}': {e}")
+            print(f"Error processing sentence '{sentence}': {e}")
         finally:
             semaphore.release()
