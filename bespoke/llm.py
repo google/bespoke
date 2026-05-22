@@ -27,7 +27,10 @@ import pydantic
 import tenacity
 import typing
 from bespoke.languages import Language
-from bespoke.unit import Unit, Difficulty, UnitTags
+from bespoke.unit import DictionaryUnit
+from bespoke.unit import Difficulty
+from bespoke.unit import Unit
+from bespoke.unit import UnitTags
 
 
 DIFFICULTY_EXPLANATIONS = {
@@ -189,6 +192,7 @@ class GeminiLlmClient(LlmClient):
             "All words should occur with the meaning matching their definition. "
             "If the word is part of a longer compound word, don't use the compound. "
             "Make the sentences unique and different. "
+            "Use correct punctuation. "
             f"All sentences should use this grammar concept: \n{grammar} \n"
             f"The target difficulty of the sentence is {difficulty}. "
             f"This difficulty level is defined as: \n{difficulty_explanation}"
@@ -234,13 +238,29 @@ class GeminiLlmClient(LlmClient):
         hint: list[Unit],
     ) -> UnitTags:
         hints_str = "\n".join(u.id() for u in hint)
+        uses_dictionary_unit = hint and isinstance(hint[0], DictionaryUnit)
+        equal_occurance_text = ""
+        if language.code_name in ["simp_chinese", "trad_chinese"]:
+            if uses_dictionary_unit:
+                equal_occurance_text = (
+                    "The occurance needs to equal the first part of the unit ID. "
+                )
+            else:
+                equal_occurance_text = "The occurance needs to equal the unit ID. "
+        unit_id_shape_text = ""
+        if uses_dictionary_unit:
+            unit_id_shape_text = (
+                'Output unit IDs in the format of the examples: "NAME - DEFINITION"'
+            )
         prompt = (
             f"Given is a sentence in {language.writing_system}: \n{sentence} \n"
-            "I want to tag words in each sentence with vocabulary. \n"
+            "I want to tag all words in each sentence with vocabulary. \n"
             "For each unit suggested in the hints, find its occurrence in the sentence. \n"
-            "The tags are a list of occurrences and unit IDs. \n"
-            "Output them in order of occurance, cover the whole sentence without overlap. \n"
-            f"Hints for example unit IDs:\n{hints_str}\n"
+            f"The tags are a list of occurrences and unit IDs. {equal_occurance_text}\n"
+            "Output them in order of occurance without overlap. \n"
+            "Unit IDs need to precisely match our stored IDs, so stick to the example format. "
+            f"{unit_id_shape_text}"
+            f"The following are example unit IDs, each line is exactly one unit ID:\n{hints_str}\n"
         )
         response = await self._client.aio.models.generate_content(
             model=self.TEXT_MODEL,
@@ -390,6 +410,7 @@ class OpenRouterElevenLabsLlmClient(LlmClient):
             "All words should occur with the meaning matching their definition. "
             "If the word is part of a longer compound word, don't use the compound. "
             "Make the sentences unique and different. "
+            "Use correct punctuation. "
             f"All sentences should use this grammar concept: \n{grammar} \n"
             f"The target difficulty of the sentence is {difficulty}. "
             f"This difficulty level is defined as: \n{difficulty_explanation}"
@@ -431,13 +452,29 @@ class OpenRouterElevenLabsLlmClient(LlmClient):
         hint: list[Unit],
     ) -> UnitTags:
         hints_str = "\n".join(u.id() for u in hint)
+        uses_dictionary_unit = hint and isinstance(hint[0], DictionaryUnit)
+        equal_occurance_text = ""
+        if language.code_name in ["simp_chinese", "trad_chinese"]:
+            if uses_dictionary_unit:
+                equal_occurance_text = (
+                    "The occurance needs to equal the first part of the unit ID. "
+                )
+            else:
+                equal_occurance_text = "The occurance needs to equal the unit ID. "
+        unit_id_shape_text = ""
+        if uses_dictionary_unit:
+            unit_id_shape_text = (
+                'Output unit IDs in the format of the examples: "NAME - DEFINITION"'
+            )
         prompt = (
             f"Given is a sentence in {language.writing_system}: \n{sentence} \n"
-            "I want to tag words in each sentence with vocabulary. \n"
+            "I want to tag all words in each sentence with vocabulary. \n"
             "For each unit suggested in the hints, find its occurrence in the sentence. \n"
-            "The tags are a list of occurrences and unit IDs. \n"
-            "Output them in order of occurance, cover the whole sentence without overlap. \n"
-            f"Hints for example unit IDs:\n{hints_str}\n"
+            f"The tags are a list of occurrences and unit IDs. {equal_occurance_text}\n"
+            "Output them in order of occurance without overlap. \n"
+            "Unit IDs need to precisely match our stored IDs, so stick to the example format. "
+            f"{unit_id_shape_text}"
+            f"The following are example unit IDs, each line is exactly one unit ID:\n{hints_str}\n"
         )
 
         response = await self._litellm.acompletion(
@@ -446,10 +483,9 @@ class OpenRouterElevenLabsLlmClient(LlmClient):
             response_format=UnitTags,
             api_key=self.openrouter_api_key,
         )
-        from pydantic import TypeAdapter
 
         content = response.choices[0].message.content
-        return TypeAdapter(UnitTags).validate_json(content)
+        return pydantic.TypeAdapter(UnitTags).validate_json(content)
 
     @standard_retry
     async def speak(
@@ -547,6 +583,7 @@ class OpenAiLlmClient(LlmClient):
             "All words should occur with the meaning matching their definition. "
             "If the word is part of a longer compound word, don't use the compound. "
             "Make the sentences unique and different. "
+            "Use correct punctuation. "
             f"All sentences should use this grammar concept: \n{grammar} \n"
             f"The target difficulty of the sentence is {difficulty}. "
             f"This difficulty level is defined as: \n{difficulty_explanation}"
@@ -588,13 +625,29 @@ class OpenAiLlmClient(LlmClient):
         hint: typing.Sequence[Unit],
     ) -> UnitTags:
         hints_str = "\n".join(u.id() for u in hint)
+        uses_dictionary_unit = hint and isinstance(hint[0], DictionaryUnit)
+        equal_occurance_text = ""
+        if language.code_name in ["simp_chinese", "trad_chinese"]:
+            if uses_dictionary_unit:
+                equal_occurance_text = (
+                    "The occurance needs to equal the first part of the unit ID. "
+                )
+            else:
+                equal_occurance_text = "The occurance needs to equal the unit ID. "
+        unit_id_shape_text = ""
+        if uses_dictionary_unit:
+            unit_id_shape_text = (
+                'Output unit IDs in the format of the examples: "NAME - DEFINITION"'
+            )
         prompt = (
             f"Given is a sentence in {language.writing_system}: \n{sentence} \n"
-            "I want to tag words in each sentence with vocabulary. \n"
+            "I want to tag all words in each sentence with vocabulary. \n"
             "For each unit suggested in the hints, find its occurrence in the sentence. \n"
-            "The tags are a list of occurrences and unit IDs. \n"
-            "Output them in order of occurance, cover the whole sentence without overlap. \n"
-            f"Hints for example unit IDs:\n{hints_str}\n"
+            f"The tags are a list of occurrences and unit IDs. {equal_occurance_text}\n"
+            "Output them in order of occurance without overlap. \n"
+            "Unit IDs need to precisely match our stored IDs, so stick to the example format. "
+            f"{unit_id_shape_text}"
+            f"The following are example unit IDs, each line is exactly one unit ID:\n{hints_str}\n"
         )
 
         response = await self._litellm.acompletion(
@@ -603,10 +656,9 @@ class OpenAiLlmClient(LlmClient):
             response_format=UnitTags,
             api_key=self._api_key,
         )
-        from pydantic import TypeAdapter
 
         content = response.choices[0].message.content
-        return TypeAdapter(UnitTags).validate_json(content)
+        return pydantic.TypeAdapter(UnitTags).validate_json(content)
 
     @standard_retry
     async def speak(

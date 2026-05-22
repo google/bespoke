@@ -47,14 +47,14 @@ async def create_tags(
         for i in range(len(sentence)):
             for j in range(i + 1, len(sentence) + 1):
                 substring = sentence[i:j]
-                unit_ids = language.get_by_name(substring)
-                candidates.update(unit_ids)
+                units = language.get_by_name(substring)
+                candidates.update(units)
     else:
         words = sentence.split()
         for word in words:
             word = word.strip(".,;!?")
-            unit_ids = language.get_by_name(word)
-            candidates.update(unit_ids)
+            units = language.get_by_name(word)
+            candidates.update(units)
     full_hint = hint + list(candidates)
 
     unit_tags: UnitTags = []
@@ -65,8 +65,8 @@ async def create_tags(
         if not is_chinese:
             names = await llm_client.suggest_names(sentence=sentence, language=language)
             for name in names:
-                unit_ids = language.get_by_name(name.strip())
-                suggestions.update(unit_ids)
+                units = language.get_by_name(name.strip())
+                suggestions.update(units)
 
         results = await llm_client.tag_sentence(
             sentence=sentence,

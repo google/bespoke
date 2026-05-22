@@ -22,11 +22,11 @@ import sys
 
 from bespoke import CardIndex
 from bespoke import Deck
+from bespoke import DictionaryUnit
 from bespoke import Difficulty
 from bespoke import Mode
 from bespoke import Language
 from bespoke import languages
-from bespoke import DictionaryUnit
 
 
 COLOR_MAP = {
