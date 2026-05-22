@@ -16,7 +16,6 @@
 
 import argparse
 import asyncio
-import random
 
 from bespoke import Difficulty
 from bespoke import Language
@@ -26,10 +25,24 @@ from bespoke import llm
 from bespoke import tagger
 
 
-async def main_async():
-    parser = argparse.ArgumentParser(
-        description="Check sentence quality and tagging."
+async def tag_and_format(
+    sentence: str, units: list, language: Language, llm_client: llm.LlmClient
+) -> str:
+    unit_tags = await tagger.create_tags(
+        sentence=sentence,
+        hint=units,
+        language=language,
+        llm_client=llm_client,
     )
+    lines = [f"Sentence: {sentence}", "Tags:"]
+    for tag in unit_tags:
+        lines.append(f"  {tag.occurance} -> {tag.unit_id}")
+    lines.append("--------------------------------------")
+    return "\n".join(lines)
+
+
+async def main_async():
+    parser = argparse.ArgumentParser(description="Check sentence quality and tagging.")
     target_choices = {}
     for language in languages.LANGUAGES.values():
         if language.has_data():
@@ -46,8 +59,8 @@ async def main_async():
     parser.add_argument(
         "--difficulty",
         type=str,
+        default=None,
         choices=list(difficulties),
-        required=True,
         help="Difficulty level of used vocabulary.",
     )
     parser.add_argument(
@@ -56,57 +69,64 @@ async def main_async():
         default=8,
         help="Number of cards per call",
     )
+
     args = parser.parse_args()
 
-    difficulty = Difficulty(args.difficulty)
     real_language = target_choices[args.target]
     grammar = languages.load_grammar(real_language.code_name)
-
-    all_units = real_language.units()
-    filtered_units = [u for u in all_units if u.difficulty() == difficulty]
-    if len(filtered_units) < args.cards_per_call:
-        print(f"Found only {len(filtered_units)} units.")
-        return
-    sampled_units = random.sample(filtered_units, args.cards_per_call)
-
-    small_language = Language(
-        name=real_language.name,
-        writing_system=real_language.writing_system,
-        phonetic_system=real_language.phonetic_system,
-        code_name=real_language.code_name,
-    )
-    small_language._units = sampled_units
-    small_language._units_by_id = {u.id(): u for u in sampled_units}
-    small_language._units_by_name = {}
-    for u in sampled_units:
-        small_language._units_by_name.setdefault(u.name(), []).append(u)
-    small_language._initialized = True
-
     llm_client = llm.get_llm_client()
+
+    if args.difficulty:
+        difficulty = Difficulty(args.difficulty)
+        all_units = real_language.units()
+        filtered_units = [u for u in all_units if u.difficulty() == difficulty]
+        if len(filtered_units) < args.cards_per_call:
+            print(
+                f"Found only {len(filtered_units)} units, need {args.cards_per_call}."
+            )
+            return
+
+        target = Language(
+            name=real_language.name,
+            writing_system=real_language.writing_system,
+            phonetic_system=real_language.phonetic_system,
+            code_name=real_language.code_name,
+        )
+        target._units = filtered_units
+        target._units_by_id = {u.id(): u for u in filtered_units}
+        target._units_by_name = {}
+        for u in filtered_units:
+            target._units_by_name.setdefault(u.name(), []).append(u)
+        target._initialized = True
+    else:
+        target = real_language
+
     producer = builder.SentenceProducer(
-        small_language,
+        target,
         llm_client,
         grammar,
         cards_per_unit=1,
         cards_per_call=args.cards_per_call,
     )
-    print(f"Selected units: {[u.name() for u in sampled_units]}")
-    sentences, units, grammar_used = await producer.create()
-    print(f"Grammar used: {grammar_used}")
-    print("--------------------------------------")
 
-    for sentence in sentences:
-        print(f"Sentence: {sentence}")
-        unit_tags = await tagger.create_tags(
-            sentence=sentence,
-            hint=units,
-            language=real_language,
-            llm_client=llm_client,
-        )
-        print("Tags:")
-        for tag in unit_tags:
-            print(f"  {tag.occurance} -> {tag.unit_id}")
+    generated_count = 0
+    while not producer.done():
+        sentences, units, grammar_used = await producer.create()
+        print(f"Grammar used: {grammar_used}")
         print("--------------------------------------")
+
+        async with asyncio.TaskGroup() as tg:
+            tasks = []
+            for sentence in sentences:
+                tasks.append(
+                    tg.create_task(
+                        tag_and_format(sentence, units, real_language, llm_client)
+                    )
+                )
+
+        for task in tasks:
+            print(task.result())
+        generated_count += len(sentences)
 
 
 def main():
