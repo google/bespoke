@@ -107,6 +107,7 @@ async def main_async():
         grammar,
         cards_per_unit=1,
         cards_per_call=args.cards_per_call,
+        num_existing_cards=0,
     )
 
     generated_count = 0

@@ -23,7 +23,7 @@ from tests import fakes
 class TestUnitProducer(unittest.TestCase):
     def test_basic_draw(self) -> None:
         language = languages.LANGUAGES["japanese"]
-        unit_producer = builder.UnitProducer(language, 1)
+        unit_producer = builder.UnitProducer(language, 1, 0)
         self.assertFalse(unit_producer.done())
         count = 4
         units, difficulty = unit_producer.draw(count)
@@ -33,7 +33,7 @@ class TestUnitProducer(unittest.TestCase):
 
     def test_draw_ignores_initial(self) -> None:
         language = languages.LANGUAGES["japanese"]
-        unit_producer = builder.UnitProducer(language, 1)
+        unit_producer = builder.UnitProducer(language, 1, 0)
         vocabulary = [u for u in language.units() if u.difficulty() == Difficulty.A1]
         count = 4
         for u in vocabulary[:-count]:
@@ -46,7 +46,7 @@ class TestUnitProducer(unittest.TestCase):
 
     def test_register_all_done(self) -> None:
         language = languages.LANGUAGES["japanese"]
-        unit_producer = builder.UnitProducer(language, 1)
+        unit_producer = builder.UnitProducer(language, 1, 0)
         for difficulty in Difficulty:
             vocabulary = [u for u in language.units() if u.difficulty() == difficulty]
             for u in vocabulary:
@@ -65,6 +65,7 @@ class TestSentenceProducer(unittest.IsolatedAsyncioTestCase):
             fakes.FAKE_GRAMMAR,
             cards_per_unit=1,
             cards_per_call=cards_per_call,
+            num_existing_cards=0,
         )
         self.assertFalse(sentence_producer.done())
         sentences, units, grammar = await sentence_producer.create()
@@ -82,6 +83,7 @@ class TestSentenceProducer(unittest.IsolatedAsyncioTestCase):
             fakes.FAKE_GRAMMAR,
             cards_per_unit=1,
             cards_per_call=cards_per_call,
+            num_existing_cards=0,
         )
         sentences1, units1, grammar1 = await sentence_producer.create()
         sentences2, units2, grammar2 = await sentence_producer.create()
