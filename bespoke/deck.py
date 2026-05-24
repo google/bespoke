@@ -40,6 +40,7 @@ from bespoke.languages import Language
 from bespoke.languages import LANGUAGES
 from bespoke.urgency import Mode
 from bespoke.unit import Unit
+from bespoke.unit import DictionaryUnit
 
 from bespoke.urgency import Rating
 from bespoke.urgency import compute_urgency
@@ -111,7 +112,13 @@ class Deck:
                     ]
 
     def translated_definition(self, unit_id: str) -> str:
-        return self._translated_definitions.get(unit_id, "")
+        translated = self._translated_definitions.get(unit_id, "")
+        if translated:
+            return translated
+        unit = self._target_language.get_by_id(unit_id)
+        if isinstance(unit, DictionaryUnit) and unit.definition():
+            return unit.definition()
+        return ""
 
     def _compute_urgencies(self, current_time: float) -> dict[str, UrgencyState]:
         urgency_states = {}

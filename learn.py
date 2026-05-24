@@ -22,7 +22,6 @@ import sys
 
 from bespoke import CardIndex
 from bespoke import Deck
-from bespoke import DictionaryUnit
 from bespoke import Difficulty
 from bespoke import Mode
 from bespoke import Language
@@ -100,17 +99,7 @@ class RatingWebApp:
             self._ratings[unit] = rating
             b.props(f"color={COLOR_MAP[rating]}")
 
-            u = self._target_language.get_by_id(unit)
-            if isinstance(u, DictionaryUnit):
-                translated_definition = self._deck.translated_definition(unit)
-                if translated_definition:
-                    def_label.text = translated_definition
-                elif u.definition():
-                    def_label.text = u.definition()
-                else:
-                    def_label.text = ""
-            else:
-                def_label.text = ""
+            def_label.text = self._deck.translated_definition(unit)
 
         return btn
 
