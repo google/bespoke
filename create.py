@@ -16,11 +16,14 @@
 
 import argparse
 import asyncio
+import warnings
 
 from bespoke import CardIndex
 from bespoke import DeckBuilder
 from bespoke import languages
 from bespoke import llm
+
+warnings.filterwarnings("ignore", message=".*is not a valid FinishReason.*")
 
 
 async def create(
