@@ -204,7 +204,9 @@ class RatingWebApp:
                                 tag.occurance, tag.unit_id, definition_label
                             )
                             all_buttons.append((tag.unit_id, btn))
-                            ui.label(tag.unit_id).classes(
+                            u = self._target_language.get_by_id(tag.unit_id)
+                            name = u.name() if u else tag.unit_id
+                            ui.label(name).classes(
                                 "text-[10px] text-gray-700 dark:text-gray-400"
                             )
 
