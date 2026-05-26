@@ -97,7 +97,7 @@ async def main_async():
             phonetic_system=real_language.phonetic_system,
             code_name=real_language.code_name,
         )
-        target._units = filtered_units[:args.cards_per_call]
+        target._units = filtered_units[: args.cards_per_call]
         target._units_by_id = {u.id(): u for u in target._units}
         target._units_by_name = {}
         for u in target._units:
@@ -126,7 +126,9 @@ async def main_async():
             for sentence in sentences:
                 tasks.append(
                     tg.create_task(
-                        tag_and_format(sentence, units, real_language, llm_client, producer)
+                        tag_and_format(
+                            sentence, units, real_language, llm_client, producer
+                        )
                     )
                 )
 
