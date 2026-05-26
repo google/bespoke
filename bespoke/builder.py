@@ -31,8 +31,7 @@ from bespoke import tagger
 class UnitProducer:
     """Helper class that tracks progress for cards per units."""
 
-    # TODO check if the heuristic works
-    # otherwise only count fitting cards
+    # Used to not draw cards when they were registered often enough.
     DRAW_BUFFER = 4
 
     def __init__(
@@ -62,8 +61,7 @@ class UnitProducer:
 
         You may not call draw when done.
         """
-        if not self._unit_pools:
-            self._refill()
+        self._refill_if_empty()
         units = []
         chosen_difficulty = None
         for difficulty in Difficulty:
@@ -75,8 +73,6 @@ class UnitProducer:
                 chosen_difficulty = difficulty
                 self._unit_pools[difficulty] = unit_pool[count:]
                 break
-        if all(not pool for pool in self._unit_pools.values()):
-            self._refill()
         assert chosen_difficulty is not None
         return units, chosen_difficulty
 
@@ -86,11 +82,12 @@ class UnitProducer:
             self._fitting_count[unit.id()] += 1
 
     def done(self) -> bool:
-        if not self._unit_pools:
-            self._refill()
+        self._refill_if_empty()
         return self._done
 
-    def _refill(self) -> None:
+    def _refill_if_empty(self) -> None:
+        if self._unit_pools and any(pool for pool in self._unit_pools.values()):
+            return
         size = 0
         total = 0
         for difficulty in Difficulty:
@@ -150,9 +147,9 @@ class SentenceProducer:
         )
         return sentences, units, grammar
 
-    def register_card(self, card: Card) -> None:
+    def register_card(self, unit_ids: list[str]) -> None:
         difficulties = {}
-        for unit_id in card.unit_ids():
+        for unit_id in unit_ids:
             unit = self._language.get_by_id(unit_id)
             if unit:
                 difficulties[unit_id] = unit.difficulty()
@@ -219,7 +216,7 @@ class DeckBuilder:
         )
         for card in all_cards:
             self._duplicates.add(card.sentence)
-            sentence_producer.register_card(card)
+            sentence_producer.register_card(card.unit_ids())
         self._start_time = datetime.now()
         print(f"Initialized with {len(self._duplicates)} existing cards")
 
@@ -266,7 +263,7 @@ class DeckBuilder:
                 unit_tags,
                 notes=[grammar],
             )
-            sentence_producer.register_card(card)
+            sentence_producer.register_card(card.unit_ids())
             self._created_count += 1
             if self._created_count % 1000 == 0 or self._created_count == 100:
                 assert self._start_time is not None

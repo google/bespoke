@@ -26,7 +26,11 @@ from bespoke import tagger
 
 
 async def tag_and_format(
-    sentence: str, units: list, language: Language, llm_client: llm.LlmClient
+    sentence: str,
+    units: list,
+    language: Language,
+    llm_client: llm.LlmClient,
+    producer: builder.SentenceProducer,
 ) -> str:
     unit_tags = await tagger.create_tags(
         sentence=sentence,
@@ -34,6 +38,7 @@ async def tag_and_format(
         language=language,
         llm_client=llm_client,
     )
+    producer.register_card([tag.unit_id for tag in unit_tags])
     lines = [f"Sentence: {sentence}", "Tags:"]
     for tag in unit_tags:
         lines.append(f"  {tag.occurance} -> {tag.unit_id}")
@@ -92,10 +97,10 @@ async def main_async():
             phonetic_system=real_language.phonetic_system,
             code_name=real_language.code_name,
         )
-        target._units = filtered_units
-        target._units_by_id = {u.id(): u for u in filtered_units}
+        target._units = filtered_units[:args.cards_per_call]
+        target._units_by_id = {u.id(): u for u in target._units}
         target._units_by_name = {}
-        for u in filtered_units:
+        for u in target._units:
             target._units_by_name.setdefault(u.name(), []).append(u)
         target._initialized = True
     else:
@@ -121,7 +126,7 @@ async def main_async():
             for sentence in sentences:
                 tasks.append(
                     tg.create_task(
-                        tag_and_format(sentence, units, real_language, llm_client)
+                        tag_and_format(sentence, units, real_language, llm_client, producer)
                     )
                 )
 
