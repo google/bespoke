@@ -167,6 +167,7 @@ class FakeLlmClient(llm.LlmClient):
         sentence: str,
         language: Language,
         hint: list[Unit],
+        marked_sentence: str | None = None,
     ) -> UnitTags:
         unit = sentence.strip(".")
         return [UnitTag(occurance=unit, unit_id=unit)]

@@ -91,6 +91,7 @@ class LlmClient(abc.ABC):
         sentence: str,
         language: Language,
         hint: list[Unit],
+        marked_sentence: str | None = None,
     ) -> UnitTags:
         """Tags words in a sentence with their dictionary form."""
 
@@ -258,24 +259,32 @@ class GeminiLlmClient(LlmClient):
         sentence: str,
         language: Language,
         hint: list[Unit],
+        marked_sentence: str | None = None,
     ) -> UnitTags:
         hints_str = "\n".join(u.id() for u in hint)
         uses_dictionary_unit = hint and isinstance(hint[0], DictionaryUnit)
         equal_occurance_text = ""
         if language.code_name in ["simp_chinese", "trad_chinese"]:
+            equal_occurance_text = "The occurance needs to exactly match the "
             if uses_dictionary_unit:
-                equal_occurance_text = (
-                    "The occurance needs to equal the first part of the unit ID. "
-                )
+                equal_occurance_text += 'part of unit ID before " - ". '
             else:
-                equal_occurance_text = "The occurance needs to equal the unit ID. "
+                equal_occurance_text += "unit ID. "
         unit_id_shape_text = ""
         if uses_dictionary_unit:
             unit_id_shape_text = (
                 'Output unit IDs in the format of the examples: "NAME - DEFINITION"'
             )
+        only_missing_text = ""
+        if marked_sentence:
+            only_missing_text = (
+                "Only the parts enclosed in brackets `[]` need to be tagged. "
+                f"The rest is already tagged correctly: \n{marked_sentence}\n"
+            )
+
         prompt = (
             f"Given is a sentence in {language.writing_system}: \n{sentence} \n"
+            f"{only_missing_text}"
             "I want to tag all words in each sentence with vocabulary. \n"
             "For each unit suggested in the hints, find its occurrence in the sentence. \n"
             f"The tags are a list of occurrences and unit IDs. {equal_occurance_text}\n"
@@ -472,24 +481,32 @@ class OpenRouterElevenLabsLlmClient(LlmClient):
         sentence: str,
         language: Language,
         hint: list[Unit],
+        marked_sentence: str | None = None,
     ) -> UnitTags:
         hints_str = "\n".join(u.id() for u in hint)
         uses_dictionary_unit = hint and isinstance(hint[0], DictionaryUnit)
         equal_occurance_text = ""
         if language.code_name in ["simp_chinese", "trad_chinese"]:
+            equal_occurance_text = "The occurance needs to exactly match the "
             if uses_dictionary_unit:
-                equal_occurance_text = (
-                    "The occurance needs to equal the first part of the unit ID. "
-                )
+                equal_occurance_text += 'part of unit ID before " - ". '
             else:
-                equal_occurance_text = "The occurance needs to equal the unit ID. "
+                equal_occurance_text += "unit ID. "
         unit_id_shape_text = ""
         if uses_dictionary_unit:
             unit_id_shape_text = (
                 'Output unit IDs in the format of the examples: "NAME - DEFINITION"'
             )
+        only_missing_text = ""
+        if marked_sentence:
+            only_missing_text = (
+                "Only the parts enclosed in brackets `[]` need to be tagged. "
+                f"The rest is already tagged correctly: \n{marked_sentence}\n"
+            )
+
         prompt = (
             f"Given is a sentence in {language.writing_system}: \n{sentence} \n"
+            f"{only_missing_text}"
             "I want to tag all words in each sentence with vocabulary. \n"
             "For each unit suggested in the hints, find its occurrence in the sentence. \n"
             f"The tags are a list of occurrences and unit IDs. {equal_occurance_text}\n"
@@ -645,24 +662,32 @@ class OpenAiLlmClient(LlmClient):
         sentence: str,
         language: Language,
         hint: typing.Sequence[Unit],
+        marked_sentence: str | None = None,
     ) -> UnitTags:
         hints_str = "\n".join(u.id() for u in hint)
         uses_dictionary_unit = hint and isinstance(hint[0], DictionaryUnit)
         equal_occurance_text = ""
         if language.code_name in ["simp_chinese", "trad_chinese"]:
+            equal_occurance_text = "The occurance needs to exactly match the "
             if uses_dictionary_unit:
-                equal_occurance_text = (
-                    "The occurance needs to equal the first part of the unit ID. "
-                )
+                equal_occurance_text += 'part of unit ID before " - ". '
             else:
-                equal_occurance_text = "The occurance needs to equal the unit ID. "
+                equal_occurance_text += "unit ID. "
         unit_id_shape_text = ""
         if uses_dictionary_unit:
             unit_id_shape_text = (
                 'Output unit IDs in the format of the examples: "NAME - DEFINITION"'
             )
+        only_missing_text = ""
+        if marked_sentence:
+            only_missing_text = (
+                "Only the parts enclosed in brackets `[]` need to be tagged. "
+                f"The rest is already tagged correctly: \n{marked_sentence}\n"
+            )
+
         prompt = (
             f"Given is a sentence in {language.writing_system}: \n{sentence} \n"
+            f"{only_missing_text}"
             "I want to tag all words in each sentence with vocabulary. \n"
             "For each unit suggested in the hints, find its occurrence in the sentence. \n"
             f"The tags are a list of occurrences and unit IDs. {equal_occurance_text}\n"

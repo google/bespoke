@@ -23,16 +23,27 @@ from bespoke import tagger
 from tests import fakes
 
 
-class TestCleanLength(unittest.TestCase):
-    def test_clean_length(self) -> None:
-        self.assertEqual(tagger.clean_length("Hello"), 5)
-        self.assertEqual(tagger.clean_length("Hello World"), 10)
-        self.assertEqual(tagger.clean_length("Hello, World!"), 10)
-        self.assertEqual(tagger.clean_length("こんにちは"), 5)
-        self.assertEqual(tagger.clean_length("こんにちは、世界！"), 7)
-        self.assertEqual(tagger.clean_length(""), 0)
-        self.assertEqual(tagger.clean_length("   "), 0)
-        self.assertEqual(tagger.clean_length("!!!"), 0)
+class TestTaggerHelpers(unittest.TestCase):
+    def test_is_punctuation_or_space(self) -> None:
+        self.assertTrue(tagger.is_punctuation_or_space(" "))
+        self.assertTrue(tagger.is_punctuation_or_space("，"))
+        self.assertTrue(tagger.is_punctuation_or_space("."))
+        self.assertFalse(tagger.is_punctuation_or_space("A"))
+        self.assertFalse(tagger.is_punctuation_or_space("你"))
+
+    def test_is_more_than_punctuation(self) -> None:
+        self.assertTrue(tagger.is_more_than_punctuation("A"))
+        self.assertTrue(tagger.is_more_than_punctuation("你"))
+        self.assertTrue(tagger.is_more_than_punctuation("，你。"))
+        self.assertFalse(tagger.is_more_than_punctuation("，。"))
+        self.assertFalse(tagger.is_more_than_punctuation("  "))
+
+    def test_strip_punctuation_and_space(self) -> None:
+        self.assertEqual(tagger.strip_punctuation_and_space("  abc  "), "abc")
+        self.assertEqual(tagger.strip_punctuation_and_space("，abc。"), "abc")
+        self.assertEqual(tagger.strip_punctuation_and_space(" ， abc 。"), "abc")
+        self.assertEqual(tagger.strip_punctuation_and_space("abc"), "abc")
+        self.assertEqual(tagger.strip_punctuation_and_space("  "), "")
 
 
 class TestCreateTags(unittest.IsolatedAsyncioTestCase):
@@ -42,7 +53,11 @@ class TestCreateTags(unittest.IsolatedAsyncioTestCase):
 
         class FakeLlmClient(fakes.FakeLlmClient):
             async def tag_sentence(
-                self, sentence: str, language, hint: list[Unit]
+                self,
+                sentence: str,
+                language,
+                hint: list[Unit],
+                marked_sentence: str | None = None,
             ) -> UnitTags:
                 return [
                     UnitTag(occurance="cat", unit_id="cat"),
@@ -71,7 +86,11 @@ class TestCreateTags(unittest.IsolatedAsyncioTestCase):
 
         class FakeLlmClient(fakes.FakeLlmClient):
             async def tag_sentence(
-                self, sentence: str, language, hint: list[Unit]
+                self,
+                sentence: str,
+                language,
+                hint: list[Unit],
+                marked_sentence: str | None = None,
             ) -> UnitTags:
                 return [
                     UnitTag(occurance="gehe", unit_id="gehen - schrittweises bewegen")
@@ -101,7 +120,11 @@ class TestCreateTags(unittest.IsolatedAsyncioTestCase):
 
         class FakeLlmClient(fakes.FakeLlmClient):
             async def tag_sentence(
-                self, sentence: str, language, hint: list[Unit]
+                self,
+                sentence: str,
+                language,
+                hint: list[Unit],
+                marked_sentence: str | None = None,
             ) -> UnitTags:
                 return [UnitTag(occurance="大學生", unit_id="大學生")]
 
@@ -123,7 +146,11 @@ class TestCreateTags(unittest.IsolatedAsyncioTestCase):
 
         class FakeLlmClient(fakes.FakeLlmClient):
             async def tag_sentence(
-                self, sentence: str, language, hint: list[Unit]
+                self,
+                sentence: str,
+                language,
+                hint: list[Unit],
+                marked_sentence: str | None = None,
             ) -> UnitTags:
                 return [
                     UnitTag(occurance="cat", unit_id="cat"),
@@ -151,7 +178,11 @@ class TestCreateTags(unittest.IsolatedAsyncioTestCase):
                 self.round = 0
 
             async def tag_sentence(
-                self, sentence: str, language, hint: list[Unit]
+                self,
+                sentence: str,
+                language,
+                hint: list[Unit],
+                marked_sentence: str | None = None,
             ) -> UnitTags:
                 self.round += 1
                 if self.round == 1:

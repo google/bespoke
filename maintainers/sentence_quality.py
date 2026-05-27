@@ -16,7 +16,6 @@
 
 import argparse
 import asyncio
-import unicodedata
 
 from bespoke import Difficulty
 from bespoke import Language
@@ -24,21 +23,6 @@ from bespoke import builder
 from bespoke import languages
 from bespoke import llm
 from bespoke import tagger
-
-
-def is_punctuation_or_space(char: str) -> bool:
-    cat = unicodedata.category(char)
-    return cat.startswith("P") or cat.startswith("Z")
-
-
-def strip_punctuation_and_space(text: str) -> str:
-    start = 0
-    while start < len(text) and is_punctuation_or_space(text[start]):
-        start += 1
-    end = len(text)
-    while end > start and is_punctuation_or_space(text[end - 1]):
-        end -= 1
-    return text[start:end]
 
 
 async def tag_and_format(
@@ -66,13 +50,13 @@ async def tag_and_format(
         start_idx = sentence.find(occurance, current_idx)
         if start_idx != -1:
             gap = sentence[current_idx:start_idx]
-            clean_gap = strip_punctuation_and_space(gap)
+            clean_gap = tagger.strip_punctuation_and_space(gap)
             if clean_gap:
                 untagged_parts.append(clean_gap)
             current_idx = start_idx + len(occurance)
 
     gap = sentence[current_idx:]
-    clean_gap = strip_punctuation_and_space(gap)
+    clean_gap = tagger.strip_punctuation_and_space(gap)
     if clean_gap:
         untagged_parts.append(clean_gap)
 
