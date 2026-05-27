@@ -40,6 +40,18 @@ from bespoke.unit import Difficulty
 
 DATA_DIR = Path("languages")
 
+ARTICLES = ["der ", "die ", "das ", "Der ", "Die ", "Das "]
+
+
+def _get_stripped_forms(text: str) -> list[str]:
+    forms = [text]
+    for article in ARTICLES:
+        if text.startswith(article):
+            stripped = text[len(article) :].strip()
+            if stripped:
+                forms.append(stripped)
+    return forms
+
 
 class Language(pydantic.BaseModel):
     # The English word for the spoken language. Not necessarily unique.
@@ -92,6 +104,11 @@ class Language(pydantic.BaseModel):
                 self._units.append(unit)
                 self._units_by_id[unit.id()] = unit
                 self._units_by_name.setdefault(unit.name(), []).append(unit)
+                parts = [p.strip() for p in unit.name().split(",")]
+                for part in parts:
+                    for form in _get_stripped_forms(part):
+                        if form != unit.name():
+                            self._units_by_name.setdefault(form, []).append(unit)
 
         self._initialized = True
 
