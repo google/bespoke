@@ -98,7 +98,7 @@ die Bank,,A1
 bar,,A1
 der Bauch,,A1
 der Baum,,A1
-"der Beamte, die Beamtin",,A1
+"der Beamte, die Beamte",,A1
 bedeuten,,A1
 beginnen,,A1
 bei,,A1
@@ -154,7 +154,7 @@ böse,,A1
 das Café,,A1
 die CD,,A1
 der Cent,,A1
-"der Chef, die Chefin",,A1
+der Chef,,A1
 circa,,A1
 der Computer,,A1
 da,,A1
@@ -170,14 +170,14 @@ dein,,A1
 denn,,A1
 der,,A1
 deutsch,,A1
-"der Deutsche, die Deutsche",,A1
+"die Deutsche, der Deutsche",,A1
 das Deutschland,,A1
 der Dezember,,A1
 dich,,A1
 die,,A1
 der Dienstag,,A1
 dir,,A1
-"der Doktor, die Doktorin",,A1
+der Doktor,,A1
 der Donnerstag,,A1
 das Doppelzimmer,,A1
 das Dorf,,A1
@@ -199,7 +199,7 @@ dürfen,,A1
 die E-Mail,,A1
 die Ecke,,A1
 die Ehefrau,,A1
-"der Ehemann, die Ehefrau, der Ehepartner",,A1
+der Ehemann,,A1
 das Ei,,A1
 eilig,,A1
 ein,,A1
@@ -277,7 +277,7 @@ der Freitag,,A1
 die Freizeit,,A1
 fremd,,A1
 freuen,,A1
-"der Freund, die Freundin",,A1
+der Freund,,A1
 früher,,A1
 das Frühjahr,,A1
 der Frühling,,A1
@@ -355,8 +355,8 @@ die Hand,,A1
 das Handy,,A1
 das Haus,,A1
 die Hausaufgabe,,A1
-der Hausmann,,A1
 die Hausfrau,,A1
+der Hausmann,,A1
 die Heimat,,A1
 heiraten,,A1
 heißen,,A1
@@ -438,7 +438,8 @@ kriegen,,A1
 der Kuchen,,A1
 der Kugelschreiber,,A1
 kulturell,,A1
-"der Kunde, die Kundin",,A1
+der Kunde,,A1
+die Kundin,,A1
 der Kurs,,A1
 kurz,,A1
 können,,A1
@@ -458,7 +459,7 @@ leben,,A1
 das Lebensmittel,,A1
 ledig,,A1
 legen,,A1
-"der Lehrer, die Lehrerin",,A1
+der Lehrer,,A1
 leicht,,A1
 leider,,A1
 leise,,A1
@@ -475,6 +476,7 @@ liegen,,A1
 links,,A1
 "der Liter, das Liter",,A1
 der LKW,,A1
+der Lkw,,A1
 das Lokal,,A1
 lustig,,A1
 die Lösung,,A1
@@ -519,6 +521,7 @@ müssen,,A1
 nach,,A1
 der Nachmittag,,A1
 der Name,,A1
+der Namen,,A1
 nehmen,,A1
 nein,,A1
 neu,,A1
@@ -534,7 +537,7 @@ normal,,A1
 der November,,A1
 die Nummer,,A1
 nur,,A1
-nächste,,A1
+nächst,,A1
 oben,,A1
 das Obst,,A1
 oder,,A1
@@ -547,7 +550,8 @@ die Ordnung,,A1
 der Ort,,A1
 der Osten,,A1
 das Papier,,A1
-"der Partner, die Partnerin",,A1
+der Partner,,A1
+die Partnerin,,A1
 die Party,,A1
 der Pass,,A1
 die Pause,,A1
@@ -616,7 +620,7 @@ die Schwester,,A1
 das Schwimmbad,,A1
 schwimmen,,A1
 schön,,A1
-"der Schüler, die Schülerin",,A1
+der Schüler,,A1
 sechs,,A1
 sechzehn,,A1
 sechzig,,A1
@@ -648,6 +652,7 @@ der Sonnabend,,A1
 die Sonne,,A1
 der Sonntag,,A1
 die Speisekarte,,A1
+die Speisenkarte,,A1
 spielen,,A1
 der Sport,,A1
 die Sprache,,A1
@@ -661,7 +666,7 @@ stellen,,A1
 der Stock,,A1
 die Straße,,A1
 die Straßenbahn,,A1
-"der Student, die Studentin",,A1
+der Student,,A1
 studieren,,A1
 das Studium,,A1
 die Stunde,,A1
@@ -707,9 +712,9 @@ verboten,,A1
 verdienen,,A1
 der Verein,,A1
 verkaufen,,A1
-"der Verkäufer, die Verkäuferin",,A1
+der Verkäufer,,A1
 vermieten,,A1
-"der Vermieter, die Vermieterin",,A1
+der Vermieter,,A1
 verstehen,,A1
 "die Verwandte, der Verwandte",,A1
 viel,,A1
@@ -865,7 +870,7 @@ die Bewerbung,,A2
 bewölkt,,A2
 die Bibliothek,,A2
 das Blatt,,A2
-"der Blog, das Blog",,A2
+"das Blog, der Blog",,A2
 blond,,A2
 die Bluse,,A2
 blöd,,A2
@@ -879,10 +884,12 @@ bunt,,A2
 das Büro,,A2
 die Cafeteria,,A2
 chatten,,A2
+die Chefin,,A2
 der Circus,,A2
 der Club,,A2
 der Comic,,A2
 die Creme,,A2
+die Crème,,A2
 dabei,,A2
 dafür,,A2
 dagegen,,A2
@@ -898,7 +905,8 @@ deutlich,,A2
 dick,,A2
 das Ding,,A2
 direkt,,A2
-"die Disco, die Disko",,A2
+die Disco,,A2
+die Disko,,A2
 diskutieren,,A2
 doch,,A2
 dorther,,A2
@@ -912,6 +920,7 @@ dünn,,A2
 das E-Book,,A2
 echt,,A2
 egal,,A2
+der Ehepartner,,A2
 eigen,,A2
 eigentlich,,A2
 ein Mal,,A2
@@ -955,6 +964,7 @@ der Fluss,,A2
 der Fotoapparat,,A2
 fotografieren,,A2
 freiwillig,,A2
+die Freundin,,A2
 freundlich,,A2
 frisch,,A2
 froh,,A2
@@ -962,7 +972,7 @@ früh,,A2
 die Fundsache,,A2
 furchtbar,,A2
 fühlen,,A2
-"der Führerausweis, der Führerschein",,A2
+der Führerschein,,A2
 die Gabel,,A2
 ganz,,A2
 die Garage,,A2
@@ -1007,6 +1017,7 @@ hoffentlich,,A2
 die Homepage,,A2
 die Hose,,A2
 husten,,A2
+das Händetuch,,A2
 hängen,,A2
 hässlich,,A2
 die Idee,,A2
@@ -1035,7 +1046,7 @@ das Klavier,,A2
 das Kleid,,A2
 der Klub,,A2
 klug,,A2
-"der Mitarbeiter, die Mitarbeiterin",,A2
+die Kollegin,,A2
 komisch,,A2
 der Kontakt,,A2
 kontrollieren,,A2
@@ -1089,6 +1100,7 @@ die Messe,,A2
 das Messer,,A2
 mindestens,,A2
 das Mineralwasser,,A2
+der Mitarbeiter,,A2
 das Mittagessen,,A2
 das Mittel,,A2
 das Mobiltelefon,,A2
@@ -1100,7 +1112,8 @@ das Museum,,A2
 die Musik,,A2
 der Müll,,A2
 die Mütze,,A2
-"der Nachbar, die Nachbarin",,A2
+der Nachbar,,A2
+die Nachbarin,,A2
 die Nachricht,,A2
 nass,,A2
 die Natur,,A2
@@ -1120,6 +1133,7 @@ die Notiz,,A2
 notwendig,,A2
 die Nudel,,A2
 der Nächste,,A2
+der nächste,,A2
 die Nähe,,A2
 nützlich,,A2
 offen,,A2
@@ -1131,6 +1145,7 @@ das Paar,,A2
 paar,,A2
 packen,,A2
 das Paket,,A2
+das Parfum,,A2
 das Parfüm,,A2
 der Park,,A2
 parken,,A2
@@ -1177,7 +1192,8 @@ rein,,A2
 die Reinigung,,A2
 reiten,,A2
 renovieren,,A2
-"der Rentner, die Rentnerin",,A2
+der Rentner,,A2
+die Rentnerin,,A2
 reservieren,,A2
 der Rest,,A2
 das Rezept,,A2
@@ -1221,6 +1237,7 @@ schwanger,,A2
 das Schwein,,A2
 schwierig,,A2
 schädlich,,A2
+die Schülerin,,A2
 die Seife,,A2
 die Seite,,A2
 selbst,,A2
@@ -1234,9 +1251,10 @@ sonnig,,A2
 sonst,,A2
 spannend,,A2
 sparen,,A2
-der Spaß,,A2
+der Spass,,A2
 spazieren,,A2
 der Spaziergang,,A2
+der Spaß,,A2
 das Spiel,,A2
 sportlich,,A2
 der Sportplatz,,A2
@@ -1255,6 +1273,7 @@ streiten,,A2
 streng,,A2
 der Stress,,A2
 stressig,,A2
+die Studentin,,A2
 der Stuhl,,A2
 stören,,A2
 das Stück,,A2
@@ -1286,7 +1305,8 @@ der Topf,,A2
 die Torte,,A2
 total,,A2
 die Tour,,A2
-"der Tourist, die Touristin",,A2
+der Tourist,,A2
+die Touristin,,A2
 tragen,,A2
 trainieren,,A2
 das Training,,A2
@@ -1320,6 +1340,7 @@ das Verkehrsmittel,,A2
 verletzen,,A2
 verlieben,,A2
 verlieren,,A2
+die Vermieterin,,A2
 verpassen,,A2
 verreisen,,A2
 verschieben,,A2
@@ -1342,6 +1363,7 @@ wahr,,A2
 wahrscheinlich,,A2
 der Wald,,A2
 warm,,A2
+die Web-Seite,,A2
 die Webseite,,A2
 wechseln,,A2
 wecken,,A2
@@ -1547,9 +1569,11 @@ der Backofen,,B1
 das Backrohr,,B1
 die Badewanne,,B1
 das Ballett,,B1
-"der Bancomat, der Bankomat",,B1
-"die Bancomatkarte, die Bankomatkarte",,B1
+der Bancomat,,B1
+die Bancomatkarte,,B1
 die Bankleitzahl,,B1
+der Bankomat,,B1
+die Bankomatkarte,,B1
 die Bar,,B1
 das Bargeld,,B1
 der Bart,,B1
@@ -1558,6 +1582,7 @@ der Bau,,B1
 der Bauer,,B1
 der Bauernhof,,B1
 beachten,,B1
+die Beamtin,,B1
 beantragen,,B1
 der Bedarf,,B1
 die Bedeutung,,B1
@@ -1620,17 +1645,20 @@ die Bestätigung,,B1
 beteiligen,,B1
 der Betrag,,B1
 betreuen,,B1
-"der Betreuer, die Betreuerin",,B1
+der Betreuer,,B1
+die Betreuerin,,B1
 die Betreuung,,B1
 der Betrieb,,B1
-"der Betriebsrat, die Betriebsrätin",,B1
+der Betriebsrat,,B1
+die Betriebsrätin,,B1
 betrunken,,B1
 betrügen,,B1
 bevor,,B1
 die Bevölkerung,,B1
 der Beweis,,B1
 beweisen,,B1
-"der Bewohner, die Bewohnerin",,B1
+der Bewohner,,B1
+die Bewohnerin,,B1
 die Beziehung,,B1
 bieten,,B1
 der Bildschirm,,B1
@@ -1657,7 +1685,8 @@ bremsen,,B1
 brennen,,B1
 der Briefkasten,,B1
 die Brieftasche,,B1
-"der Briefträger, die Briefträgerin",,B1
+der Briefträger,,B1
+die Briefträgerin,,B1
 der Briefumschlag,,B1
 die Broschüre,,B1
 die Brust,,B1
@@ -1669,14 +1698,17 @@ die Burg,,B1
 die Büchse,,B1
 das Büfett,,B1
 die Bühne,,B1
-"der Bürger, die Bürgerin",,B1
+der Bürger,,B1
+die Bürgerin,,B1
 die Bürste,,B1
 die Chance,,B1
 chic,,B1
 die Chipkarte,,B1
-"der Coiffeur, die Coiffeuse",,B1
+der Coiffeur,,B1
+die Coiffeuse,,B1
 die Couch,,B1
-"der Cousin, die Cousine",,B1
+der Cousin,,B1
+die Cousine,,B1
 das Couvert,,B1
 das Dach,,B1
 daher,,B1
@@ -1712,11 +1744,13 @@ dieses,,B1
 diesmal,,B1
 digital,,B1
 das Diplom,,B1
-"der Direktor, die Direktorin",,B1
+der Direktor,,B1
+die Direktorin,,B1
 die Diskothek,,B1
 die Diskussion,,B1
 die Distanz,,B1
 die Diät,,B1
+die Doktorin,,B1
 das Dokument,,B1
 der Donner,,B1
 donnern,,B1
@@ -1750,7 +1784,8 @@ eilen,,B1
 ein paar,,B1
 die Einbahnstraße,,B1
 einbrechen,,B1
-"der Einbrecher, die Einbrecherin",,B1
+der Einbrecher,,B1
+die Einbrecherin,,B1
 der Einbruch,,B1
 eindeutig,,B1
 der Eindruck,,B1
@@ -1777,7 +1812,8 @@ das Einschreiben,,B1
 einsetzen,,B1
 einstellen,,B1
 eintreten,,B1
-"der Einwohner, die Einwohnerin",,B1
+der Einwohner,,B1
+die Einwohnerin,,B1
 einzahlen,,B1
 die Einzahlung,,B1
 einzel-,,B1
@@ -1793,7 +1829,8 @@ empfangen,,B1
 die Empfehlung,,B1
 endgültig,,B1
 die Energie,,B1
-"der Enkel, die Enkelin",,B1
+der Enkel,,B1
+die Enkelin,,B1
 entdecken,,B1
 entfernen,,B1
 die Entfernung,,B1
@@ -1813,6 +1850,7 @@ enttäuschen,,B1
 die Enttäuschung,,B1
 entweder,,B1
 entwickeln,,B1
+die Entwickelung,,B1
 die Entwicklung,,B1
 der Erdapfel,,B1
 die Erde,,B1
@@ -1869,8 +1907,9 @@ der Export,,B1
 extra,,B1
 extrem,,B1
 die Fabrik,,B1
-"der Fachmann, die Fachfrau",,B1
+die Fachfrau,,B1
 Fachleute,,B1
+der Fachmann,,B1
 die Fahrbahn,,B1
 das Fahrzeug,,B1
 fair,,B1
@@ -1886,6 +1925,7 @@ die Fasnacht,,B1
 fassen,,B1
 faulenzen,,B1
 der Fauteuil,,B1
+der Feber,,B1
 das Feld,,B1
 die Fernbedienung,,B1
 das Fernsehen,,B1
@@ -1938,16 +1978,19 @@ die Fremdsprache,,B1
 fressen,,B1
 die Freude,,B1
 die Freundschaft,,B1
-"der Friede, der Frieden",,B1
+der Friede,,B1
+der Frieden,,B1
 frieren,,B1
-"der Friseur, der Frisör",,B1
+der Friseur,,B1
 die Frist,,B1
 die Frisur,,B1
+der Frisör,,B1
 die Frucht,,B1
 fröhlich,,B1
 das Fundbüro,,B1
 funktionieren,,B1
-"der Fußgänger, die Fußgängerin",,B1
+der Fußgänger,,B1
+die Fußgängerin,,B1
 die Fußgängerzone,,B1
 die Fähigkeit,,B1
 die Fähre,,B1
@@ -1955,6 +1998,7 @@ fällig,,B1
 färbig,,B1
 fördern,,B1
 führen,,B1
+der Führerausweis,,B1
 fürchten,,B1
 füttern,,B1
 die Galerie,,B1
@@ -2026,7 +2070,8 @@ gießen,,B1
 das Gift,,B1
 giftig,,B1
 das Girokonto,,B1
-"die Glace, die Glacé",,B1
+die Glace,,B1
+die Glacé,,B1
 glatt,,B1
 gleichberechtigt,,B1
 gleichfalls,,B1
@@ -2034,7 +2079,8 @@ gleichzeitig,,B1
 das Gold,,B1
 das Golf,,B1
 der Gott,,B1
-"die Grafik, die Graphik",,B1
+die Grafik,,B1
+die Graphik,,B1
 das Gras,,B1
 gratis,,B1
 die Gratulation,,B1
@@ -2064,7 +2110,8 @@ der Handwerker,,B1
 hassen,,B1
 haupt-,,B1
 der Hauptbahnhof,,B1
-"der Hausmeister, die Hausmeisterin",,B1
+der Hausmeister,,B1
+die Hausmeisterin,,B1
 das Haustier,,B1
 die Haut,,B1
 heben,,B1
@@ -2073,8 +2120,10 @@ heim,,B1
 heimlich,,B1
 das Heimweh,,B1
 heizen,,B1
-"der Held, die Heldin",,B1
-"das Henderl, das Hendl",,B1
+der Held,,B1
+die Heldin,,B1
+das Henderl,,B1
+das Hendl,,B1
 herausfinden,,B1
 die Herausforderung,,B1
 herein-,,B1
@@ -2102,12 +2151,14 @@ hupen,,B1
 der Husten,,B1
 der Hut,,B1
 die Hälfte,,B1
-"der Händler, die Händlerin",,B1
+der Händler,,B1
+die Händlerin,,B1
 häufig,,B1
 höchstens,,B1
 höflich,,B1
 die Höhe,,B1
-"der Hörer, die Hörerin",,B1
+der Hörer,,B1
+die Hörerin,,B1
 hübsch,,B1
 der Hügel,,B1
 das Hühnchen,,B1
@@ -2149,7 +2200,8 @@ jedes Mal,,B1
 jedoch,,B1
 jemals,,B1
 jeweils,,B1
-"der Journalist, die Journalistin",,B1
+der Journalist,,B1
+die Journalistin,,B1
 die Jugend,,B1
 das Kabel,,B1
 die Kabine,,B1
@@ -2173,7 +2225,8 @@ der Katalog,,B1
 die Katastrophe,,B1
 der Kauf,,B1
 kaum,,B1
-"der Kellner, die Kellnerin",,B1
+der Kellner,,B1
+die Kellnerin,,B1
 das Kennzeichen,,B1
 die Kerze,,B1
 die Kindheit,,B1
@@ -2201,7 +2254,7 @@ das Knie,,B1
 der Knochen,,B1
 der Knopf,,B1
 der Knödel,,B1
-"der Koch, die Köchin",,B1
+der Koch,,B1
 die Kommunikation,,B1
 komplett,,B1
 kompliziert,,B1
@@ -2227,7 +2280,8 @@ die Kraft,,B1
 das Kraftfahrzeug,,B1
 das Kraftwerk,,B1
 "die Kranke, der Kranke",,B1
-"der Krankenpfleger, die Krankenschwester",,B1
+der Krankenpfleger,,B1
+die Krankenschwester,,B1
 der Krankenwagen,,B1
 kreativ,,B1
 der Kreis,,B1
@@ -2241,18 +2295,22 @@ kritisieren,,B1
 kräftig,,B1
 der Kuli,,B1
 der Kunststoff,,B1
-"der Kursleiter, die Kursleiterin",,B1
+der Kursleiter,,B1
+die Kursleiterin,,B1
 die Kurve,,B1
 die Kusine,,B1
 der Kuss,,B1
 das Kuvert,,B1
 die Kälte,,B1
 kämpfen,,B1
-"der Käufer, die Käuferin",,B1
+der Käufer,,B1
+die Käuferin,,B1
+die Köchin,,B1
 der König,,B1
 körperlich,,B1
 die Kündigung,,B1
-"der Künstler, die Künstlerin",,B1
+der Künstler,,B1
+die Künstlerin,,B1
 künstlich,,B1
 kürzlich,,B1
 küssen,,B1
@@ -2263,6 +2321,7 @@ landen,,B1
 die Landung,,B1
 die Landwirtschaft,,B1
 die Langeweile,,B1
+die Langweile,,B1
 langweilen,,B1
 der Laster,,B1
 das Laufwerk,,B1
@@ -2272,6 +2331,7 @@ der Lebenslauf,,B1
 lecker,,B1
 das Leder,,B1
 die Lehre,,B1
+die Lehrerin,,B1
 der Lehrling,,B1
 die Lehrstelle,,B1
 leiden,,B1
@@ -2279,10 +2339,13 @@ leisten,,B1
 die Leistung,,B1
 leiten,,B1
 die Leiter,,B1
-"der Leiter, die Leiterin",,B1
+der Leiter,,B1
+die Leiterin,,B1
 die Leitung,,B1
-"der Lerner, die Lernerin",,B1
-"der Leser, die Leserin",,B1
+der Lerner,,B1
+die Lernerin,,B1
+der Leser,,B1
+die Leserin,,B1
 das Lexikon,,B1
 die Lieferung,,B1
 der Lift,,B1
@@ -2311,7 +2374,8 @@ mager,,B1
 die Mahlzeit,,B1
 die Mahnung,,B1
 das Mal,,B1
-"der Maler, die Malerin",,B1
+der Maler,,B1
+die Malerin,,B1
 der Mangel,,B1
 die Mappe,,B1
 die Margarine,,B1
@@ -2323,7 +2387,8 @@ das Material,,B1
 die Matura,,B1
 die Mauer,,B1
 maximal,,B1
-"der Mechaniker, die Mechanikerin",,B1
+der Mechaniker,,B1
+die Mechanikerin,,B1
 das Medium,,B1
 die Medizin,,B1
 das Mehl,,B1
@@ -2343,15 +2408,17 @@ das Metall,,B1
 die Methode,,B1
 die Metropole,,B1
 der Metzger,,B1
-"der Mieter, die Mieterin",,B1
-"der Migrant, die Migrantin",,B1
+der Mieter,,B1
+die Mieterin,,B1
+der Migrant,,B1
+die Migrantin,,B1
 die Migration,,B1
 mild,,B1
 die Minderheit,,B1
 minimal,,B1
 mischen,,B1
 miss-,,B1
-"der Mitarbeiter, die Mitarbeiterin",,B1
+die Mitarbeiterin,,B1
 miteinander,,B1
 das Mitglied,,B1
 mitteilen,,B1
@@ -2366,7 +2433,8 @@ der Mond,,B1
 der Monitor,,B1
 das Motorrad,,B1
 musikalisch,,B1
-"der Musiker, die Musikerin",,B1
+der Musiker,,B1
+die Musikerin,,B1
 der Muskel,,B1
 der Mut,,B1
 mutig,,B1
@@ -2460,15 +2528,18 @@ die Panne,,B1
 der Paradeiser,,B1
 parallel,,B1
 parkieren,,B1
-"der Passagier, die Passagierin",,B1
+der Passagier,,B1
+die Passagierin,,B1
 passiv,,B1
-"der Patient, die Patientin",,B1
+der Patient,,B1
+die Patientin,,B1
 pauschal,,B1
 das Pech,,B1
 peinlich,,B1
 die Pension,,B1
 pensionieren,,B1
-"der Pensionist, die Pensionistin",,B1
+der Pensionist,,B1
+die Pensionistin,,B1
 per,,B1
 perfekt,,B1
 der Perron,,B1
@@ -2482,7 +2553,8 @@ pflanzen,,B1
 das Pflaster,,B1
 die Pflaume,,B1
 pflegen,,B1
-"der Pfleger, die Pflegerin",,B1
+der Pfleger,,B1
+die Pflegerin,,B1
 die Pflicht,,B1
 die Phantasie,,B1
 der Photograph,,B1
@@ -2493,20 +2565,26 @@ der Pilz,,B1
 die Planung,,B1
 "das Plastik, der Plastik",,B1
 die Politik,,B1
-"der Politiker, die Politikerin",,B1
+der Politiker,,B1
+die Politikerin,,B1
 politisch,,B1
-"der Polizist, die Polizistin",,B1
+der Polizist,,B1
+die Polizistin,,B1
 populär,,B1
-"das Portemonnaie, das Portmonee",,B1
+das Portemonnaie,,B1
+das Portmonee,,B1
 positiv,,B1
 das Poulet,,B1
-"der Praktikant, die Praktikantin",,B1
+der Praktikant,,B1
+die Praktikantin,,B1
 prima,,B1
 die Produktion,,B1
 produzieren,,B1
-"der Professor, die Professorin",,B1
+der Professor,,B1
+die Professorin,,B1
 der Profi,,B1
-"der Profisportler, die Profisportlerin",,B1
+der Profisportler,,B1
+die Profisportlerin,,B1
 prost,,B1
 der Protest,,B1
 protestieren,,B1
@@ -2521,14 +2599,16 @@ das Quartier,,B1
 quer,,B1
 die Quittung,,B1
 der Rabatt,,B1
-"der Radfahrer, die Radfahrerin",,B1
+der Radfahrer,,B1
+die Radfahrerin,,B1
 der Rahm,,B1
 der Rand,,B1
 der Rasen,,B1
 rasieren,,B1
 der Rat,,B1
 der Ratschlag,,B1
-"der Raucher, die Raucherin",,B1
+"der Raucher, das Raucher",,B1
+die Raucherin,,B1
 rauf,,B1
 rauf-,,B1
 raus-,,B1
@@ -2563,11 +2643,13 @@ die Religion,,B1
 rennen,,B1
 die Rente,,B1
 die Reportage,,B1
-"der Reporter, die Reporterin",,B1
+der Reporter,,B1
+die Reporterin,,B1
 die Reservierung,,B1
 der Respekt,,B1
 retten,,B1
-"der Richter, die Richterin",,B1
+der Richter,,B1
+die Richterin,,B1
 die Richtung,,B1
 riesig,,B1
 das Risiko,,B1
@@ -2594,13 +2676,15 @@ der Sand,,B1
 satt,,B1
 die Sauce,,B1
 die Schachtel,,B1
+der Schade,,B1
 der Schaden,,B1
 schaden,,B1
 schalten,,B1
 der Schatten,,B1
 schauen,,B1
 das Schaufenster,,B1
-"der Schauspieler, die Schauspielerin",,B1
+der Schauspieler,,B1
+die Schauspielerin,,B1
 die Scheibe,,B1
 scheiden,,B1
 die Scheidung,,B1
@@ -2611,6 +2695,8 @@ schieben,,B1
 schief,,B1
 schießen,,B1
 der Schlaf,,B1
+das Schlagobers,,B1
+der Schlagrahm,,B1
 die Schlagsahne,,B1
 die Schlange,,B1
 schlank,,B1
@@ -2626,7 +2712,8 @@ der Schrecken,,B1
 das Schreiben,,B1
 schreien,,B1
 die Schrift,,B1
-"der Schriftsteller, die Schriftstellerin",,B1
+der Schriftsteller,,B1
+die Schriftstellerin,,B1
 der Schritt,,B1
 die Schularbeit,,B1
 die Schuld,,B1
@@ -2645,7 +2732,8 @@ die Schüssel,,B1
 schütteln,,B1
 schützen,,B1
 seitdem,,B1
-"der Sekretär, die Sekretärin",,B1
+der Sekretär,,B1
+die Sekretärin,,B1
 selb,,B1
 selber,,B1
 selbstverständlich,,B1
@@ -2656,10 +2744,11 @@ das Seminar,,B1
 die Semmel,,B1
 senden,,B1
 der Sender,,B1
-"der Senior, die Seniorin",,B1
+der Senior,,B1
+die Seniorin,,B1
 senkrecht,,B1
 die Serie,,B1
-"der Serviceangestellte, die Serviceangestellte",,B1
+"die Serviceangestellte, der Serviceangestellte",,B1
 der Sessel,,B1
 sicher,,B1
 die Sicherheit,,B1
@@ -2667,7 +2756,8 @@ sichern,,B1
 sichtbar,,B1
 der Sieg,,B1
 siegen,,B1
-"der Sieger, die Siegerin",,B1
+der Sieger,,B1
+die Siegerin,,B1
 siezen,,B1
 sinken,,B1
 der Sinn,,B1
@@ -2694,22 +2784,26 @@ soviel,,B1
 sowieso,,B1
 sowohl,,B1
 sozial,,B1
-"der Sozialarbeiter, die Sozialarbeiterin",,B1
+der Sozialarbeiter,,B1
+die Sozialarbeiterin,,B1
 die Soße,,B1
 sparsam,,B1
 spazieren gehen,,B1
 die Speise,,B1
 der Speisewagen,,B1
 spezial-,,B1
-"der Spezialist, die Spezialistin",,B1
+der Spezialist,,B1
+die Spezialistin,,B1
 speziell,,B1
 der Spiegel,,B1
-"der Spieler, die Spielerin",,B1
+der Spieler,,B1
+die Spielerin,,B1
 der Spielplatz,,B1
 das Spielzeug,,B1
 spitz,,B1
 die Sportart,,B1
-"der Sportler, die Sportlerin",,B1
+der Sportler,,B1
+die Sportlerin,,B1
 springen,,B1
 die Spritze,,B1
 die Spur,,B1
@@ -2742,7 +2836,8 @@ der Stein,,B1
 der Stempel,,B1
 der Stern,,B1
 die Steuer,,B1
-"der Steward, die Stewardess",,B1
+der Steward,,B1
+die Stewardess,,B1
 die Stiege,,B1
 das Stiegenhaus,,B1
 der Stil,,B1
@@ -2782,7 +2877,8 @@ das Symbol,,B1
 das System,,B1
 die Szene,,B1
 sämtlich,,B1
-"der Sänger, die Sängerin",,B1
+der Sänger,,B1
+die Sängerin,,B1
 süchtig,,B1
 die Tabelle,,B1
 der Tagesablauf,,B1
@@ -2804,7 +2900,8 @@ die Technik,,B1
 technisch,,B1
 die Technologie,,B1
 die Teilnahme,,B1
-"der Teilnehmer, die Teilnehmerin",,B1
+der Teilnehmer,,B1
+die Teilnehmerin,,B1
 teilweise,,B1
 die Teilzeit,,B1
 die Temperatur,,B1
@@ -2825,7 +2922,8 @@ das Tor,,B1
 der Tourismus,,B1
 die Tradition,,B1
 traditionell,,B1
-"der Trainer, die Trainerin",,B1
+der Trainer,,B1
+die Trainerin,,B1
 die Tram,,B1
 der Transport,,B1
 transportieren,,B1
@@ -2847,7 +2945,8 @@ das Tuch,,B1
 der Turm,,B1
 twittern,,B1
 der Typ,,B1
-"der Täter, die Täterin",,B1
+der Täter,,B1
+die Täterin,,B1
 die Tätigkeit,,B1
 tödlich,,B1
 die Tüte,,B1
@@ -2880,7 +2979,8 @@ unterbrechen,,B1
 die Unterhaltung,,B1
 die Unterlage,,B1
 unterlassen,,B1
-"der Unternehmer, die Unternehmerin",,B1
+der Unternehmer,,B1
+die Unternehmerin,,B1
 unterrichten,,B1
 untersagt,,B1
 unterscheiden,,B1
@@ -2905,7 +3005,8 @@ verbinden,,B1
 die Verbindung,,B1
 das Verbot,,B1
 verbrauchen,,B1
-"der Verbrecher, die Verbrecherin",,B1
+der Verbrecher,,B1
+die Verbrecherin,,B1
 verbrennen,,B1
 verbringen,,B1
 der Verdacht,,B1
@@ -2923,6 +3024,7 @@ verhalten,,B1
 verhindern,,B1
 das Verhältnis,,B1
 das Verkehrszeichen,,B1
+die Verkäuferin,,B1
 der Verlag,,B1
 verlangen,,B1
 verlassen,,B1
@@ -2961,7 +3063,8 @@ verteilen,,B1
 das Vertrauen,,B1
 vertrauen,,B1
 vertreten,,B1
-"der Vertreter, die Vertreterin",,B1
+der Vertreter,,B1
+die Vertreterin,,B1
 die Vertretung,,B1
 verursachen,,B1
 verurteilen,,B1
@@ -3048,10 +3151,12 @@ winken,,B1
 wirken,,B1
 die Wirklichkeit,,B1
 die Wirkung,,B1
-"der Wirt, die Wirtin",,B1
+der Wirt,,B1
+die Wirtin,,B1
 die Wirtschaft,,B1
 das Wissen,,B1
-"der Wissenschaftler, die Wissenschaftlerin",,B1
+der Wissenschaftler,,B1
+die Wissenschaftlerin,,B1
 wohl,,B1
 der Wohnort,,B1
 der Wohnsitz,,B1
@@ -3070,6 +3175,7 @@ zahlreich,,B1
 die Zahlung,,B1
 die Zahnbürste,,B1
 die Zahncreme,,B1
+die Zahncrème,,B1
 die Zahnpasta,,B1
 die Zange,,B1
 das Zeichen,,B1
@@ -3081,7 +3187,8 @@ zentral,,B1
 zerstören,,B1
 das Zertifikat,,B1
 das Zeug,,B1
-"der Zeuge, die Zeugin",,B1
+der Zeuge,,B1
+die Zeugin,,B1
 ziemlich,,B1
 der Zins,,B1
 der Zivilstand,,B1
@@ -3093,7 +3200,8 @@ der Zugang,,B1
 zugehen,,B1
 zugänglich,,B1
 das Zuhause,,B1
-"der Zuhörer, die Zuhörerin",,B1
+der Zuhörer,,B1
+die Zuhörerin,,B1
 die Zukunft,,B1
 zukünftig,,B1
 zumindest,,B1
@@ -3106,7 +3214,8 @@ die Zusammenarbeit,,B1
 zusammenfassen,,B1
 der Zusammenhang,,B1
 zuschauen,,B1
-"der Zuschauer, die Zuschauerin",,B1
+der Zuschauer,,B1
+die Zuschauerin,,B1
 der Zuschlag,,B1
 der Zustand,,B1
 zustimmen,,B1
@@ -3151,7 +3260,8 @@ die Übernachtung,,B1
 die Überraschung,,B1
 überreden,,B1
 die Überschrift,,B1
-"der Übersetzer, die Übersetzerin",,B1
+der Übersetzer,,B1
+die Übersetzerin,,B1
 die Überstunde,,B1
 übertreiben,,B1
 die Überweisung,,B1
