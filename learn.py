@@ -350,4 +350,4 @@ def index():
         RatingWebApp(deck._target_language, deck, deck_filename)
 
 
-ui.run(title="Bespoke", favicon="🐝")
+ui.run(title="Bespoke", favicon="🐝", reconnect_timeout=60.0)
