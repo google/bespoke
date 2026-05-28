@@ -80,7 +80,7 @@ class RatingWebApp:
         self, label: str, filename: str, autoplay: bool = False
     ) -> None:
         with ui.row().classes("items-center gap-2"):
-            ui.label(label).classes("font-bold w-16")
+            ui.label(label).classes("font-bold w-16 readable-text")
             if os.path.exists(filename):
                 ui.audio(filename, autoplay=autoplay, controls=True)
             else:
@@ -185,7 +185,7 @@ class RatingWebApp:
                 for tag in self._card.split_into_parts():
                     if not tag.unit_id:
                         ui.label(tag.occurance).classes(
-                            "self-center text-lg p-2 text-black dark:text-white"
+                            "self-center text-lg p-2 readable-text"
                         )
                     else:
                         with ui.column().classes("items-center gap-0"):
@@ -195,9 +195,7 @@ class RatingWebApp:
                             all_buttons.append((tag.unit_id, btn))
                             u = self._target_language.get_by_id(tag.unit_id)
                             name = u.name() if u else tag.unit_id
-                            ui.label(name).classes(
-                                "text-[10px] text-gray-700 dark:text-gray-400"
-                            )
+                            ui.label(name).classes("text-[10px] gray-text")
 
             # 4. Controls
             ui.separator().classes("my-4")
@@ -211,9 +209,9 @@ class RatingWebApp:
                 ui.button("All Success", on_click=make_all_green).props(
                     "outline color=positive"
                 )
-                report_switch = ui.switch("Report Error").classes(
-                    "text-black dark:text-white"
-                )
+                with ui.row().classes("items-center gap-2"):
+                    report_switch = ui.switch()
+                    ui.label("Report Error").classes("gray-text")
 
             ui.button(
                 "Next", on_click=lambda: self._finalize(report_switch.value)
@@ -320,6 +318,31 @@ deck, deck_filename = open_deck()
 def index():
     ui.dark_mode(value="auto")
     ui.query("body").classes("bg-gray-50 dark:bg-zinc-900 m-0 p-0")
+
+    # Custom CSS for dark mode support where Tailwind fails or Quasar overrides
+    ui.add_head_html("""
+        <style>
+        .readable-text {
+            color: #111827 !important; /* text-gray-900 */
+        }
+        .body--dark .readable-text {
+            color: #f9fafb !important; /* text-gray-50 */
+        }
+        .gray-text {
+            color: #374151 !important; /* text-gray-700 */
+        }
+        .body--dark .gray-text {
+            color: #9ca3af !important; /* text-gray-400 */
+        }
+        .q-toggle__track {
+            background-color: #cbd5e1 !important; /* gray-300 */
+        }
+        .body--dark .q-toggle__track {
+            background-color: #475569 !important; /* gray-600 */
+        }
+        </style>
+    """)
+
     with ui.column().classes("w-full items-center p-8"):
         ui.label("Bespoke").classes(
             "text-3xl font-light text-gray-600 dark:text-gray-300 mb-6"
