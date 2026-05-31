@@ -97,7 +97,6 @@ class Deck:
         self._difficulty = Difficulty.A1
         self._modes = list(Mode)
         self._assume_known: Difficulty | None = None
-        self._start_index = 0
 
         self._translations: dict[str, str] = {}
         filename = TRANSLATIONS_FILE_PATTERN.format(
@@ -122,13 +121,23 @@ class Deck:
     def _compute_urgencies(self, current_time: float) -> dict[str, UrgencyState]:
         urgency_states = {}
         touched = 0
+        available = 0
         has_reached_threshold = False
-        for i, unit in enumerate(self._target_language.units()):
-            if (touched + TOUCH_MARGIN) / (i + TOUCH_MARGIN) < MINIMUM_TOUCH_RATIO:
+        for unit in self._target_language.units():
+            if not self._card_index.size(unit):
+                continue
+            available += 1
+            if (touched + TOUCH_MARGIN) / (
+                available + TOUCH_MARGIN
+            ) < MINIMUM_TOUCH_RATIO:
                 has_reached_threshold = True
             history = self._ratings.get(unit.id())
             if history is None or _is_untouched(history):
-                is_touched = i < self._start_index
+                is_touched = (
+                    self._assume_known is not None
+                    and unit.difficulty() <= self._assume_known
+                )
+
                 if is_touched:
                     touched += 1
                 urgency_states[unit.id()] = UrgencyState(
@@ -275,18 +284,6 @@ class Deck:
 
     def set_assume_known(self, difficulty: Difficulty | None) -> None:
         self._assume_known = difficulty
-        self._start_index = 0
-        if difficulty is None:
-            return
-        units = self._target_language.units()
-        for d in Difficulty:
-            self._start_index += len([unit for unit in units if unit.difficulty() == d])
-            if d == difficulty:
-                break
-        if self._start_index >= len(units):
-            print("Cannot set minimum difficulty.")
-            self._assume_known = None
-            self._start_index = 0
 
     def stats(self, current_time: float | None = None) -> dict[str, int]:
         if current_time is None:
@@ -342,5 +339,5 @@ class Deck:
         deck._modes = [Mode(m) for m in data["modes"]]
         assume_known = data.get("assume_known")
         if assume_known is not None:
-            deck.set_assume_known(Difficulty(assume_known))
+            deck._assume_known = Difficulty(assume_known)
         return deck
