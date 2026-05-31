@@ -24,6 +24,7 @@ from enum import StrEnum
 import numpy as np
 import pydantic
 
+RESHOW_BLOCK_INTERVAL = 60 * 10
 BLOCK_INTERVAL = 60 * 60 * 20
 INTERVAL_DECAY = 0.5
 INTERVAL_FACTOR = 0.8
@@ -131,6 +132,9 @@ def compute_urgency(
     # Default value for new units
     if not history or all([r.mode != mode or r.score == 0 for r in history]):
         return 0.0
+    # Block if just seen.
+    if current_time < history[-1].time + RESHOW_BLOCK_INTERVAL:
+        return -1.0
     # High priority when last rated feedback was failure
     last_non_zero = next(
         r for r in reversed(history) if r.mode == mode and r.score != 0

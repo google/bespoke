@@ -20,6 +20,8 @@ from bespoke import Mode
 from bespoke import languages
 from tests import fakes
 
+DAY = 24 * 60 * 60
+
 
 class TestDeck(unittest.TestCase):
     def test_draw(self) -> None:
@@ -68,6 +70,62 @@ class TestDeck(unittest.TestCase):
         deck.rate(first_unit, mode, 3, current_time=2)
         _mode, card = deck.draw(current_time=3)
         self.assertNotEqual(card.unit_tags[0].unit_id, first_unit.id())
+
+    def test_draw_failed_unit(self) -> None:
+        target = languages.LANGUAGES["japanese"]
+        native = languages.LANGUAGES["english"]
+        index = fakes.FakeCardIndex(target, native)
+        deck = Deck(target, native, index)  # type: ignore
+
+        units = target.units()[:3]
+        _unit1, unit2, _unit3 = units
+        for mode in Mode:
+            for unit in units:
+                deck.rate(unit, mode, 3, current_time=0)
+                deck.rate(unit, mode, 3, current_time=DAY * 3)
+
+        deck.rate(unit2, Mode.SPEAK, 1, current_time=DAY * 4)
+        mode, card = deck.draw(current_time=DAY * 5)
+        self.assertEqual(card.unit_tags[0].unit_id, unit2.id())
+        self.assertEqual(mode, Mode.SPEAK)
+
+    def test_draw_unblocked_mode(self) -> None:
+        target = languages.LANGUAGES["japanese"]
+        native = languages.LANGUAGES["english"]
+        index = fakes.FakeCardIndex(target, native)
+        deck = Deck(target, native, index)  # type: ignore
+
+        units = target.units()[:3]
+        _unit1, unit2, _unit3 = units
+        for mode in Mode:
+            for unit in units:
+                deck.rate(unit, mode, 3, current_time=0)
+                deck.rate(unit, mode, 3, current_time=DAY * 3)
+
+        deck.rate(unit2, Mode.LISTEN, 1, current_time=DAY * 4)
+        deck.rate(unit2, Mode.SPEAK, 1, current_time=DAY * 4)
+
+        mode, card = deck.draw(current_time=DAY * 5)
+        self.assertEqual(card.unit_tags[0].unit_id, unit2.id())
+        self.assertIn(mode, [Mode.LISTEN, Mode.SPEAK])
+
+    def test_introduce_new_when_urgent_is_blocked(self) -> None:
+        target = languages.LANGUAGES["japanese"]
+        native = languages.LANGUAGES["english"]
+        index = fakes.FakeCardIndex(target, native)
+        deck = Deck(target, native, index)  # type: ignore
+
+        units = target.units()[:3]
+        _unit1, unit2, unit3 = units
+        for mode in Mode:
+            for unit in units[:2]:
+                deck.rate(unit, mode, 3, current_time=0)
+                deck.rate(unit, mode, 3, current_time=DAY * 3)
+
+        deck.rate(unit2, Mode.LISTEN, 1, current_time=DAY * 4)
+        deck.rate(unit2, Mode.LISTEN, 0, current_time=DAY * 5 - 1)
+        mode, card = deck.draw(current_time=DAY * 5)
+        self.assertEqual(card.unit_tags[0].unit_id, unit3.id())
 
 
 if __name__ == "__main__":
