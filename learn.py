@@ -87,19 +87,26 @@ class RatingWebApp:
                 ui.icon("volume_off", color="grey").tooltip(f"Missing file: {filename}")
 
     def _create_color_cycling_button(
-        self, word: str, unit: str, def_label: ui.label
+        self,
+        word: str,
+        unit_id: str,
+        def_label: ui.label,
+        all_buttons: list[tuple[str, ui.button]],
     ) -> ui.button:
         initial_rating = 0
-        self._ratings[unit] = initial_rating
+        self._ratings[unit_id] = initial_rating
         btn = ui.button(word, on_click=lambda e: cycle(e.sender))
         btn.props(f"color={COLOR_MAP[initial_rating]} push")
 
         def cycle(b):
-            rating = SCORE_ROTATION.get(self._ratings[unit], initial_rating)
-            self._ratings[unit] = rating
-            b.props(f"color={COLOR_MAP[rating]}")
+            rating = SCORE_ROTATION.get(self._ratings[unit_id], initial_rating)
+            self._ratings[unit_id] = rating
 
-            def_label.text = self._deck.translated_unit(unit)
+            for u_id, button in all_buttons:
+                if u_id == unit_id:
+                    button.props(f"color={COLOR_MAP[rating]}")
+
+            def_label.text = self._deck.translated_unit(unit_id)
 
         return btn
 
@@ -179,7 +186,7 @@ class RatingWebApp:
             definition_label = ui.label("").classes(
                 "w-full text-center text-sm text-gray-800 dark:text-gray-300 h-6 mt-2"
             )
-            all_buttons = []
+            all_buttons: list[tuple[str, ui.button]] = []
 
             with row_container:
                 for tag in self._card.split_into_parts():
@@ -190,7 +197,10 @@ class RatingWebApp:
                     else:
                         with ui.column().classes("items-center gap-0"):
                             btn = self._create_color_cycling_button(
-                                tag.occurance, tag.unit_id, definition_label
+                                tag.occurance,
+                                tag.unit_id,
+                                definition_label,
+                                all_buttons,
                             )
                             all_buttons.append((tag.unit_id, btn))
                             u = self._target_language.get_by_id(tag.unit_id)
