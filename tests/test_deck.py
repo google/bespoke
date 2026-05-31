@@ -57,6 +57,18 @@ class TestDeck(unittest.TestCase):
         unit = [u for u in target.units() if u.difficulty() == Difficulty.B1][0]
         self.assertEqual(card.sentence, unit.name())
 
+    def test_introduce_first_card(self) -> None:
+        target = languages.LANGUAGES["japanese"]
+        native = languages.LANGUAGES["english"]
+        index = fakes.FakeCardIndex(target, native)
+        deck = Deck(target, native, index)  # type: ignore
+        first_unit = target.units()[0]
+        mode, card = deck.draw(current_time=1)
+        self.assertEqual(card.unit_tags[0].unit_id, first_unit.id())
+        deck.rate(first_unit, mode, 3, current_time=2)
+        _mode, card = deck.draw(current_time=3)
+        self.assertNotEqual(card.unit_tags[0].unit_id, first_unit.id())
+
 
 if __name__ == "__main__":
     unittest.main()

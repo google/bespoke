@@ -224,8 +224,9 @@ class Deck:
                 score += DIFFICULTY_PENALTY
         return score
 
-    def draw(self) -> tuple[Mode, Card]:
-        current_time = datetime.now().timestamp()
+    def draw(self, current_time: float | None = None) -> tuple[Mode, Card]:
+        if current_time is None:
+            current_time = datetime.now().timestamp()
         urgency_states = self._compute_urgencies(current_time)
         mode, unit_id = self._choose_task(urgency_states)
         unit = self._target_language.get_by_id(unit_id)
@@ -247,17 +248,23 @@ class Deck:
         _, best_card = max(scored_cards, key=lambda pair: pair[0])
         return mode, best_card
 
-    def rate(self, unit: Unit, mode: Mode, score: int) -> None:
-        time = datetime.now().timestamp()
-        rating = Rating(mode=mode, time=time, score=score)
+    def rate(
+        self, unit: Unit, mode: Mode, score: int, current_time: float | None = None
+    ) -> None:
+        if current_time is None:
+            current_time = datetime.now().timestamp()
+        rating = Rating(mode=mode, time=current_time, score=score)
         ratings = self._ratings.get(unit.id(), [])
         ratings.append(rating)
         self._ratings[unit.id()] = ratings
 
-    def log_usage(self, card_id: str, is_reported: bool = False) -> None:
+    def log_usage(
+        self, card_id: str, is_reported: bool = False, current_time: float | None = None
+    ) -> None:
+        if current_time is None:
+            current_time = datetime.now().timestamp()
         usages = self._card_id_uses.get(card_id, [])
-        time = datetime.now().timestamp()
-        usage = CardUsage(time=time, is_reported=is_reported)
+        usage = CardUsage(time=current_time, is_reported=is_reported)
         usages.append(usage)
         self._card_id_uses[card_id] = usages
 
@@ -282,11 +289,9 @@ class Deck:
             self._assume_known = None
             self._start_index = 0
 
-    def log_feedback(self, modes: list[Mode]) -> None:
-        self._modes = modes
-
-    def stats(self) -> dict[str, int]:
-        current_time = datetime.now().timestamp()
+    def stats(self, current_time: float | None = None) -> dict[str, int]:
+        if current_time is None:
+            current_time = datetime.now().timestamp()
         urgency_states = self._compute_urgencies(current_time)
         waiting = 0
         satisfied = 0
