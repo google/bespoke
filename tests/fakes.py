@@ -145,11 +145,8 @@ class FakeLlmClient(llm.LlmClient):
                 names.append(unit.name())
         return names
 
-    async def translate(self, sentence: str, language: Language) -> str:
-        return f"In {language.name}: {sentence}"
-
-    async def to_phonetic(self, sentence: str, language: Language) -> str | None:
-        return f"{language.phonetic_system}: {sentence}"
+    async def text_call(self, prompt: str) -> str:
+        return f"Fake response to: {prompt}"
 
     async def create_sentences(
         self,

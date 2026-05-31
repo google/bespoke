@@ -46,6 +46,7 @@ from bespoke.urgency import Rating
 from bespoke.urgency import compute_urgency
 from bespoke.urgency import needs_introduction
 
+TRANSLATIONS_FILE_PATTERN = "translations_{target}_{native}.csv"
 MINIMUM_TOUCH_RATIO = 0.5
 TOUCH_MARGIN = 10
 # Card scoring constants
@@ -98,21 +99,19 @@ class Deck:
         self._assume_known: Difficulty | None = None
         self._start_index = 0
 
-        self._translated_definitions: dict[str, str] = {}
-        definitions_file = (
-            Path("cards")
-            / f"definitions_{target_language.code_name}_{native_language.code_name}.csv"
+        self._translations: dict[str, str] = {}
+        filename = TRANSLATIONS_FILE_PATTERN.format(
+            target=target_language.code_name, native=native_language.code_name
         )
-        if definitions_file.exists():
-            with open(definitions_file, "r", encoding="utf-8") as f:
+        translations_file = Path("cards") / filename
+        if translations_file.exists():
+            with open(translations_file, "r", encoding="utf-8") as f:
                 reader = csv.DictReader(f)
                 for row in reader:
-                    self._translated_definitions[row["unit_id"]] = row[
-                        "translated_definition"
-                    ]
+                    self._translations[row["unit_id"]] = row["translation"]
 
-    def translated_definition(self, unit_id: str) -> str:
-        translated = self._translated_definitions.get(unit_id, "")
+    def translated_unit(self, unit_id: str) -> str:
+        translated = self._translations.get(unit_id, "")
         if translated:
             return translated
         unit = self._target_language.get_by_id(unit_id)

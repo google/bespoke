@@ -99,7 +99,7 @@ class RatingWebApp:
             self._ratings[unit] = rating
             b.props(f"color={COLOR_MAP[rating]}")
 
-            def_label.text = self._deck.translated_definition(unit)
+            def_label.text = self._deck.translated_unit(unit)
 
         return btn
 

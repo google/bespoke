@@ -64,12 +64,30 @@ class DisambiguatedTagsSchema(pydantic.BaseModel):
 
 class LlmClient(abc.ABC):
     @abc.abstractmethod
+    async def text_call(self, prompt: str) -> str:
+        """Sends a prompt to the LLM and returns the text response."""
+
     async def translate(self, sentence: str, language: Language) -> str:
         """Translates a sentence to the given language."""
+        prompt = (
+            "Translate the following sentence to "
+            f"{language.writing_system}: \n{sentence} \n"
+            "Only respond with the translation, no introduction or explanations."
+        )
+        return await self.text_call(prompt)
 
-    @abc.abstractmethod
     async def to_phonetic(self, sentence: str, language: Language) -> str | None:
         """Converts a sentence to its phonetic representation."""
+        if not language.phonetic_system:
+            return None
+
+        prompt = (
+            "Take the following sentence and convert it to "
+            f"{language.phonetic_system}. "
+            "Don't add any introduction or explanations, just the pure response. "
+            f"The sentence is: \n{sentence}"
+        )
+        return await self.text_call(prompt)
 
     @abc.abstractmethod
     async def create_sentences(
@@ -149,36 +167,7 @@ class GeminiLlmClient(LlmClient):
         self._client = genai.Client(api_key=api_key)
 
     @standard_retry
-    async def translate(self, sentence: str, language: Language) -> str:
-        prompt = (
-            "Translate the following sentence to "
-            f"{language.writing_system}: \n{sentence} \n"
-            "Only respond with the translation, no introduction or explanations."
-        )
-
-        response = await self._client.aio.models.generate_content(
-            model=self.TEXT_MODEL,
-            contents=[prompt],
-            config=self._genai.types.GenerateContentConfig(
-                response_modalities=["TEXT"],
-            ),
-        )
-        if response.text is None:
-            raise ValueError("Missing content")
-        return response.text.strip()
-
-    @standard_retry
-    async def to_phonetic(self, sentence: str, language: Language) -> str | None:
-        if not language.phonetic_system:
-            return None
-
-        prompt = (
-            "Take the following sentence and convert it to "
-            f"{language.phonetic_system}. "
-            "Don't add any introduction or explanations, just the pure response. "
-            f"The sentence is: \n{sentence}"
-        )
-
+    async def text_call(self, prompt: str) -> str:
         response = await self._client.aio.models.generate_content(
             model=self.TEXT_MODEL,
             contents=[prompt],
@@ -383,32 +372,7 @@ class OpenRouterElevenLabsLlmClient(LlmClient):
         self._litellm = litellm
 
     @standard_retry
-    async def translate(self, sentence: str, language: Language) -> str:
-        prompt = (
-            "Translate the following sentence to "
-            f"{language.writing_system}: \n{sentence} \n"
-            "Only respond with the translation, no introduction or explanations."
-        )
-
-        response = await self._litellm.acompletion(
-            model=self.TEXT_MODEL,
-            messages=[{"role": "user", "content": prompt}],
-            api_key=self.openrouter_api_key,
-        )
-        return response.choices[0].message.content.strip()
-
-    @standard_retry
-    async def to_phonetic(self, sentence: str, language: Language) -> str | None:
-        if not language.phonetic_system:
-            return None
-
-        prompt = (
-            "Take the following sentence and convert it to "
-            f"{language.phonetic_system}. "
-            "Don't add any introduction or explanations, just the pure response. "
-            f"The sentence is: \n{sentence}"
-        )
-
+    async def text_call(self, prompt: str) -> str:
         response = await self._litellm.acompletion(
             model=self.TEXT_MODEL,
             messages=[{"role": "user", "content": prompt}],
@@ -564,32 +528,7 @@ class OpenAiLlmClient(LlmClient):
         self._litellm.suppress_debug_info = True
 
     @standard_retry
-    async def translate(self, sentence: str, language: Language) -> str:
-        prompt = (
-            "Translate the following sentence to "
-            f"{language.writing_system}: \n{sentence} \n"
-            "Only respond with the translation, no introduction or explanations."
-        )
-
-        response = await self._litellm.acompletion(
-            model=self.TEXT_MODEL,
-            messages=[{"role": "user", "content": prompt}],
-            api_key=self._api_key,
-        )
-        return response.choices[0].message.content.strip()
-
-    @standard_retry
-    async def to_phonetic(self, sentence: str, language: Language) -> str | None:
-        if not language.phonetic_system:
-            return None
-
-        prompt = (
-            "Take the following sentence and convert it to "
-            f"{language.phonetic_system}. "
-            "Don't add any introduction or explanations, just the pure response. "
-            f"The sentence is: \n{sentence}"
-        )
-
+    async def text_call(self, prompt: str) -> str:
         response = await self._litellm.acompletion(
             model=self.TEXT_MODEL,
             messages=[{"role": "user", "content": prompt}],
