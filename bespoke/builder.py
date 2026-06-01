@@ -38,6 +38,7 @@ class UnitProducer:
         language: Language,
         cards_per_unit: int,
         num_existing_cards: int,
+        max_difficulty: Difficulty = Difficulty.C2,
     ) -> None:
         self._cards_per_unit = cards_per_unit
         self._card_count: dict[str, int] = defaultdict(int)
@@ -46,7 +47,9 @@ class UnitProducer:
             d: [] for d in Difficulty
         }
         for unit in language.units():
-            self._units_remaining[unit.difficulty()].append(unit)
+            if unit.difficulty() <= max_difficulty:
+                self._units_remaining[unit.difficulty()].append(unit)
+
         # Lazy initialization to allow register to affect the first draw / done.
         self._unit_pools: dict[Difficulty, list[Unit]] = {}
         self._done = False
@@ -125,12 +128,17 @@ class SentenceProducer:
         cards_per_unit: int,
         cards_per_call: int,
         num_existing_cards: int,
+        max_difficulty: Difficulty = Difficulty.C2,
     ) -> None:
+
         self._language = language
         self._llm_client = llm_client
         self._grammar = grammar
         self._cards_per_call = cards_per_call
-        self._unit_producer = UnitProducer(language, cards_per_unit, num_existing_cards)
+        self._unit_producer = UnitProducer(
+            language, cards_per_unit, num_existing_cards, max_difficulty
+        )
+
         self._grammar_pools: dict[Difficulty, list[str]] = {}
         # Data structures to quickly operate on difficulties.
         self._difficulty_order = {d: i for i, d in enumerate(Difficulty)}
@@ -202,7 +210,9 @@ class DeckBuilder:
         *,
         cards_per_unit: int,
         cards_per_call: int,
+        max_difficulty: Difficulty = Difficulty.C2,
     ) -> None:
+
         self._duplicates = set()
         all_cards = await self._card_index.all_cards()
         sentence_producer = SentenceProducer(
@@ -212,7 +222,9 @@ class DeckBuilder:
             cards_per_unit=cards_per_unit,
             cards_per_call=cards_per_call,
             num_existing_cards=len(all_cards),
+            max_difficulty=max_difficulty,
         )
+
         for card in all_cards:
             self._duplicates.add(card.sentence)
             sentence_producer.register_card(card.unit_ids())

@@ -22,6 +22,8 @@ from bespoke import CardIndex
 from bespoke import DeckBuilder
 from bespoke import languages
 from bespoke import llm
+from bespoke.unit import Difficulty
+
 
 warnings.filterwarnings("ignore", message=".*is not a valid FinishReason.*")
 
@@ -31,6 +33,7 @@ async def create(
     native: languages.Language,
     cards_per_unit: int,
     cards_per_call: int,
+    max_difficulty: Difficulty = Difficulty.C2,
 ) -> None:
     card_index = CardIndex.load(target, native)
     llm_client = llm.get_llm_client()
@@ -39,6 +42,7 @@ async def create(
     await deck_builder.create_cards(
         cards_per_unit=cards_per_unit,
         cards_per_call=cards_per_call,
+        max_difficulty=max_difficulty,
     )
     await card_index.check()
 
@@ -75,11 +79,21 @@ def main():
     parser.add_argument(
         "--cards_per_call", type=int, default=8, help="Number of cards per API call."
     )
+    parser.add_argument(
+        "--max_difficulty",
+        type=str,
+        choices=[d.value for d in Difficulty],
+        default="C2",
+        help="Maximum difficulty for card generation.",
+    )
     args = parser.parse_args()
 
     target = target_choices[args.target]
     native = native_choices[args.native]
-    asyncio.run(create(target, native, args.cards_per_unit, args.cards_per_call))
+    max_diff = Difficulty(args.max_difficulty)
+    asyncio.run(
+        create(target, native, args.cards_per_unit, args.cards_per_call, max_diff)
+    )
 
 
 if __name__ == "__main__":
