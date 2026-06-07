@@ -100,7 +100,6 @@ async def create_tags(
                     continue
                 if is_chinese and unit_tag.occurance != unit.name():
                     if unit.name() in unit_tag.occurance:
-                        print(f"Consider '{unit_tag.occurance}' for the vocabulary.")
                         unit_tag.occurance = unit.name()
                     else:
                         continue
