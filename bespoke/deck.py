@@ -206,6 +206,13 @@ class Deck:
         urgency_states: dict[str, UrgencyState],
         current_time: float,
     ) -> float:
+        default_state = UrgencyState(
+            is_touched=False,
+            needs_introduction=False,
+            is_target=False,
+            urgency=0.0,
+            mode=self._modes[0],
+        )
         score = 0.0
         timestamps = []
         for usage in self._card_id_uses.get(card.id, []):
@@ -215,7 +222,7 @@ class Deck:
         days = (current_time - np.array(timestamps)) / 60.0 / 60.0 / 24.0
         score -= CARD_USAGE_FACTOR * np.sum(np.exp(-CARD_USAGE_DECAY * days)).item()
         for unit in card.unit_ids():
-            state = urgency_states[unit]
+            state = urgency_states.get(unit, default_state)
             if not state.is_target:
                 score -= NONTARGET_PENALTY
             if not state.is_touched:
