@@ -87,24 +87,29 @@ For the target parameter above, try:
 
 This collection grows as more cards are generated.
 
+You can download any of the existing datasets automatically using, e.g.:
+
+```
+uv run download.py --target="Traditional Chinese" --native="German"
+```
+
 | Language Pair | Kaggle Dataset |
 | :------------ | :------------- |
 | German → Traditional Chinese | [bespoke-cards-german-tradchinese](https://www.kaggle.com/datasets/google/bespoke-cards-german-tradchinese) |
 | English → German | [bespoke-cards-english-german](https://www.kaggle.com/datasets/google/bespoke-cards-english-german) |
 | Simplified Chinese → German | [bespoke-cards-german-simpchinese](https://www.kaggle.com/datasets/google/bespoke-cards-simpchinese-german) |
 
-Download the dataset into `cards/` and call:
+Alternatively, if you prefer to download manually, you can obtain the `.zip`
+file directly from the links in the table above. Download the dataset into the
+`cards/` directory and extract it:
 
 ```
 cd cards/
 unzip dataset_filename.zip
 ```
 
-or manually unzip it into the `cards/` directory, so that the
-directory structure looks like, for example:
-
-- `cards/index_trad_chinese_german.json`
-- `cards/trad_chinese_german/*`
+Ensure the `cards/` directory contains `index_trad_chinese_german.json` and
+`trad_chinese_german/`.
 
 ## Backups
 

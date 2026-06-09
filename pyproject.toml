@@ -12,6 +12,7 @@ dependencies = [
     "aiofiles",
     "google-genai",
     "httpx",
+    "kagglehub",
     "litellm",
     "nicegui",
     "numpy",
