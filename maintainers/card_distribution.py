@@ -18,17 +18,26 @@ import argparse
 import asyncio
 
 from bespoke import CardIndex
+from bespoke import Difficulty
 from bespoke import Language
 from bespoke import languages
 
 
-def find_missing_units(card_index: CardIndex, language: Language) -> None:
+def find_missing_units(
+    card_index: CardIndex,
+    language: Language,
+    max_difficulty: Difficulty = Difficulty.C2,
+) -> None:
     total = 0
     max_size = 0
     max_unit = None
-    print("Units that don't appear in cards:")
     count = 0
-    for unit in language.units():
+    checked_units = [u for u in language.units() if u.difficulty() <= max_difficulty]
+    if not checked_units:
+        print("No units found.")
+        return
+    print("Units that don't appear in cards:")
+    for unit in checked_units:
         size = card_index.size(unit)
         total += size
         if not size:
@@ -38,20 +47,21 @@ def find_missing_units(card_index: CardIndex, language: Language) -> None:
             max_size = size
             max_unit = unit
     print(f"In total, {count} units are untagged on all cards.")
-    print(f"Average number of cards per unit: {total / len(language.units())}")
+    print(f"Average number of cards per unit: {total / len(checked_units)}")
     print(f"Highest number of cards is {max_size} for {max_unit}")
 
 
 async def check_distribution(
     target: Language,
     native: Language,
+    max_difficulty: Difficulty = Difficulty.C2,
     rebuild_index: bool = False,
 ) -> None:
     card_index = CardIndex.load(target, native)
     if rebuild_index:
         await card_index.restart()
     await card_index.check()
-    find_missing_units(card_index, target)
+    find_missing_units(card_index, target, max_difficulty)
 
 
 def main():
@@ -78,6 +88,13 @@ def main():
         help="A language that you know.",
     )
     parser.add_argument(
+        "--max_difficulty",
+        type=str,
+        choices=[d.value for d in Difficulty],
+        default="C2",
+        help="Maximum difficulty for units to check.",
+    )
+    parser.add_argument(
         "--rebuild_index",
         action="store_true",
         help="Rebuild the card index from the card files on disk.",
@@ -86,7 +103,8 @@ def main():
 
     target = target_choices[args.target]
     native = native_choices[args.native]
-    asyncio.run(check_distribution(target, native, args.rebuild_index))
+    max_diff = Difficulty(args.max_difficulty)
+    asyncio.run(check_distribution(target, native, max_diff, args.rebuild_index))
 
 
 if __name__ == "__main__":
