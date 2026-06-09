@@ -42,6 +42,18 @@ def find_missing_units(card_index: CardIndex, language: Language) -> None:
     print(f"Highest number of cards is {max_size} for {max_unit}")
 
 
+async def check_distribution(
+    target: Language,
+    native: Language,
+    rebuild_index: bool = False,
+) -> None:
+    card_index = CardIndex.load(target, native)
+    if rebuild_index:
+        await card_index.restart()
+    await card_index.check()
+    find_missing_units(card_index, target)
+
+
 def main():
     parser = argparse.ArgumentParser(description="Test script.")
     target_choices = {}
@@ -65,13 +77,16 @@ def main():
         required=True,
         help="A language that you know.",
     )
+    parser.add_argument(
+        "--rebuild_index",
+        action="store_true",
+        help="Rebuild the card index from the card files on disk.",
+    )
     args = parser.parse_args()
 
     target = target_choices[args.target]
     native = native_choices[args.native]
-    card_index = CardIndex.load(target, native)
-    asyncio.run(card_index.check())
-    find_missing_units(card_index, target)
+    asyncio.run(check_distribution(target, native, args.rebuild_index))
 
 
 if __name__ == "__main__":

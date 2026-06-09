@@ -115,7 +115,7 @@ to a secure location of your choice. To learn on a new device, simply copy the
 file over.
 
 At the time, learning on two devices is therefore discouraged. You would need to
-keep the progress file back and forth.
+copy the progress file back and forth.
 
 ## Disclaimer
 

@@ -232,22 +232,24 @@ class DeckBuilder:
         print(f"Initialized with {len(self._duplicates)} existing cards")
 
         semaphore = asyncio.Semaphore(self.MAX_PARALLELISM)
-        async with asyncio.TaskGroup() as tg:
-            # Don't waste resources on units that don't get created.
-            while not sentence_producer.done():
-                sentences, units, grammar = await sentence_producer.create()
-                for sentence in sentences:
-                    if sentence in self._duplicates:
-                        print(f"Skipping duplicate sentence {sentence}")
-                        continue
-                    self._duplicates.add(sentence)
-                    await semaphore.acquire()
-                    tg.create_task(
-                        self._complete_card(
-                            semaphore, sentence_producer, sentence, units, grammar
+        try:
+            async with asyncio.TaskGroup() as tg:
+                while not sentence_producer.done():
+                    sentences, units, grammar = await sentence_producer.create()
+                    for sentence in sentences:
+                        # Don't waste resources on units that don't get created.
+                        if sentence in self._duplicates:
+                            print(f"Skipping duplicate sentence {sentence}")
+                            continue
+                        self._duplicates.add(sentence)
+                        await semaphore.acquire()
+                        tg.create_task(
+                            self._complete_card(
+                                semaphore, sentence_producer, sentence, units, grammar
+                            )
                         )
-                    )
-                self._card_index.save()
+        finally:
+            self._card_index.save()
 
     async def _complete_card(
         self,
@@ -258,29 +260,32 @@ class DeckBuilder:
         grammar: str,
     ) -> None:
         try:
-            unit_tags = await tagger.create_tags(
-                sentence=sentence,
-                hint=units,
-                language=self._language,
-                llm_client=self._llm_client,
-            )
-            if not unit_tags:
-                print(f"Discarding untagged sentence: '{sentence}'")
-                return
+            async with asyncio.timeout(600):
+                unit_tags = await tagger.create_tags(
+                    sentence=sentence,
+                    hint=units,
+                    language=self._language,
+                    llm_client=self._llm_client,
+                )
+                if not unit_tags:
+                    print(f"Discarding untagged sentence: '{sentence}'")
+                    return
 
-            card = await self._card_index.create_card(
-                self._llm_client,
-                sentence,
-                unit_tags,
-                notes=[grammar],
-            )
-            sentence_producer.register_card(card.unit_ids())
-            self._created_count += 1
-            if self._created_count % 1000 == 0 or self._created_count == 100:
-                assert self._start_time is not None
-                elapsed = datetime.now() - self._start_time
-                time_string = str(elapsed).split(".")[0]
-                print(f"{self._created_count:>5} cards after : {time_string}")
+                card = await self._card_index.create_card(
+                    self._llm_client,
+                    sentence,
+                    unit_tags,
+                    notes=[grammar],
+                )
+                sentence_producer.register_card(card.unit_ids())
+                self._created_count += 1
+                if self._created_count % 1000 == 0 or self._created_count == 100:
+                    assert self._start_time is not None
+                    elapsed = datetime.now() - self._start_time
+                    time_string = str(elapsed).split(".")[0]
+                    print(f"{self._created_count:>5} cards after : {time_string}")
+        except TimeoutError:
+            print(f"Timeout processing sentence '{sentence}'")
         except Exception as e:
             print(f"Error processing sentence '{sentence}': {e}")
         finally:

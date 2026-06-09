@@ -26,13 +26,17 @@ from bespoke import languages
 from bespoke import llm
 
 
+MAX_RETRIES = 5
+MAX_RESPONSE_LENGTH = 100
+
+
 def validate_translation(text: str) -> bool:
     text = text.strip()
     if not text:
         return False
     if any(char in text for char in ["[", "]", "(", ")", "*", "\n", "\r"]):
         return False
-    if len(text) > 100:
+    if len(text) > MAX_RESPONSE_LENGTH:
         return False
     return True
 
@@ -92,23 +96,19 @@ async def translate_unit(
         "'(f)', '(m)', etc.).\n"
         "6. Do NOT use markdown formatting (no bold, no italics, "
         "no asterisks).\n"
-        "7. The output must be on a single line.\n\n"
-        "8. The output will be automatically processed, return no other text.\n"
+        "7. The output must be on a single line.\n"
+        f"8. The output must not exceed {MAX_RESPONSE_LENGTH} characters.\n\n"
+        "9. The output will be automatically processed, return no other text.\n"
     )
 
     translated = ""
-    for attempt in range(3):
+    for attempt in range(MAX_RETRIES):
         try:
             raw_translated = await llm_client.text_call(prompt)
             raw_translated = raw_translated.strip()
             if validate_translation(raw_translated):
                 translated = raw_translated
                 break
-            else:
-                print(
-                    f"Warning: Attempt {attempt + 1} for {unit.id()} "
-                    f"failed validation: '{raw_translated}'"
-                )
         except Exception as e:
             print(f"Error for {unit.id()}: {e}")
             await asyncio.sleep(1)
@@ -116,7 +116,7 @@ async def translate_unit(
     if translated:
         results[unit.id()] = translated
     else:
-        print(f"Error: Failed to translate {unit.id()} after 3 attempts.")
+        print(f"Error: Failed to translate {unit.id()}.")
 
 
 async def main_async():
