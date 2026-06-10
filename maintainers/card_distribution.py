@@ -23,6 +23,8 @@ from bespoke import Difficulty
 from bespoke import Language
 from bespoke import Unit
 from bespoke import languages
+from bespoke import Deck
+from bespoke.unit import DictionaryUnit
 
 
 def find_missing_units(
@@ -133,6 +135,31 @@ async def check_distribution(
     await card_index.check()
     find_missing_units(card_index, target, max_difficulty)
     await analyze_card_difficulty(card_index, target)
+
+    print("\nChecking translations:")
+    deck = Deck(target, native, card_index)
+    translations_present = False
+    missing_count = 0
+    for unit in target.units():
+        translation = deck.translated_unit(unit.id())
+        is_missing = False
+        if isinstance(unit, DictionaryUnit) and unit.definition():
+            if translation == unit.definition():
+                is_missing = True
+        elif not translation:
+            is_missing = True
+
+        if is_missing:
+            missing_count += 1
+        else:
+            translations_present = True
+
+    if not translations_present:
+        print("Translations do not exist.")
+    elif missing_count > 0:
+        print(f"Missing translations: {missing_count}")
+    else:
+        print("All translations are present.")
 
 
 def main():

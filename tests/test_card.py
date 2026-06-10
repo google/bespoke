@@ -13,14 +13,20 @@
 # limitations under the License.
 
 from pathlib import Path
+import tempfile
 import unittest
+
 import pydantic
 
 from bespoke import Card
+from bespoke import CardIndex
+from bespoke.languages import LANGUAGES
+from bespoke.unit import Difficulty
 from bespoke.unit import UnitTag
+from bespoke.unit import WordUnit
 
 
-class TestCard(unittest.TestCase):
+class TestCard(unittest.IsolatedAsyncioTestCase):
     def test_split_into_parts(self) -> None:
         card = Card(
             id="test",
@@ -132,6 +138,126 @@ class TestCard(unittest.TestCase):
         self.assertIsNotNone(old_card)
         assert old_card is not None
         self.assertEqual(card, old_card)
+
+    async def test_card_index_remove(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tmp_path = Path(tmpdir)
+
+            lang = LANGUAGES["trad_chinese"]
+            card_index = CardIndex(lang, lang)
+            card_index._card_directory = tmp_path / "cards"
+            card_index._index_path = tmp_path / "index.json"
+            card_index._card_directory.mkdir(parents=True, exist_ok=True)
+
+            card_id = "test_card_id"
+            audio_path = tmp_path / "audio.ogg"
+            slow_audio_path = tmp_path / "slow.ogg"
+            native_audio_path = tmp_path / "native.ogg"
+
+            audio_path.write_bytes(b"audio")
+            slow_audio_path.write_bytes(b"slow")
+            native_audio_path.write_bytes(b"native")
+
+            card = Card(
+                id=card_id,
+                sentence="大學生是學生。",
+                native_sentence="University student.",
+                audio_filename=str(audio_path),
+                slow_audio_filename=str(slow_audio_path),
+                native_audio_filename=str(native_audio_path),
+                phonetic="...",
+                unit_tags=[
+                    UnitTag(occurance="大學生", unit_id="大學生"),
+                    UnitTag(occurance="學生", unit_id="學生"),
+                ],
+                notes=[],
+            )
+            card.write_json(card_index._card_directory)
+            card_index._add(card)
+            student_unit = WordUnit("學生", Difficulty.A1)
+            college_unit = WordUnit("大學生", Difficulty.A1)
+
+            self.assertTrue((card_index._card_directory / f"{card_id}.json").exists())
+            self.assertTrue(audio_path.exists())
+            self.assertTrue(slow_audio_path.exists())
+            self.assertTrue(native_audio_path.exists())
+            self.assertEqual(card_index.size(college_unit), 1)
+            self.assertEqual(card_index.cards(college_unit)[0].id, card_id)
+
+            await card_index.remove(card_id)
+            self.assertFalse((card_index._card_directory / f"{card_id}.json").exists())
+            self.assertFalse(audio_path.exists())
+            self.assertFalse(slow_audio_path.exists())
+            self.assertFalse(native_audio_path.exists())
+            self.assertEqual(card_index.size(college_unit), 0)
+            self.assertEqual(card_index.size(student_unit), 0)
+
+    async def test_card_index_remove_shared_audio(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tmp_path = Path(tmpdir)
+
+            lang = LANGUAGES["trad_chinese"]
+            card_index = CardIndex(lang, lang)
+            card_index._card_directory = tmp_path / "cards"
+            card_index._index_path = tmp_path / "index.json"
+            card_index._card_directory.mkdir(parents=True, exist_ok=True)
+
+            audio1_path = tmp_path / "audio1.ogg"
+            slow1_path = tmp_path / "slow1.ogg"
+            audio2_path = tmp_path / "audio2.ogg"
+            slow2_path = tmp_path / "slow2.ogg"
+            shared_native_path = tmp_path / "shared_native.ogg"
+
+            audio1_path.write_bytes(b"audio1")
+            slow1_path.write_bytes(b"slow1")
+            audio2_path.write_bytes(b"audio2")
+            slow2_path.write_bytes(b"slow2")
+            shared_native_path.write_bytes(b"shared_native")
+
+            card1 = Card(
+                id="card1_id",
+                sentence="大學生是學生。",
+                native_sentence="University student.",
+                audio_filename=str(audio1_path),
+                slow_audio_filename=str(slow1_path),
+                native_audio_filename=str(shared_native_path),
+                phonetic="...",
+                unit_tags=[UnitTag(occurance="學生", unit_id="學生")],
+                notes=[],
+            )
+            card2 = Card(
+                id="card2_id",
+                sentence="小學生是學生。",
+                native_sentence="Elementary student.",
+                audio_filename=str(audio2_path),
+                slow_audio_filename=str(slow2_path),
+                native_audio_filename=str(shared_native_path),
+                phonetic="...",
+                unit_tags=[UnitTag(occurance="學生", unit_id="學生")],
+                notes=[],
+            )
+            student_unit = WordUnit("學生", Difficulty.A1)
+
+            card1.write_json(card_index._card_directory)
+            card2.write_json(card_index._card_directory)
+            card_index._add(card1)
+            card_index._add(card2)
+            self.assertEqual(card_index.size(student_unit), 2)
+
+            await card_index.remove("card1_id")
+            self.assertFalse((card_index._card_directory / "card1_id.json").exists())
+            self.assertFalse(audio1_path.exists())
+            self.assertFalse(slow1_path.exists())
+            self.assertTrue(shared_native_path.exists())
+            self.assertTrue((card_index._card_directory / "card2_id.json").exists())
+            self.assertEqual(card_index.size(student_unit), 1)
+
+            await card_index.remove("card2_id")
+            self.assertFalse((card_index._card_directory / "card2_id.json").exists())
+            self.assertFalse(audio2_path.exists())
+            self.assertFalse(slow2_path.exists())
+            self.assertFalse(shared_native_path.exists())
+            self.assertEqual(card_index.size(student_unit), 0)
 
 
 if __name__ == "__main__":

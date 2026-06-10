@@ -350,6 +350,50 @@ class CardIndex:
     def size(self, unit: Unit) -> int:
         return len(self._index.get(unit.id(), []))
 
+    async def remove(self, card_id: str) -> None:
+        card = await Card.load_async(self._card_directory, card_id)
+        if card is None:
+            print(f"Card JSON not found: {self._card_directory / f'{card_id}.json'}")
+            for unit_id in list(self._index.keys()):
+                if card_id in self._index[unit_id]:
+                    self._index[unit_id].remove(card_id)
+                    if not self._index[unit_id]:
+                        del self._index[unit_id]
+            return
+
+        for path in [card.audio_filename, card.slow_audio_filename]:
+            if path:
+                try:
+                    Path(path).unlink()
+                except Exception as e:
+                    print(f"Error deleting audio {path}: {e}")
+
+        if card.native_audio_filename:
+            try:
+                other_cards = await self.all_cards()
+                shared = any(
+                    other.id != card_id
+                    and other.native_audio_filename == card.native_audio_filename
+                    for other in other_cards
+                )
+                if not shared:
+                    Path(card.native_audio_filename).unlink()
+            except Exception as e:
+                print(f"Error deleting native audio {card.native_audio_filename}: {e}")
+
+        card_json_path = self._card_directory / f"{card_id}.json"
+        try:
+            card_json_path.unlink()
+        except Exception as e:
+            print(f"Error deleting card JSON {card_json_path}: {e}")
+
+        for unit_id in card.unit_ids():
+            if unit_id in self._index:
+                if card_id in self._index[unit_id]:
+                    self._index[unit_id].remove(card_id)
+                    if not self._index[unit_id]:
+                        del self._index[unit_id]
+
     def _add(self, card: Card) -> None:
         for unit in card.unit_ids():
             card_ids = self._index.get(unit, [])
