@@ -22,6 +22,7 @@ import numpy as np
 import os
 from pathlib import Path
 import pydantic
+from typing import Iterable
 from typing import Self
 
 from bespoke.languages import Language
@@ -214,6 +215,38 @@ async def _write_audio_file(
     return filename
 
 
+async def _read_cards(directory: Path) -> list[Card]:
+    semaphore = asyncio.Semaphore(16)
+
+    async def read_card_file(card_id: str) -> Card | None:
+        async with semaphore:
+            return await Card.load_async(directory, card_id)
+
+    tasks = [read_card_file(p.stem) for p in directory.glob("*.json")]
+    cards = await asyncio.gather(*tasks)
+    return [card for card in cards if card is not None]
+
+
+def _print_or_write_list(items: Iterable[str], name: str) -> None:
+    if not items:
+        return
+    items_list = sorted(list(items))
+    count = len(items_list)
+    if count <= 100:
+        print(name)
+        for item in items_list:
+            print(item)
+    else:
+        filename = name.lower().replace(" ", "_") + ".txt"
+        with open(filename, "w", encoding="utf-8") as f:
+            for item in items_list:
+                f.write(f"{item}\n")
+        print(f"{name} written to {filename}")
+        print(f"Sample of 10 / {count}:")
+        for item in items_list[:10]:
+            print(item)
+
+
 class CardIndex:
     def __init__(
         self,
@@ -244,16 +277,24 @@ class CardIndex:
 
     async def restart(self) -> None:
         self._index = {}
-        cards = await self.all_cards()
+        cards = await _read_cards(self._card_directory)
         print(f"Starting CardIndex with {len(cards)} cards.")
         for card in cards:
             self._add(card)
         self.save()
 
     async def check(self) -> None:
+        available_cards = await _read_cards(self._card_directory)
         cards = await self.all_cards()
         language_system = self._target_language.writing_system
         print(f"Found {len(cards)} cards for {language_system}")
+        available_card_ids = {card.id for card in available_cards}
+        indexed_card_ids = {card.id for card in cards}
+        missing_in_index = available_card_ids - indexed_card_ids
+        missing_on_disk = indexed_card_ids - available_card_ids
+        _print_or_write_list(missing_in_index, "Cards missing in index")
+        _print_or_write_list(missing_on_disk, "Cards missing on disk")
+
         audio_filenames = set()
         for path in self._card_directory.glob("*.ogg"):
             audio_filenames.add(str(path))
@@ -269,8 +310,7 @@ class CardIndex:
             if card.native_audio_filename not in audio_filenames:
                 print(f"Missing native audio file for '{card.id}'")
         extra_filenames = audio_filenames - card_filenames
-        if extra_filenames:
-            print(f"Unused audio files found: {extra_filenames}")
+        _print_or_write_list(extra_filenames, "Unused audio files")
 
     def save(self) -> None:
         with open(self._index_path, "w", encoding="utf-8") as f:
@@ -294,13 +334,16 @@ class CardIndex:
         return [card for card in cards if card is not None]
 
     async def all_cards(self) -> list[Card]:
+        card_ids = set()
+        for unit_cards in self._index.values():
+            card_ids.update(unit_cards)
         semaphore = asyncio.Semaphore(16)
 
         async def read_card_file(card_id: str) -> Card | None:
             async with semaphore:
                 return await Card.load_async(self._card_directory, card_id)
 
-        tasks = [read_card_file(p.stem) for p in self._card_directory.glob("*.json")]
+        tasks = [read_card_file(card_id) for card_id in card_ids]
         cards = await asyncio.gather(*tasks)
         return [card for card in cards if card is not None]
 

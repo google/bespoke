@@ -17,9 +17,11 @@
 import argparse
 import asyncio
 
+from bespoke import Card
 from bespoke import CardIndex
 from bespoke import Difficulty
 from bespoke import Language
+from bespoke import Unit
 from bespoke import languages
 
 
@@ -31,24 +33,92 @@ def find_missing_units(
     total = 0
     max_size = 0
     max_unit = None
-    count = 0
+    untagged_units = []
     checked_units = [u for u in language.units() if u.difficulty() <= max_difficulty]
     if not checked_units:
         print("No units found.")
         return
-    print("Units that don't appear in cards:")
     for unit in checked_units:
         size = card_index.size(unit)
         total += size
         if not size:
-            print(unit)
-            count += 1
+            untagged_units.append(unit)
         if size > max_size:
             max_size = size
             max_unit = unit
-    print(f"In total, {count} units are untagged on all cards.")
+
+    print("Units that don't appear in cards:")
+    if len(untagged_units) > 100:
+        filename = "untagged.txt"
+        with open(filename, "w", encoding="utf-8") as f:
+            for u in untagged_units:
+                f.write(f"{u}\n")
+        print(f"More than 100 untagged units. Full list written to {filename}")
+        print("Sample of 10 untagged units:")
+        for u in untagged_units[:10]:
+            print(u)
+    else:
+        for u in untagged_units:
+            print(u)
+
+    print(f"In total, {len(untagged_units)} units are untagged on all cards.")
     print(f"Average number of cards per unit: {total / len(checked_units)}")
     print(f"Highest number of cards is {max_size} for {max_unit}")
+
+
+async def analyze_card_difficulty(
+    card_index: CardIndex,
+    language: Language,
+) -> None:
+    print("\nAnalyzing card difficulty distribution:")
+    cards = await card_index.all_cards()
+
+    units = language.units()
+    unit_map = {u.id(): u for u in units}
+    units_by_difficulty: dict[Difficulty, list[Unit]] = {d: [] for d in Difficulty}
+    for u in units:
+        units_by_difficulty[u.difficulty()].append(u)
+    difficulty_order = {d: i for i, d in enumerate(Difficulty)}
+
+    # Compute difficulty for each card
+    cards_by_difficulty: dict[Difficulty, list[Card]] = {d: [] for d in Difficulty}
+    for card in cards:
+        card_unit_diffs = []
+        for tag in card.unit_tags:
+            unit = unit_map.get(tag.unit_id)
+            if unit:
+                card_unit_diffs.append(unit.difficulty())
+        if card_unit_diffs:
+            max_diff = max(card_unit_diffs, key=lambda d: difficulty_order[d])
+            cards_by_difficulty[max_diff].append(card)
+
+    # Analyze unit and card match in difficulty
+    for d in Difficulty:
+        difficulty_units = units_by_difficulty[d]
+        difficulty_cards = cards_by_difficulty[d]
+        unit_card_counts = {u.id(): 0 for u in difficulty_units}
+        for card in difficulty_cards:
+            for tag in card.unit_tags:
+                if tag.unit_id in unit_card_counts:
+                    unit_card_counts[tag.unit_id] += 1
+        num_units = len(difficulty_units)
+        num_cards = len(difficulty_cards)
+
+        if num_units == 0:
+            print(f"Difficulty {d.value}: 0 cards, 0 units.")
+            continue
+
+        units_with_card = sum(1 for count in unit_card_counts.values() if count > 0)
+        total_correct_cards = sum(unit_card_counts.values())
+        avg_cards = total_correct_cards / num_units
+
+        print(f"Difficulty {d.value}:")
+        print(f"  Units of this difficulty: {num_units}")
+        print(f"  Cards of this difficulty: {num_cards}")
+        print(
+            f"  Units with at least one card of this difficulty: {units_with_card} ({units_with_card / num_units * 100:.2f}%)"
+        )
+        print(f"  Average cards of correct difficulty per unit: {avg_cards:.2f}")
 
 
 async def check_distribution(
@@ -62,10 +132,11 @@ async def check_distribution(
         await card_index.restart()
     await card_index.check()
     find_missing_units(card_index, target, max_difficulty)
+    await analyze_card_difficulty(card_index, target)
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Test script.")
+    parser = argparse.ArgumentParser(description="Card statistics script.")
     target_choices = {}
     for language in languages.LANGUAGES.values():
         if language.has_data():
