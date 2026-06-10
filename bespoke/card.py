@@ -260,6 +260,7 @@ class CardIndex:
         self._index_path = CARDS_DIR / f"index_{target}_{native}.json"
         self._card_directory = CARDS_DIR / f"{target}_{native}"
         self._index: dict[str, list[str]] = {}
+        self._cache: dict[str, Card] = {}
         self._card_directory.mkdir(parents=True, exist_ok=True)
 
     @classmethod
@@ -277,6 +278,7 @@ class CardIndex:
 
     async def restart(self) -> None:
         self._index = {}
+        self._cache = {}
         cards = await _read_cards(self._card_directory)
         print(f"Starting CardIndex with {len(cards)} cards.")
         for card in cards:
@@ -316,11 +318,27 @@ class CardIndex:
         with open(self._index_path, "w", encoding="utf-8") as f:
             json.dump(self._index, f)
 
+    def _get_card(self, card_id: str) -> Card | None:
+        if card_id in self._cache:
+            return self._cache[card_id]
+        card = Card.load(self._card_directory, card_id)
+        if card is not None:
+            self._cache[card_id] = card
+        return card
+
+    async def _get_card_async(self, card_id: str) -> Card | None:
+        if card_id in self._cache:
+            return self._cache[card_id]
+        card = await Card.load_async(self._card_directory, card_id)
+        if card is not None:
+            self._cache[card_id] = card
+        return card
+
     def cards(self, unit: Unit) -> list[Card]:
         card_ids = self._index.get(unit.id(), [])
         cards = []
         for card_id in card_ids:
-            card = Card.load(self._card_directory, card_id)
+            card = self._get_card(card_id)
             if card is not None:
                 cards.append(card)
         return cards
@@ -329,7 +347,7 @@ class CardIndex:
         card_ids = self._index.get(unit.id(), [])
         tasks = []
         for card_id in card_ids:
-            tasks.append(Card.load_async(self._card_directory, card_id))
+            tasks.append(self._get_card_async(card_id))
         cards = await asyncio.gather(*tasks)
         return [card for card in cards if card is not None]
 
@@ -341,7 +359,7 @@ class CardIndex:
 
         async def read_card_file(card_id: str) -> Card | None:
             async with semaphore:
-                return await Card.load_async(self._card_directory, card_id)
+                return await self._get_card_async(card_id)
 
         tasks = [read_card_file(card_id) for card_id in card_ids]
         cards = await asyncio.gather(*tasks)
@@ -351,7 +369,9 @@ class CardIndex:
         return len(self._index.get(unit.id(), []))
 
     async def remove(self, card_id: str) -> None:
-        card = await Card.load_async(self._card_directory, card_id)
+        card = await self._get_card_async(card_id)
+        if card_id in self._cache:
+            del self._cache[card_id]
         if card is None:
             print(f"Card JSON not found: {self._card_directory / f'{card_id}.json'}")
             for unit_id in list(self._index.keys()):
@@ -367,7 +387,6 @@ class CardIndex:
                     Path(path).unlink()
                 except Exception as e:
                     print(f"Error deleting audio {path}: {e}")
-
         if card.native_audio_filename:
             try:
                 other_cards = await self.all_cards()
@@ -399,6 +418,7 @@ class CardIndex:
             card_ids = self._index.get(unit, [])
             card_ids.append(card.id)
             self._index[unit] = card_ids
+        self._cache[card.id] = card
 
     @llm.standard_retry
     async def create_card(

@@ -16,6 +16,7 @@
 
 import argparse
 import asyncio
+import hashlib
 
 from bespoke import CardIndex
 from bespoke import Language
@@ -28,15 +29,19 @@ async def filter_index(target: Language, native: Language, input_file: str) -> N
 
     card_index = CardIndex.load(target, native)
     all_cards = await card_index.all_cards()
-    cards_to_remove = [
-        card for card in all_cards if card.sentence in sentences_to_filter
-    ]
-    print(f"Found {len(cards_to_remove)} cards to filter.")
+    indexed_sentences = {card.sentence: card for card in all_cards}
 
-    for card in cards_to_remove:
-        await card_index.remove(card.id)
-    card_index.save()
-    print("Filtered cards successfully removed and index saved.")
+    try:
+        for sentence in sentences_to_filter:
+            card = indexed_sentences.get(sentence)
+            if card is None:
+                card_id = hashlib.sha256(sentence.encode("utf-8")).hexdigest()
+            else:
+                card_id = card.id
+            await card_index.remove(card_id)
+            print("Removed card for:", sentence)
+    finally:
+        card_index.save()
 
 
 def main():
