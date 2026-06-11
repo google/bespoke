@@ -21,7 +21,7 @@ We decided against it for simplicity.
 from collections import defaultdict
 from datetime import datetime
 from enum import StrEnum
-import numpy as np
+import math
 import pydantic
 
 RESHOW_BLOCK_INTERVAL = 60 * 10
@@ -129,6 +129,7 @@ def compute_urgency(
     mode: Mode,
     current_time: float,
 ) -> float:
+    EXP_LIMIT = 700.0
     # Default value for new units
     if not history or all([r.mode != mode or r.score == 0 for r in history]):
         return 0.0
@@ -151,4 +152,4 @@ def compute_urgency(
     target_interval = good_interval_length * INTERVAL_FACTOR
     target = last_good + target_interval
     deviation = (current_time - target) / target_interval
-    return 1.0 / (1.0 + np.exp(-deviation)) - 0.5
+    return 1.0 / (1.0 + math.exp(min(-deviation, EXP_LIMIT))) - 0.5

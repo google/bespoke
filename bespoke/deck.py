@@ -27,7 +27,7 @@ Card choice notes:
 import csv
 from datetime import datetime
 import json
-import numpy as np
+import math
 from pathlib import Path
 import pydantic
 import random
@@ -216,13 +216,12 @@ class Deck:
             mode=self._modes[0],
         )
         score = 0.0
-        timestamps = []
         for usage in self._card_id_uses.get(card.id, []):
-            timestamps.append(usage.time)
             if usage.is_reported:
                 score -= REPORT_PENALTY
-        days = (current_time - np.array(timestamps)) / 60.0 / 60.0 / 24.0
-        score -= CARD_USAGE_FACTOR * np.sum(np.exp(-CARD_USAGE_DECAY * days)).item()
+            days = (current_time - usage.time) / 60.0 / 60.0 / 24.0
+            if days >= 0.0:
+                score -= CARD_USAGE_FACTOR * math.exp(-CARD_USAGE_DECAY * days)
         for unit in card.unit_ids():
             state = urgency_states.get(unit, default_state)
             if not state.is_target:
