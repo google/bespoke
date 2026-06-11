@@ -256,10 +256,10 @@ class Deck:
                 cards = self._card_index.cards(vocab_unit)
                 if cards:
                     break
-        random.shuffle(cards)
+        # Limit number of scored cards to improve worst case performance
         scored_cards = [
             (self._score_card(card, urgency_states, current_time), card)
-            for card in cards
+            for card in random.sample(cards, min(10_000, len(cards)))
         ]
         _, best_card = max(scored_cards, key=lambda pair: pair[0])
         return mode, best_card
