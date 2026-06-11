@@ -15,10 +15,12 @@
 """Simple user interface for learning."""
 
 import argparse
-from nicegui import ui
 import os
 from pathlib import Path
 import sys
+import threading
+
+from nicegui import ui
 
 from bespoke import CardIndex
 from bespoke import Deck
@@ -233,7 +235,9 @@ class RatingWebApp:
             if unit:
                 self._deck.rate(unit, self._mode, rating)
         self._deck.log_usage(self._card.id, is_reported=is_reported)
-        self._deck.save(self._deck_filename)
+        threading.Thread(
+            target=self._deck.save, args=(self._deck_filename,), daemon=True
+        ).start()
 
         self._ratings = {}
         self._load_next_card()

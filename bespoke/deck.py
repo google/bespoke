@@ -31,6 +31,7 @@ import numpy as np
 from pathlib import Path
 import pydantic
 import random
+import threading
 from typing import Self
 
 from bespoke.card import Card
@@ -98,6 +99,7 @@ class Deck:
         self._modes = list(Mode)
         self._assume_known: Difficulty | None = None
 
+        self._lock = threading.Lock()
         self._translations: dict[str, str] = {}
         filename = TRANSLATIONS_FILE_PATTERN.format(
             target=target_language.code_name, native=native_language.code_name
@@ -268,29 +270,34 @@ class Deck:
     ) -> None:
         if current_time is None:
             current_time = datetime.now().timestamp()
-        rating = Rating(mode=mode, time=current_time, score=score)
-        ratings = self._ratings.get(unit.id(), [])
-        ratings.append(rating)
-        self._ratings[unit.id()] = ratings
+        with self._lock:
+            rating = Rating(mode=mode, time=current_time, score=score)
+            ratings = self._ratings.get(unit.id(), [])
+            ratings.append(rating)
+            self._ratings[unit.id()] = ratings
 
     def log_usage(
         self, card_id: str, is_reported: bool = False, current_time: float | None = None
     ) -> None:
         if current_time is None:
             current_time = datetime.now().timestamp()
-        usages = self._card_id_uses.get(card_id, [])
-        usage = CardUsage(time=current_time, is_reported=is_reported)
-        usages.append(usage)
-        self._card_id_uses[card_id] = usages
+        with self._lock:
+            usages = self._card_id_uses.get(card_id, [])
+            usage = CardUsage(time=current_time, is_reported=is_reported)
+            usages.append(usage)
+            self._card_id_uses[card_id] = usages
 
     def set_difficulty(self, difficulty: Difficulty) -> None:
-        self._difficulty = difficulty
+        with self._lock:
+            self._difficulty = difficulty
 
     def set_modes(self, modes: list[Mode]) -> None:
-        self._modes = modes
+        with self._lock:
+            self._modes = modes
 
     def set_assume_known(self, difficulty: Difficulty | None) -> None:
-        self._assume_known = difficulty
+        with self._lock:
+            self._assume_known = difficulty
 
     def stats(self, current_time: float | None = None) -> dict[str, int]:
         if current_time is None:
@@ -309,22 +316,24 @@ class Deck:
         }
 
     def save(self, filename: Path | str) -> None:
-        data = {
-            "target_language": self._target_language.code_name,
-            "native_language": self._native_language.code_name,
-            "ratings": {
-                key: list(rating.model_dump() for rating in ratings)
-                for key, ratings in self._ratings.items()
-            },
-            "card_id_uses": {
-                key: list(usage.model_dump() for usage in usages)
-                for key, usages in self._card_id_uses.items()
-            },
-            "difficulty": str(self._difficulty),
-            "modes": [str(m) for m in self._modes],
-        }
-        if self._assume_known is not None:
-            data["assume_known"] = str(self._assume_known)
+        with self._lock:
+            data = {
+                "target_language": self._target_language.code_name,
+                "native_language": self._native_language.code_name,
+                "ratings": {
+                    key: list(rating.model_dump() for rating in ratings)
+                    for key, ratings in self._ratings.items()
+                },
+                "card_id_uses": {
+                    key: list(usage.model_dump() for usage in usages)
+                    for key, usages in self._card_id_uses.items()
+                },
+                "difficulty": str(self._difficulty),
+                "modes": [str(m) for m in self._modes],
+            }
+            if self._assume_known is not None:
+                data["assume_known"] = str(self._assume_known)
+
         with open(filename, "w", encoding="utf-8") as f:
             json.dump(data, f)
 
