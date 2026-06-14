@@ -305,7 +305,7 @@ class GeminiLlmClient(LlmClient):
         if slowly:
             instruction = "Speak slowly: "
         else:
-            instruction = "Speak like a voice actor: "
+            instruction = "Speak: "
         text = f"{instruction}{sentence}"
         response = await self._client.aio.models.generate_content(
             model=self.SPEAK_MODEL,
