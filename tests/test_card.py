@@ -143,8 +143,9 @@ class TestCard(unittest.IsolatedAsyncioTestCase):
         with tempfile.TemporaryDirectory() as tmpdir:
             tmp_path = Path(tmpdir)
 
-            lang = LANGUAGES["trad_chinese"]
-            card_index = CardIndex(lang, lang)
+            target_lang = LANGUAGES["trad_chinese"]
+            native_lang = LANGUAGES["german"]
+            card_index = CardIndex(target_lang, native_lang)
             card_index._card_directory = tmp_path / "cards"
             card_index._index_path = tmp_path / "index.json"
             card_index._card_directory.mkdir(parents=True, exist_ok=True)
@@ -196,8 +197,9 @@ class TestCard(unittest.IsolatedAsyncioTestCase):
         with tempfile.TemporaryDirectory() as tmpdir:
             tmp_path = Path(tmpdir)
 
-            lang = LANGUAGES["trad_chinese"]
-            card_index = CardIndex(lang, lang)
+            target_lang = LANGUAGES["trad_chinese"]
+            native_lang = LANGUAGES["german"]
+            card_index = CardIndex(target_lang, native_lang)
             card_index._card_directory = tmp_path / "cards"
             card_index._index_path = tmp_path / "index.json"
             card_index._card_directory.mkdir(parents=True, exist_ok=True)
