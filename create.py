@@ -16,6 +16,8 @@
 
 import argparse
 import asyncio
+import shutil
+import sys
 import warnings
 
 from bespoke import CardIndex
@@ -87,6 +89,12 @@ def main():
         help="Maximum difficulty for card generation.",
     )
     args = parser.parse_args()
+
+    if not shutil.which("ffmpeg"):
+        sys.exit(
+            "Error: ffmpeg is not installed or not found in PATH.\n"
+            "Install it from: https://ffmpeg.org/download.html"
+        )
 
     target = target_choices[args.target]
     native = native_choices[args.native]
