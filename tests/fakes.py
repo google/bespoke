@@ -110,8 +110,11 @@ class FakeCardIndex:
     def save(self) -> None:
         pass
 
-    def cards(self, unit: Unit) -> list[Card]:
-        return self._cards.get(unit.id(), [])
+    def cards(self, unit: Unit, limit: int | None = None) -> list[Card]:
+        cards = self._cards.get(unit.id(), [])
+        if limit is not None:
+            cards = random.sample(cards, min(limit, len(cards)))
+        return cards
 
     async def all_cards(self) -> list[Card]:
         unique_cards = {}

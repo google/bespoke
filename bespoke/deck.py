@@ -235,16 +235,15 @@ class Deck:
         unit = self._target_language.get_by_id(unit_id)
         if unit is None:
             raise ValueError(f"Unit {unit_id} not found in index")
-        cards = self._card_index.cards(unit)
+        cards = self._card_index.cards(unit, limit=1000)
         if not cards:
             print(f"No cards found for unit '{unit_id}', showing random card.")
             self.rate(unit, mode, 0)
             unit = random.choice(self._units_with_cards)
-            cards = self._card_index.cards(unit)
-        # Limit number of scored cards to improve worst case performance
+            # Limit number of scored cards to improve worst case performance
+            cards = self._card_index.cards(unit, limit=1000)
         scored_cards = [
-            (self._score_card(card, mode, current_time), card)
-            for card in random.sample(cards, min(10_000, len(cards)))
+            (self._score_card(card, mode, current_time), card) for card in cards
         ]
         _, best_card = max(scored_cards, key=lambda pair: pair[0])
         return mode, best_card

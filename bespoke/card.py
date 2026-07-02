@@ -23,6 +23,7 @@ import numpy as np
 import os
 from pathlib import Path
 import pydantic
+import random
 from typing import Self
 
 from bespoke.languages import Language
@@ -334,8 +335,10 @@ class CardIndex:
             self._cache[card_id] = card
         return card
 
-    def cards(self, unit: Unit) -> list[Card]:
+    def cards(self, unit: Unit, limit: int | None = None) -> list[Card]:
         card_ids = self._index.get(unit.id(), [])
+        if limit is not None:
+            card_ids = random.sample(card_ids, min(limit, len(card_ids)))
         cards = []
         for card_id in card_ids:
             card = self._get_card(card_id)
