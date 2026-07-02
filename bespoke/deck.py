@@ -96,6 +96,10 @@ class Deck:
                 reader = csv.DictReader(f)
                 for row in reader:
                     self._translations[row["unit_id"]] = row["translation"]
+        self._units_with_cards = []
+        for unit in self._target_language.units():
+            if self._card_index.size(unit):
+                self._units_with_cards.append(unit)
 
     def translated_unit(self, unit_id: str) -> str:
         translated = self._translations.get(unit_id, "")
@@ -107,7 +111,6 @@ class Deck:
         return ""
 
     def _choose_task(self, current_time: float) -> tuple[Mode, str]:
-        all_units = self._target_language.units()
         default_state = RatingState([])
 
         # First loop over units until first unintroduced
@@ -118,11 +121,7 @@ class Deck:
         introduction_mode = None
         introduction_unit_id = None
         introduction_is_touched = False
-        learnable = 0
-        for i, unit in enumerate(all_units):
-            if not self._card_index.size(unit):
-                continue
-            learnable += 1
+        for i, unit in enumerate(self._units_with_cards):
             state = self._rating_states.get(unit.id(), default_state)
             is_skipped = (
                 self._assume_known is not None
@@ -154,14 +153,16 @@ class Deck:
             return max_mode, max_unit_id
 
         # Second loop over units after first unintroduced
-        tolerance = learnable * TOUCH_TOLERANCE_FACTOR + TOUCH_TOLERANCE_BUFFER
+        tolerance = introduction_index * TOUCH_TOLERANCE_FACTOR + TOUCH_TOLERANCE_BUFFER
         tolerance = max(int(tolerance), 1)
         tolerance_index = introduction_index + tolerance
         total_pressure = 0.0
         max_pressure = 0.0
         max_pressure_mode = None
         max_pressure_unit_id = None
-        for i, unit in enumerate(all_units[introduction_index:tolerance_index]):
+        for i, unit in enumerate(
+            self._units_with_cards[introduction_index:tolerance_index]
+        ):
             if not self._card_index.size(unit):
                 continue
             state = self._rating_states.get(unit.id(), default_state)
@@ -234,12 +235,10 @@ class Deck:
             raise ValueError(f"Unit {unit_id} not found in index")
         cards = self._card_index.cards(unit)
         if not cards:
-            print(f"No cards found for unit '{unit_id}', showing any card.")
+            print(f"No cards found for unit '{unit_id}', showing random card.")
             self.rate(unit, mode, 0)
-            for vocab_unit in self._target_language.units():
-                cards = self._card_index.cards(vocab_unit)
-                if cards:
-                    break
+            unit = random.choice(self._units_with_cards)
+            cards = self._card_index.cards(unit)
         # Limit number of scored cards to improve worst case performance
         scored_cards = [
             (self._score_card(card, mode, current_time), card)
@@ -290,9 +289,7 @@ class Deck:
         known = 0
         mature = 0
         count_waiting = True
-        for unit in self._target_language.units():
-            if not self._card_index.size(unit):
-                continue
+        for unit in self._units_with_cards:
             state = self._rating_states.get(unit.id(), default_state)
             is_skipped = (
                 self._assume_known is not None
