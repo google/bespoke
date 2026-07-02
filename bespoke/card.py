@@ -270,7 +270,7 @@ class CardIndex:
             with open(obj._index_path, "r", encoding="utf-8") as f:
                 obj._index = json.load(f)
             if obj._index:
-                use_def = all(" - " in k for k in obj._index.keys())
+                use_def = " - " in next(iter(obj._index.keys()))
                 target_language.initialize(use_definition=use_def)
         except Exception:
             print(f"Unable to open {obj._index_path}, creating empty CardIndex.")
