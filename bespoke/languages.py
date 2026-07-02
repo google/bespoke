@@ -103,12 +103,6 @@ class Language(pydantic.BaseModel):
 
                 self._units.append(unit)
                 self._units_by_id[unit.id()] = unit
-                self._units_by_name.setdefault(unit.name(), []).append(unit)
-                parts = [p.strip() for p in unit.name().split(",")]
-                for part in parts:
-                    for form in _get_stripped_forms(part):
-                        if form != unit.name():
-                            self._units_by_name.setdefault(form, []).append(unit)
 
         self._initialized = True
 
@@ -125,6 +119,16 @@ class Language(pydantic.BaseModel):
 
     def get_by_name(self, name: str) -> list[Unit]:
         self._initialize()
+        # Even lazier initialization, since unused in learning
+        if self._units and not self._units_by_name:
+            for unit in self._units:
+                self._units_by_name.setdefault(unit.name(), []).append(unit)
+                # The parts is how units often appear in sentences
+                parts = [p.strip() for p in unit.name().split(",")]
+                for part in parts:
+                    for form in _get_stripped_forms(part):
+                        if form != unit.name():
+                            self._units_by_name.setdefault(form, []).append(unit)
         return self._units_by_name.get(name, [])
 
     @classmethod
