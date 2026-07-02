@@ -91,9 +91,10 @@ class DictionaryUnit(Unit):
         self._name = name
         self._definition = definition
         self._difficulty = difficulty
+        self._id = f"{name} - {definition}"
 
     def id(self) -> str:
-        return f"{self._name} - {self._definition}"
+        return self._id
 
     def name(self) -> str:
         return self._name
