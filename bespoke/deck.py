@@ -100,6 +100,8 @@ class Deck:
         for unit in self._target_language.units():
             if self._card_index.size(unit):
                 self._units_with_cards.append(unit)
+        self._known_unit_modes = 0
+        self._mature_unit_modes = 0
 
     def translated_unit(self, unit_id: str) -> str:
         translated = self._translations.get(unit_id, "")
@@ -255,8 +257,14 @@ class Deck:
         with self._lock:
             rating = Rating(mode=mode, time=current_time, score=score)
             rating_state = self._rating_states.get(unit.id(), RatingState([]))
+            if mode in self._modes:
+                self._known_unit_modes -= rating_state.is_known(mode)
+                self._mature_unit_modes -= rating_state.is_mature(mode)
             rating_state.add(rating)
             self._rating_states[unit.id()] = rating_state
+            if mode in self._modes:
+                self._known_unit_modes += rating_state.is_known(mode)
+                self._mature_unit_modes += rating_state.is_mature(mode)
 
     def log_usage(
         self, card_id: str, is_reported: bool = False, current_time: float | None = None
@@ -276,6 +284,14 @@ class Deck:
     def set_modes(self, modes: list[Mode]) -> None:
         with self._lock:
             self._modes = modes
+            self._known_unit_modes = 0
+            self._mature_unit_modes = 0
+            for state in self._rating_states.values():
+                for mode in self._modes:
+                    if state.is_known(mode):
+                        self._known_unit_modes += 1
+                    if state.is_mature(mode):
+                        self._mature_unit_modes += 1
 
     def set_assume_known(self, difficulty: Difficulty | None) -> None:
         with self._lock:
@@ -284,30 +300,27 @@ class Deck:
     def stats(self, current_time: float | None = None) -> dict[str, int]:
         if current_time is None:
             current_time = datetime.now().timestamp()
-        default_state = RatingState([])
         waiting = 0
-        known = 0
-        mature = 0
-        count_waiting = True
         for unit in self._units_with_cards:
-            state = self._rating_states.get(unit.id(), default_state)
+            state = self._rating_states.get(unit.id())
             is_skipped = (
                 self._assume_known is not None
                 and unit.difficulty() <= self._assume_known
             )
-            if count_waiting and state.is_waiting(self._modes, current_time):
+            if state is None:
+                if not is_skipped:
+                    break
+                continue
+            if state.is_waiting(self._modes, current_time):
                 waiting += 1
-            for mode in self._modes:
-                if not is_skipped and not state.is_introduced(mode):
-                    count_waiting = False
-                if state.is_known(mode):
-                    known += 1
-                if state.is_mature(mode):
-                    mature += 1
+            if not is_skipped and any(
+                not state.is_introduced(mode) for mode in self._modes
+            ):
+                break
         return {
             "waiting": waiting,
-            "known": known // len(self._modes),
-            "mature": mature // len(self._modes),
+            "known": self._known_unit_modes // len(self._modes),
+            "mature": self._mature_unit_modes // len(self._modes),
         }
 
     def save(self, filename: Path | str) -> None:
@@ -340,14 +353,15 @@ class Deck:
         native_language = LANGUAGES[data["native_language"]]
         card_index = CardIndex.load(target_language, native_language)
         deck = cls(target_language, native_language, card_index)
-        for key, ratings_data in data["ratings"].items():
+        for unit_id, ratings_data in data["ratings"].items():
             ratings = list(Rating.model_validate(r) for r in ratings_data)
-            deck._rating_states[key] = RatingState(ratings)
-        for key, usage_data in data["card_id_uses"].items():
+            rating_state = RatingState(ratings)
+            deck._rating_states[unit_id] = rating_state
+        for card_id, usage_data in data["card_id_uses"].items():
             usages = list(CardUsage.model_validate(u) for u in usage_data)
-            deck._card_id_uses[key] = usages
+            deck._card_id_uses[card_id] = usages
         deck._difficulty = Difficulty(data["difficulty"])
-        deck._modes = [Mode(m) for m in data["modes"]]
+        deck.set_modes([Mode(m) for m in data["modes"]])
         assume_known = data.get("assume_known")
         if assume_known is not None:
             deck._assume_known = Difficulty(assume_known)
