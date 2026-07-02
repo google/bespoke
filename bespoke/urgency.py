@@ -16,19 +16,33 @@
 
 We considered a Maybe / Yellow / 2 rating at first.
 We decided against it for simplicity.
+It shouldn't appear, and is treated as No / Red / 1 if it does.
 """
 
-from collections import defaultdict
+from collections.abc import Iterable
 from datetime import datetime
 from enum import StrEnum
 import math
 import pydantic
 
-RESHOW_BLOCK_INTERVAL = 60 * 10
-BLOCK_INTERVAL = 60 * 60 * 20
+MINUTE = 60.0
+HOUR = MINUTE * 60.0
+DAY = HOUR * 24.0
+
+BLOCK_INTERVAL = HOUR * 20
+RED_BLOCK_INTERVAL = MINUTE * 10
+MINIMUM_BLOCK_INTERVAL = MINUTE * 1
+BLOCK_SCALE_INTERVAL = DAY * 1
 INTERVAL_DECAY = 0.5
-INTERVAL_FACTOR = 0.8
-ALL_GREEN_MINIMUM = 14 * 24 * 60 * 60
+INTERVAL_FACTOR = 1.8
+# Needs to be tuned with block constants to make sense
+MODE_INITIAL_GREEN_INTERVAL = HOUR * 1
+FULL_INITIAL_GREEN_INTERVAL = DAY * 14
+# For stats, we want:
+# MODE_INITIAL_GREEN_INTERVAL < KNOWN_AGE < FULL_INITIAL_GREEN_INTERVAL < MATURE_AGE
+WAITING_PROJECTION = RED_BLOCK_INTERVAL
+KNOWN_AGE = DAY * 1
+MATURE_AGE = DAY * 21
 
 
 class Mode(StrEnum):
@@ -50,106 +64,101 @@ class Rating(pydantic.BaseModel):
         return f"{iso_time}: {str(self.mode)} -> {self.score}"
 
 
-# Ignores yellow so far
-def _extract_good_interval(
-    history: list[Rating], mode: Mode
-) -> tuple[float | None, float]:
-    first_good = None
-    last_good = None
-    good_block = -1e5
-    good_interval_length = 1.0
-    has_red = False
-    has_green = False
-    for rating in history:
-        if rating.mode == mode:
-            # We treat yellow as red for now.
-            if rating.score in [1, 2]:
-                has_red = True
-                good_interval_length *= INTERVAL_DECAY
-                first_good = None
-                last_good = None
-            elif rating.score == 3 and rating.time > good_block:
-                has_green = True
-                last_good = rating.time
-                if first_good is None:
-                    first_good = rating.time
-                else:
-                    good_interval_length = max(
-                        good_interval_length, rating.time - first_good
-                    )
+class RatingState:
+    """Class that estimates learning progress from ratings."""
 
-        good_block = rating.time + BLOCK_INTERVAL
-    if has_green and not has_red:
-        good_interval_length = max(good_interval_length, ALL_GREEN_MINIMUM)
-    return last_good, good_interval_length
+    def __init__(self, ratings: list[Rating]) -> None:
+        self._ratings: list[Rating] = []
+        self._last_red: dict[Mode, float] = {}
+        self._green_start: dict[Mode, float] = {}
+        self._green_end: dict[Mode, float] = {}
+        self._green_streak: dict[Mode, float] = {}
+        self._block_end = -1e5
+        self._is_touched = False
+        for rating in ratings:
+            self.add(rating)
 
-
-def needs_introduction(history: list[Rating], modes: list[Mode]) -> Mode | None:
-    if not modes:
-        return None
-    if not history:
-        return modes[0]
-    # Perfect start detection
-    greens: dict[Mode, int] = defaultdict(int)
-    first_score: dict[Mode, int] = defaultdict(int)
-    last_time = history[0].time - 2.0 * BLOCK_INTERVAL
-    for rating in history:
-        if rating.score == 3:
-            greens[rating.mode] += 1
-        is_blocked = rating.time < last_time + BLOCK_INTERVAL
-        last_time = rating.time
-        if first_score[rating.mode] > 0:
-            continue
+    def add(self, rating: Rating) -> None:
+        if self._ratings and self._ratings[-1].time > rating.time:
+            print("Warning: Rejecting rating out of order")
+            return
+        self._ratings.append(rating)
         match rating.score:
             case 0:
-                pass
-            case 1:
-                first_score[rating.mode] = rating.score
-            case 2:
-                first_score[rating.mode] = rating.score
+                base_block_interval = BLOCK_INTERVAL
+            case 1 | 2:
+                self._last_red[rating.mode] = rating.time
+                self._green_start.pop(rating.mode, None)
+                self._green_end.pop(rating.mode, None)
+                green_streak = self._green_streak.get(rating.mode)
+                if green_streak is not None:
+                    self._green_streak[rating.mode] = green_streak * INTERVAL_DECAY
+                base_block_interval = RED_BLOCK_INTERVAL
+                self._is_touched = True
             case 3:
-                if not is_blocked:
-                    first_score[rating.mode] = rating.score
+                if rating.time > self._block_end:
+                    last_red_time = self._last_red.get(rating.mode)
+                    if last_red_time is not None:
+                        streak = rating.time - last_red_time
+                    elif self._last_red:
+                        streak = MODE_INITIAL_GREEN_INTERVAL
+                    else:
+                        streak = FULL_INITIAL_GREEN_INTERVAL
+                    green_start = self._green_start.get(rating.mode)
+                    if green_start is None:
+                        self._green_start[rating.mode] = rating.time
+                    else:
+                        streak = max(streak, rating.time - green_start)
+                    last_streak = self._green_streak.get(rating.mode, 0.0)
+                    self._green_end[rating.mode] = rating.time
+                    self._green_streak[rating.mode] = max(last_streak, streak)
+                base_block_interval = BLOCK_INTERVAL
+                self._is_touched = True
             case _:
-                assert False, "Unknown score"
+                base_block_interval = 0.0
+                print("Warning: Found unexpected rating score")
+        max_green_interval = max(self._green_streak.values(), default=1.0)
+        if max_green_interval <= 0.0:
+            print("Warning: Negative green streak")
+            max_green_interval = 1.0
+        block_scale = 1.0 - math.exp(-max_green_interval / BLOCK_SCALE_INTERVAL)
+        block_interval = base_block_interval * block_scale
+        block_interval = max(block_interval, MINIMUM_BLOCK_INTERVAL)
+        self._block_end = max(self._block_end, rating.time + block_interval)
 
-    MIN_GREENS = 2
-    if any(s == 3 for s in first_score.values()) and all(
-        s in [0, 3] for s in first_score.values()
-    ):
-        return None
-    for mode in modes:
-        if greens[mode] < MIN_GREENS and first_score[mode] != 3:
-            return mode
-    return None
+    def ratings(self) -> list[Rating]:
+        return list(self._ratings)
 
+    def urgency(self, mode: Mode, current_time: float) -> float:
+        if current_time < self._block_end:
+            # Blocked
+            return -1.0
+        green_streak = self._green_streak.get(mode)
+        if green_streak is None:
+            # Not introduced, meaning no green ever
+            return 0.0
+        green_end = self._green_end.get(mode)
+        if green_end is None:
+            # Last was red
+            return 1.0
+        target_interval = green_streak * INTERVAL_FACTOR
+        target = green_end + target_interval
+        deviation = (current_time - target) / target_interval
+        # tanh centered around target day
+        return math.tanh(deviation)
 
-def compute_urgency(
-    history: list[Rating],
-    mode: Mode,
-    current_time: float,
-) -> float:
-    EXP_LIMIT = 700.0
-    # Default value for new units
-    if not history or all([r.mode != mode or r.score == 0 for r in history]):
-        return 0.0
-    # Block if just seen.
-    if current_time < history[-1].time + RESHOW_BLOCK_INTERVAL:
-        return -1.0
-    # High priority when last rated feedback was failure
-    last_non_zero = next(
-        r for r in reversed(history) if r.mode == mode and r.score != 0
-    )
-    if last_non_zero.score in [1, 2]:
-        return 1.0
-    # Low priority if card is in block
-    if current_time < history[-1].time + BLOCK_INTERVAL:
-        return -1.0
-    last_good, good_interval_length = _extract_good_interval(history, mode)
-    if last_good is None:
-        return 1.0
-    # Return sigmoid scaled with the forgetting interval length centered at target day
-    target_interval = good_interval_length * INTERVAL_FACTOR
-    target = last_good + target_interval
-    deviation = (current_time - target) / target_interval
-    return 1.0 / (1.0 + math.exp(min(-deviation, EXP_LIMIT))) - 0.5
+    def is_touched(self) -> bool:
+        return self._is_touched
+
+    def is_introduced(self, mode: Mode) -> bool:
+        return mode in self._green_streak
+
+    def is_waiting(self, modes: Iterable[Mode], current_time: float) -> bool:
+        projected_time = current_time + WAITING_PROJECTION
+        return any(self.urgency(mode, projected_time) > 0.0 for mode in modes)
+
+    def is_known(self, mode: Mode) -> bool:
+        return self._green_streak.get(mode, 0.0) > KNOWN_AGE
+
+    def is_mature(self, mode: Mode) -> bool:
+        return self._green_streak.get(mode, 0.0) > MATURE_AGE

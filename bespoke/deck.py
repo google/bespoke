@@ -44,36 +44,22 @@ from bespoke.unit import Unit
 from bespoke.unit import DictionaryUnit
 
 from bespoke.urgency import Rating
-from bespoke.urgency import compute_urgency
-from bespoke.urgency import needs_introduction
+from bespoke.urgency import RatingState
 
 TRANSLATIONS_FILE_PATTERN = "translations_{target}_{native}.csv"
-MINIMUM_TOUCH_RATIO = 0.5
-TOUCH_MARGIN = 10
+TOUCH_TOLERANCE_FACTOR = 1.0
+TOUCH_TOLERANCE_BUFFER = 10.0
+INTRODUCTION_THRESHOLD = 10.0
+INTRODUCE_OUT_OF_ORDER = False
 # Card scoring constants
 REPORT_PENALTY = 1000000.0
 CARD_USAGE_FACTOR = 1000.0
 CARD_USAGE_DECAY = 0.1
-NONTARGET_PENALTY = 200.0
-UNTOUCHED_PENALTY = 100.0
-INTRODUCTION_BONUS = 1.0
-URGENCY_BONUS = 2.0
+UNTOUCHED_PENALTY = 200.0
+UNINTRODUCED_PENALTY = 100.0
+URGENCY_BONUS = 10.0
 DIFFICULTY_MATCH_BONUS = 0.1
 DIFFICULTY_PENALTY = 0.1
-
-
-def _is_untouched(history: list[Rating]) -> bool:
-    return all(rating.score == 0 for rating in history)
-
-
-class UrgencyState(pydantic.BaseModel):
-    """Helper class to store temporary info about urgencies."""
-
-    is_touched: bool
-    needs_introduction: bool
-    is_target: bool
-    urgency: float
-    mode: Mode
 
 
 class CardUsage(pydantic.BaseModel):
@@ -93,7 +79,7 @@ class Deck:
         self._target_language = target_language
         self._native_language = native_language
         self._card_index = card_index
-        self._ratings: dict[str, list[Rating]] = {}
+        self._rating_states: dict[str, RatingState] = {}
         self._card_id_uses: dict[str, list[CardUsage]] = {}
         self._difficulty = Difficulty.A1
         self._modes = list(Mode)
@@ -120,101 +106,101 @@ class Deck:
             return unit.definition()
         return ""
 
-    def _compute_urgencies(self, current_time: float) -> dict[str, UrgencyState]:
-        urgency_states = {}
-        touched = 0
-        available = 0
-        has_reached_threshold = False
-        for unit in self._target_language.units():
+    def _choose_task(self, current_time: float) -> tuple[Mode, str]:
+        all_units = self._target_language.units()
+        default_state = RatingState([])
+
+        # First loop over units until first unintroduced
+        max_urgency = -1e5
+        max_mode = None
+        max_unit_id = None
+        introduction_index = 0
+        introduction_mode = None
+        introduction_unit_id = None
+        introduction_is_touched = False
+        learnable = 0
+        for i, unit in enumerate(all_units):
             if not self._card_index.size(unit):
                 continue
-            available += 1
-            if (touched + TOUCH_MARGIN) / (
-                available + TOUCH_MARGIN
-            ) < MINIMUM_TOUCH_RATIO:
-                has_reached_threshold = True
-            history = self._ratings.get(unit.id())
-            if history is None or _is_untouched(history):
-                is_touched = (
-                    self._assume_known is not None
-                    and unit.difficulty() <= self._assume_known
-                )
-
-                if is_touched:
-                    touched += 1
-                urgency_states[unit.id()] = UrgencyState(
-                    is_touched=is_touched,
-                    needs_introduction=False,
-                    is_target=not has_reached_threshold,
-                    urgency=0.0,
-                    mode=self._modes[0],
-                )
-                continue
-            touched += 1
-            highest_urgency, mode = max(
-                (compute_urgency(history, m, current_time), m) for m in self._modes
+            learnable += 1
+            state = self._rating_states.get(unit.id(), default_state)
+            is_skipped = (
+                self._assume_known is not None
+                and unit.difficulty() <= self._assume_known
             )
-            introduction_mode = needs_introduction(history, self._modes)
+            for mode in self._modes:
+                urgency = state.urgency(mode, current_time)
+                if urgency > max_urgency:
+                    max_urgency = urgency
+                    max_mode = mode
+                    max_unit_id = unit.id()
+                if not is_skipped and urgency >= 0.0 and not state.is_introduced(mode):
+                    introduction_index = i
+                    introduction_mode = mode
+                    introduction_unit_id = unit.id()
+                    introduction_is_touched = state.is_touched()
+                    break
             if introduction_mode is not None:
-                mode = introduction_mode
-            urgency_states[unit.id()] = UrgencyState(
-                is_touched=True,
-                needs_introduction=introduction_mode is not None,
-                is_target=not has_reached_threshold,
-                urgency=highest_urgency,
-                mode=mode,
-            )
-        return urgency_states
+                break
+        if max_mode is None or max_unit_id is None:
+            raise ValueError("No units found")
 
-    def _choose_task(
-        self,
-        urgency_states: dict[str, UrgencyState],
-    ) -> tuple[Mode, str]:
-        target_states = []
-        for unit in self._target_language.units():
+        if max_urgency > 0.0:
+            # Case 1: Urgent unit earlier than all new units
+            return max_mode, max_unit_id
+        if introduction_mode is None or introduction_unit_id is None:
+            # Case 2: No new units need to be introduced right now
+            print("Nothing needs to be learned right now")
+            return max_mode, max_unit_id
+
+        # Second loop over units after first unintroduced
+        tolerance = learnable * TOUCH_TOLERANCE_FACTOR + TOUCH_TOLERANCE_BUFFER
+        tolerance = max(int(tolerance), 1)
+        tolerance_index = introduction_index + tolerance
+        total_pressure = 0.0
+        max_pressure = 0.0
+        max_pressure_mode = None
+        max_pressure_unit_id = None
+        for i, unit in enumerate(all_units[introduction_index:tolerance_index]):
             if not self._card_index.size(unit):
                 continue
-            state = urgency_states[unit.id()]
-            if state.is_target:
-                target_states.append((unit.id(), state))
-            else:
-                # Optimization, from here, nothing is a target.
-                break
+            state = self._rating_states.get(unit.id(), default_state)
+            index_factor = 1.0 - (i - introduction_index) / tolerance
+            for mode in self._modes:
+                urgency = state.urgency(mode, current_time)
+                if urgency > 0.0:
+                    pressure = urgency * index_factor
+                    total_pressure += pressure
+                    if pressure > max_pressure:
+                        max_pressure = pressure
+                        max_pressure_mode = mode
+                        max_pressure_unit_id = unit.id()
+                elif (
+                    INTRODUCE_OUT_OF_ORDER
+                    and not introduction_is_touched
+                    and state.is_touched()
+                    and not state.is_introduced(mode)
+                ):
+                    introduction_mode = mode
+                    introduction_unit_id = unit.id()
+                    introduction_is_touched = True
 
-        # Step 1: Return the first urgent unit.
-        for unit_id, state in target_states:
-            if state.urgency > 0.0:
-                return state.mode, unit_id
-
-        # Step 2: Touched and needs introduction.
-        for unit_id, state in target_states:
-            if state.needs_introduction:
-                return state.mode, unit_id
-
-        # Step 3: Untouched, but a target.
-        for unit_id, state in target_states:
-            if not state.is_touched:
-                return state.mode, unit_id
-
-        # Step 4: Highest urgency.
-        if not target_states:
-            raise ValueError("No units found")
-        unit_id, state = max(target_states, key=lambda s: s[1].urgency)
-        return state.mode, unit_id
+        if total_pressure > INTRODUCTION_THRESHOLD:
+            # Case 3: Prioritze learning over introduction
+            assert max_pressure_mode is not None
+            assert max_pressure_unit_id is not None
+            return max_pressure_mode, max_pressure_unit_id
+        else:
+            # Case 4: Prioritze introduction over learning
+            return introduction_mode, introduction_unit_id
 
     def _score_card(
         self,
         card: Card,
-        urgency_states: dict[str, UrgencyState],
+        mode: Mode,
         current_time: float,
     ) -> float:
-        default_state = UrgencyState(
-            is_touched=False,
-            needs_introduction=False,
-            is_target=False,
-            urgency=0.0,
-            mode=self._modes[0],
-        )
+        default_state = RatingState([])
         score = 0.0
         for usage in self._card_id_uses.get(card.id, []):
             if usage.is_reported:
@@ -222,18 +208,17 @@ class Deck:
             days = (current_time - usage.time) / 60.0 / 60.0 / 24.0
             if days >= 0.0:
                 score -= CARD_USAGE_FACTOR * math.exp(-CARD_USAGE_DECAY * days)
-        for unit in card.unit_ids():
-            state = urgency_states.get(unit, default_state)
-            if not state.is_target:
-                score -= NONTARGET_PENALTY
-            if not state.is_touched:
+        for unit_id in card.unit_ids():
+            state = self._rating_states.get(unit_id, default_state)
+            if not state.is_touched():
                 score -= UNTOUCHED_PENALTY
-            if state.needs_introduction:
-                score += INTRODUCTION_BONUS
-            if state.urgency > 0.0:
-                score += URGENCY_BONUS
-            vocab_unit = self._target_language.get_by_id(unit)
-            unit_difficulty = vocab_unit.difficulty() if vocab_unit else Difficulty.A1
+            elif not state.is_introduced(mode):
+                score -= UNINTRODUCED_PENALTY
+            urgency = state.urgency(mode, current_time)
+            if urgency > 0.0:
+                score += URGENCY_BONUS * max(urgency, 0.1)
+            unit = self._target_language.get_by_id(unit_id)
+            unit_difficulty = unit.difficulty() if unit else Difficulty.A1
             if unit_difficulty == self._difficulty:
                 score += DIFFICULTY_MATCH_BONUS
             elif unit_difficulty > self._difficulty:
@@ -243,8 +228,7 @@ class Deck:
     def draw(self, current_time: float | None = None) -> tuple[Mode, Card]:
         if current_time is None:
             current_time = datetime.now().timestamp()
-        urgency_states = self._compute_urgencies(current_time)
-        mode, unit_id = self._choose_task(urgency_states)
+        mode, unit_id = self._choose_task(current_time)
         unit = self._target_language.get_by_id(unit_id)
         if unit is None:
             raise ValueError(f"Unit {unit_id} not found in index")
@@ -258,7 +242,7 @@ class Deck:
                     break
         # Limit number of scored cards to improve worst case performance
         scored_cards = [
-            (self._score_card(card, urgency_states, current_time), card)
+            (self._score_card(card, mode, current_time), card)
             for card in random.sample(cards, min(10_000, len(cards)))
         ]
         _, best_card = max(scored_cards, key=lambda pair: pair[0])
@@ -271,9 +255,9 @@ class Deck:
             current_time = datetime.now().timestamp()
         with self._lock:
             rating = Rating(mode=mode, time=current_time, score=score)
-            ratings = self._ratings.get(unit.id(), [])
-            ratings.append(rating)
-            self._ratings[unit.id()] = ratings
+            rating_state = self._rating_states.get(unit.id(), RatingState([]))
+            rating_state.add(rating)
+            self._rating_states[unit.id()] = rating_state
 
     def log_usage(
         self, card_id: str, is_reported: bool = False, current_time: float | None = None
@@ -301,17 +285,32 @@ class Deck:
     def stats(self, current_time: float | None = None) -> dict[str, int]:
         if current_time is None:
             current_time = datetime.now().timestamp()
-        urgency_states = self._compute_urgencies(current_time)
+        default_state = RatingState([])
         waiting = 0
-        satisfied = 0
-        for state in urgency_states.values():
-            if state.is_target and state.urgency > 0.0:
+        known = 0
+        mature = 0
+        count_waiting = True
+        for unit in self._target_language.units():
+            if not self._card_index.size(unit):
+                continue
+            state = self._rating_states.get(unit.id(), default_state)
+            is_skipped = (
+                self._assume_known is not None
+                and unit.difficulty() <= self._assume_known
+            )
+            if count_waiting and state.is_waiting(self._modes, current_time):
                 waiting += 1
-            if state.is_touched and state.urgency <= 0.0:
-                satisfied += 1
+            for mode in self._modes:
+                if not is_skipped and not state.is_introduced(mode):
+                    count_waiting = False
+                if state.is_known(mode):
+                    known += 1
+                if state.is_mature(mode):
+                    mature += 1
         return {
             "waiting": waiting,
-            "satisfied": satisfied,
+            "known": known // len(self._modes),
+            "mature": mature // len(self._modes),
         }
 
     def save(self, filename: Path | str) -> None:
@@ -320,8 +319,8 @@ class Deck:
                 "target_language": self._target_language.code_name,
                 "native_language": self._native_language.code_name,
                 "ratings": {
-                    key: list(rating.model_dump() for rating in ratings)
-                    for key, ratings in self._ratings.items()
+                    key: list(rating.model_dump() for rating in state.ratings())
+                    for key, state in self._rating_states.items()
                 },
                 "card_id_uses": {
                     key: list(usage.model_dump() for usage in usages)
@@ -346,7 +345,7 @@ class Deck:
         deck = cls(target_language, native_language, card_index)
         for key, ratings_data in data["ratings"].items():
             ratings = list(Rating.model_validate(r) for r in ratings_data)
-            deck._ratings[key] = ratings
+            deck._rating_states[key] = RatingState(ratings)
         for key, usage_data in data["card_id_uses"].items():
             usages = list(CardUsage.model_validate(u) for u in usage_data)
             deck._card_id_uses[key] = usages

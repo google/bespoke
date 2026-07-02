@@ -151,11 +151,13 @@ class RatingWebApp:
             ui.separator().classes("my-4")
 
             stats = self._deck.stats()
-            satisfied = stats["satisfied"]
             waiting = stats["waiting"]
+            known = stats["known"]
+            mature = stats["mature"]
             with ui.row().classes("w-full justify-end gap-2 mb-2"):
-                ui.badge(f"Known: {satisfied}", color="grey").props("outline")
                 ui.badge(f"To Do: {waiting}", color="grey").props("outline")
+                ui.badge(f"Known: {known}", color="grey").props("outline")
+                ui.badge(f"Mature: {mature}", color="grey").props("outline")
 
             ui.button("Flip", on_click=self._show_back).classes("w-full h-12 text-lg")
 

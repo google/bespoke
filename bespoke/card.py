@@ -16,13 +16,13 @@
 
 import aiofiles  # type: ignore
 import asyncio
+from collections.abc import Iterable
 import hashlib
 import json
 import numpy as np
 import os
 from pathlib import Path
 import pydantic
-from typing import Iterable
 from typing import Self
 
 from bespoke.languages import Language

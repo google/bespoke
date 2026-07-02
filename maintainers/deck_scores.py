@@ -19,15 +19,16 @@ import datetime
 
 from bespoke import Deck
 from bespoke import languages
+from bespoke.urgency import RatingState
 
 
-def show_ratings(deck: Deck, unit: str) -> None:
-    print(f"Stats for {unit}...")
-    ratings = deck._ratings.get(unit, [])
-    if ratings:
+def show_ratings(deck: Deck, unit_id: str) -> None:
+    print(f"Stats for {unit_id}...")
+    state = deck._rating_states.get(unit_id)
+    if state:
         print("Ratings:")
-    for rating in ratings:
-        print(str(rating))
+        for rating in state.ratings():
+            print(str(rating))
     print("")
 
 
@@ -43,19 +44,20 @@ def show_cards(deck: Deck) -> None:
     if deck._assume_known is not None:
         print(f"Assumes knowledge of {deck._assume_known} vocabulary")
     stats = deck.stats()
-    print(f"Waiting: {stats['waiting']}, Satisfied: {stats['satisfied']}")
+    print(f"Waiting: {stats['waiting']}")
+    print(f"  Known: {stats['known']}")
+    print(f" Mature: {stats['mature']}")
     print("")
 
     current_time = datetime.datetime.now().timestamp()
-    urgency_states = deck._compute_urgencies(current_time)
-    mode, unit_id = deck._choose_task(urgency_states)
+    mode, unit_id = deck._choose_task(current_time)
     print(f"Next unit is '{unit_id}'")
-    state = urgency_states[unit_id]
-    print(f"        Is touched: {state.is_touched}")
-    print(f"Needs introduction: {state.needs_introduction}")
-    print(f"         Is target: {state.is_target}")
-    print(f"           Urgency: {state.urgency}")
-    print(f"              Mode: {state.mode}")
+    state = deck._rating_states.get(unit_id, RatingState([]))
+    print(f"   Is touched: {state.is_touched()}")
+    print(f"Is introduced: {state.is_introduced(mode)}")
+    print(f"   Is waiting: {state.is_waiting(deck._modes, current_time)}")
+    print(f"      Urgency: {state.urgency(mode, current_time)}")
+    print(f"         Mode: {mode}")
     print("")
 
     unit = deck._target_language.get_by_id(unit_id)
@@ -64,7 +66,7 @@ def show_cards(deck: Deck) -> None:
         cards = deck._card_index.cards(unit)
     card_scores = []
     for card in cards:
-        score = deck._score_card(card, urgency_states, current_time)
+        score = deck._score_card(card, mode, current_time)
         card_scores.append((card, score))
     card_scores.sort(key=lambda x: x[1])
     for card, score in card_scores[-5:]:
