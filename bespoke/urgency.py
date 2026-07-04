@@ -157,6 +157,11 @@ class RatingState:
         projected_time = current_time + WAITING_PROJECTION
         return any(self.urgency(mode, projected_time) > 0.0 for mode in modes)
 
+    def can_be_introduced(self, modes: Iterable[Mode], current_time: float) -> bool:
+        if current_time < self._block_end:
+            return False
+        return any(not self.is_introduced(mode) for mode in modes)
+
     def is_known(self, mode: Mode) -> bool:
         return self._green_streak.get(mode, 0.0) > KNOWN_AGE
 

@@ -168,7 +168,8 @@ class Deck:
             if not self._card_index.size(unit):
                 continue
             state = self._rating_states.get(unit.id(), default_state)
-            index_factor = 1.0 - (i - introduction_index) / tolerance
+            index_factor = 1.0 - i / tolerance
+            assert 0.0 <= index_factor <= 1.0
             for mode in self._modes:
                 urgency = state.urgency(mode, current_time)
                 if urgency > 0.0:
@@ -312,9 +313,7 @@ class Deck:
                 continue
             if state.is_waiting(self._modes, current_time):
                 waiting += 1
-            if not is_skipped and any(
-                not state.is_introduced(mode) for mode in self._modes
-            ):
+            if not is_skipped and state.can_be_introduced(self._modes, current_time):
                 break
         return {
             "waiting": waiting,

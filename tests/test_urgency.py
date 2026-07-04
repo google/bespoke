@@ -124,6 +124,18 @@ class TestRatingState(unittest.TestCase):
         self.assertTrue(state.is_waiting(Mode, DAY * 10))
         self.assertFalse(state.is_waiting([Mode.SPEAK], DAY * 10))
 
+    def test_can_be_introduced(self) -> None:
+        state = RatingState([])
+        self.assertTrue(state.can_be_introduced(Mode, DAY * 0))
+        state.add(Rating(mode=Mode.LISTEN, time=DAY * 0, score=0))
+        self.assertFalse(state.can_be_introduced(Mode, DAY * 0 + 1))
+        self.assertTrue(state.can_be_introduced(Mode, DAY * 2))
+        state.add(Rating(mode=Mode.LISTEN, time=DAY * 2, score=3))
+        self.assertTrue(state.can_be_introduced(Mode, DAY * 3))
+        state.add(Rating(mode=Mode.SPEAK, time=DAY * 3, score=3))
+        self.assertTrue(state.can_be_introduced(Mode, DAY * 4))
+        self.assertFalse(state.can_be_introduced([Mode.LISTEN, Mode.SPEAK], DAY * 4))
+
     def test_stats(self) -> None:
         state = RatingState([])
         self.assertFalse(state.is_known(Mode.READ))
