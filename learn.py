@@ -20,7 +20,7 @@ from pathlib import Path
 import sys
 import threading
 
-from nicegui import ui
+from nicegui import events, ui
 
 from bespoke import CardIndex
 from bespoke import Deck
@@ -56,6 +56,9 @@ class RatingWebApp:
         self._deck = deck
         self._deck_filename = deck_filename
         self._ratings: dict[str, int] = {}
+        self._audio_players: list[ui.audio] = []
+        self._on_back = False
+        self._keyboard = ui.keyboard(on_key=self._handle_key)
 
         self.main_container = ui.column().classes(
             "w-full max-w-2xl mx-auto items-center gap-4 p-4"
@@ -80,13 +83,21 @@ class RatingWebApp:
 
     def _render_audio_player(
         self, label: str, filename: str, autoplay: bool = False
-    ) -> None:
+    ) -> ui.audio | None:
         with ui.row().classes("items-center gap-2"):
             ui.label(label).classes("font-bold w-16 readable-text")
             if os.path.exists(filename):
-                ui.audio(filename, autoplay=autoplay, controls=True)
+                return ui.audio(filename, autoplay=autoplay, controls=True)
             else:
                 ui.icon("volume_off", color="grey").tooltip(f"Missing file: {filename}")
+                return None
+
+    def _add_audio_player(
+        self, label: str, filename: str, autoplay: bool = False
+    ) -> None:
+        player = self._render_audio_player(label, filename, autoplay)
+        if player:
+            self._audio_players.append(player)
 
     def _create_color_cycling_button(
         self,
@@ -113,6 +124,8 @@ class RatingWebApp:
         return btn
 
     def _show_front(self) -> None:
+        self._on_back = False
+        self._audio_players = []
         self.main_container.clear()
 
         with self.main_container:
@@ -121,12 +134,10 @@ class RatingWebApp:
                     with ui.card().classes(
                         "w-full items-center bg-gray-100 dark:bg-zinc-800"
                     ):
-                        self._render_audio_player(
+                        self._add_audio_player(
                             "Play:", self._card.audio_filename, autoplay=True
                         )
-                        self._render_audio_player(
-                            "Slow:", self._card.slow_audio_filename
-                        )
+                        self._add_audio_player("Slow:", self._card.slow_audio_filename)
                 case Mode.SPEAK:
                     ui.label("Speak the sentence!").classes(
                         "text-gray-500 dark:text-gray-400 text-xl font-mono"
@@ -134,7 +145,7 @@ class RatingWebApp:
                     with ui.card().classes(
                         "w-full items-center bg-gray-100 dark:bg-zinc-800"
                     ):
-                        self._render_audio_player("", self._card.native_audio_filename)
+                        self._add_audio_player("", self._card.native_audio_filename)
                     self._render_sentence(self._card.native_sentence)
                 case Mode.READ:
                     self._render_sentence(self._card.sentence)
@@ -145,7 +156,7 @@ class RatingWebApp:
                     with ui.card().classes(
                         "w-full items-center bg-gray-100 dark:bg-zinc-800"
                     ):
-                        self._render_audio_player("", self._card.native_audio_filename)
+                        self._add_audio_player("", self._card.native_audio_filename)
                     self._render_sentence(self._card.native_sentence)
 
             ui.separator().classes("my-4")
@@ -162,17 +173,19 @@ class RatingWebApp:
             ui.button("Flip", on_click=self._show_back).classes("w-full h-12 text-lg")
 
     def _show_back(self) -> None:
+        self._on_back = True
+        self._audio_players = []
         self.main_container.clear()
 
         with self.main_container:
             # 1. Playback Section
             with ui.card().classes("w-full items-center bg-gray-100 dark:bg-zinc-800"):
                 autoplay = self._mode != Mode.LISTEN
-                self._render_audio_player(
+                self._add_audio_player(
                     "Play:", self._card.audio_filename, autoplay=autoplay
                 )
-                self._render_audio_player("Slow:", self._card.slow_audio_filename)
-                self._render_audio_player("Native:", self._card.native_audio_filename)
+                self._add_audio_player("Slow:", self._card.slow_audio_filename)
+                self._add_audio_player("Native:", self._card.native_audio_filename)
 
             # 2. Text Section
             self._render_sentence(self._card.sentence)
@@ -243,6 +256,25 @@ class RatingWebApp:
 
         self._ratings = {}
         self._load_next_card()
+
+    def _handle_key(self, e: events.KeyEventArguments) -> None:
+        if not e.action.keydown or e.action.repeat:
+            return
+
+        if e.key == "1":
+            if len(self._audio_players) >= 1:
+                self._audio_players[0].play()
+        elif e.key == "2":
+            if len(self._audio_players) >= 2:
+                self._audio_players[1].play()
+        elif e.key == "3":
+            if len(self._audio_players) >= 3:
+                self._audio_players[2].play()
+        elif e.key == " ":
+            if self._on_back:
+                self._show_front()
+            else:
+                self._show_back()
 
 
 def open_latest_deck() -> tuple[Deck | None, str]:
