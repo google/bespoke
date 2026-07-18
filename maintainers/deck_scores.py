@@ -51,7 +51,12 @@ def show_cards(deck: Deck) -> None:
 
     current_time = datetime.datetime.now().timestamp()
     mode, unit_id = deck._choose_task(current_time)
-    print(f"Next unit is '{unit_id}'")
+    unit_index = None
+    for i, u in enumerate(deck._target_language.units()):
+        if u.id() == unit_id:
+            unit_index = i
+            break
+    print(f"Next unit (number {unit_index}) is '{unit_id}'")
     state = deck._rating_states.get(unit_id, RatingState([]))
     print(f"   Is touched: {state.is_touched()}")
     print(f"Is introduced: {state.is_introduced(mode)}")
