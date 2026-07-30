@@ -124,7 +124,7 @@ class LlmClient(abc.ABC):
 
 
 class GeminiLlmClient(LlmClient):
-    TEXT_MODEL = "gemini-3.1-flash-lite"
+    TEXT_MODEL = "gemini-3.5-flash-lite"
     SPEAK_MODEL = "gemini-3.1-flash-tts-preview"
     VOICES = [
         "Aoede",
