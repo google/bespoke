@@ -224,9 +224,13 @@ class GeminiLlmClient(LlmClient):
 
     @standard_retry
     async def suggest_names(self, sentence: str, language: Language) -> list[str]:
+        japanese_instruction = ""
+        if language.code_name == "japanese":
+            japanese_instruction = "Create hiragana and possible multiple kanji versions of the word, if both are used. "
         prompt = (
             f"Given is a sentence in {language.writing_system}: \n{sentence} \n"
             "List all base forms of words in the sentence. "
+            f"{japanese_instruction}"
         )
 
         response = await self._client.aio.models.generate_content(
@@ -259,6 +263,23 @@ class GeminiLlmClient(LlmClient):
                 equal_occurance_text += 'part of unit ID before " - ". '
             else:
                 equal_occurance_text += "unit ID. "
+        else:
+            equal_occurance_text = (
+                "You may leave words, particles or grammatical word parts "
+                "untagged if there is no good matching unit in the hints. "
+                "Do not invent or force tags for unlisted words. "
+            )
+            if language.code_name == "japanese":
+                equal_occurance_text += (
+                    "For Japanese, grammatical endings of words "
+                    "(such as verb or adjective inflections like -た, -たり, "
+                    "-て, -ます, -ない) should be included in the occurrence "
+                    "of the word stem, but particles (such as を, に, は, が, "
+                    "で, と) must NOT be included in verb or adjective "
+                    "occurrences. For suru-verbs (Noun + する), tag the full "
+                    "inflection of する (e.g. した, します) as する. "
+                    "Tag the noun separately, if it has a matching unit. \n"
+                )
         unit_id_shape_text = ""
         if uses_dictionary_unit:
             unit_id_shape_text = (
@@ -274,8 +295,8 @@ class GeminiLlmClient(LlmClient):
         prompt = (
             f"Given is a sentence in {language.writing_system}: \n{sentence} \n"
             f"{only_missing_text}"
-            "I want to tag all words in each sentence with vocabulary. \n"
-            "For each unit suggested in the hints, find its occurrence in the sentence. \n"
+            "I want to tag the words in this sentence with vocabulary. "
+            "From the suggested unit IDs, find which best fits the occurance in the sentence. \n"
             f"The tags are a list of occurrences and unit IDs. {equal_occurance_text}\n"
             "Output them in order of occurance without overlap. \n"
             "Unit IDs need to precisely match our stored IDs, so stick to the example format. "
@@ -423,9 +444,13 @@ class OpenRouterElevenLabsLlmClient(LlmClient):
 
     @standard_retry
     async def suggest_names(self, sentence: str, language: Language) -> list[str]:
+        japanese_instruction = ""
+        if language.code_name == "japanese":
+            japanese_instruction = "Create hiragana and possible multiple kanji versions of the word, if both are used. "
         prompt = (
             f"Given is a sentence in {language.writing_system}: \n{sentence} \n"
             "List all base forms of words in the sentence. "
+            f"{japanese_instruction}"
             "Respond with a JSON list of strings."
         )
 
@@ -456,6 +481,23 @@ class OpenRouterElevenLabsLlmClient(LlmClient):
                 equal_occurance_text += 'part of unit ID before " - ". '
             else:
                 equal_occurance_text += "unit ID. "
+        else:
+            equal_occurance_text = (
+                "You may leave words, particles or grammatical word parts "
+                "untagged if there is no good matching unit in the hints. "
+                "Do not invent or force tags for unlisted words. "
+            )
+            if language.code_name == "japanese":
+                equal_occurance_text += (
+                    "For Japanese, grammatical endings of words "
+                    "(such as verb or adjective inflections like -た, -たり, "
+                    "-て, -ます, -ない) should be included in the occurrence "
+                    "of the word stem, but particles (such as を, に, は, が, "
+                    "で, と) must NOT be included in verb or adjective "
+                    "occurrences. For suru-verbs (Noun + する), tag the full "
+                    "inflection of する (e.g. した, します) as する. "
+                    "Tag the noun separately, if it has a matching unit. \n"
+                )
         unit_id_shape_text = ""
         if uses_dictionary_unit:
             unit_id_shape_text = (
@@ -471,8 +513,8 @@ class OpenRouterElevenLabsLlmClient(LlmClient):
         prompt = (
             f"Given is a sentence in {language.writing_system}: \n{sentence} \n"
             f"{only_missing_text}"
-            "I want to tag all words in each sentence with vocabulary. \n"
-            "For each unit suggested in the hints, find its occurrence in the sentence. \n"
+            "I want to tag the words in this sentence with vocabulary. "
+            "From the suggested unit IDs, find which best fits the occurance in the sentence. \n"
             f"The tags are a list of occurrences and unit IDs. {equal_occurance_text}\n"
             "Output them in order of occurance without overlap. \n"
             "Unit IDs need to precisely match our stored IDs, so stick to the example format. "
@@ -579,9 +621,13 @@ class OpenAiLlmClient(LlmClient):
 
     @standard_retry
     async def suggest_names(self, sentence: str, language: Language) -> list[str]:
+        japanese_instruction = ""
+        if language.code_name == "japanese":
+            japanese_instruction = "Create hiragana and possible multiple kanji versions of the word, if both are used. "
         prompt = (
             f"Given is a sentence in {language.writing_system}: \n{sentence} \n"
             "List all base forms of words in the sentence. "
+            f"{japanese_instruction}"
             "Respond with a JSON list of strings."
         )
 
@@ -612,6 +658,23 @@ class OpenAiLlmClient(LlmClient):
                 equal_occurance_text += 'part of unit ID before " - ". '
             else:
                 equal_occurance_text += "unit ID. "
+        else:
+            equal_occurance_text = (
+                "You may leave words, particles or grammatical word parts "
+                "untagged if there is no good matching unit in the hints. "
+                "Do not invent or force tags for unlisted words. "
+            )
+            if language.code_name == "japanese":
+                equal_occurance_text += (
+                    "For Japanese, grammatical endings of words "
+                    "(such as verb or adjective inflections like -た, -たり, "
+                    "-て, -ます, -ない) should be included in the occurrence "
+                    "of the word stem, but particles (such as を, に, は, が, "
+                    "で, と) must NOT be included in verb or adjective "
+                    "occurrences. For suru-verbs (Noun + する), tag the full "
+                    "inflection of する (e.g. した, します) as する. "
+                    "Tag the noun separately, if it has a matching unit. \n"
+                )
         unit_id_shape_text = ""
         if uses_dictionary_unit:
             unit_id_shape_text = (
@@ -627,8 +690,8 @@ class OpenAiLlmClient(LlmClient):
         prompt = (
             f"Given is a sentence in {language.writing_system}: \n{sentence} \n"
             f"{only_missing_text}"
-            "I want to tag all words in each sentence with vocabulary. \n"
-            "For each unit suggested in the hints, find its occurrence in the sentence. \n"
+            "I want to tag the words in this sentence with vocabulary. "
+            "From the suggested unit IDs, find which best fits the occurance in the sentence. \n"
             f"The tags are a list of occurrences and unit IDs. {equal_occurance_text}\n"
             "Output them in order of occurance without overlap. \n"
             "Unit IDs need to precisely match our stored IDs, so stick to the example format. "

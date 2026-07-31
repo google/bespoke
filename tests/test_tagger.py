@@ -14,11 +14,12 @@
 
 import unittest
 from bespoke import Difficulty
-from bespoke import Unit
-from bespoke import WordUnit
 from bespoke import DictionaryUnit
+from bespoke import Unit
 from bespoke import UnitTag
 from bespoke import UnitTags
+from bespoke import WordUnit
+from bespoke import languages
 from bespoke import tagger
 from tests import fakes
 
@@ -45,6 +46,13 @@ class TestTaggerHelpers(unittest.TestCase):
         self.assertEqual(tagger.strip_punctuation_and_space("abc"), "abc")
         self.assertEqual(tagger.strip_punctuation_and_space("  "), "")
 
+    def test_strip_explicit_punctuation(self) -> None:
+        self.assertEqual(
+            tagger.strip_explicit_punctuation("かなくちゃ。"), "かなくちゃ"
+        )
+        self.assertEqual(tagger.strip_explicit_punctuation("、とき、"), "とき")
+        self.assertEqual(tagger.strip_explicit_punctuation("don't"), "don't")
+
     def test_get_tagging_coverage(self) -> None:
         sentence = "The cat sat on the mat."
         tags = [
@@ -54,6 +62,18 @@ class TestTaggerHelpers(unittest.TestCase):
         coverage = tagger.get_tagging_coverage(sentence, tags)
         self.assertAlmostEqual(coverage, 6 / 17)
         self.assertEqual(tagger.get_tagging_coverage("...", []), 0.0)
+
+    def test_is_japanese_particle(self) -> None:
+        unit_shi = WordUnit("し", difficulty=Difficulty.A1)
+        self.assertTrue(tagger.is_japanese_particle(unit_shi))
+        unit_taberu = WordUnit("食べる", difficulty=Difficulty.A1)
+        self.assertFalse(tagger.is_japanese_particle(unit_taberu))
+
+    def test_japanese_particles_in_vocabulary(self) -> None:
+        language = languages.LANGUAGES["japanese"]
+        vocab_names = set(u.name() for u in language.units())
+        for particle in tagger.JAPANESE_PARTICLES:
+            self.assertIn(particle, vocab_names)
 
 
 class TestCreateTags(unittest.IsolatedAsyncioTestCase):
