@@ -189,6 +189,7 @@ class SentenceProducer:
 
 class DeckBuilder:
     MAX_PARALLELISM = 16
+    MIN_TAGGING_COVERAGE = 0.7
 
     def __init__(
         self,
@@ -212,7 +213,6 @@ class DeckBuilder:
         cards_per_call: int,
         max_difficulty: Difficulty = Difficulty.C2,
     ) -> None:
-
         self._duplicates = set()
         all_cards = await self._card_index.all_cards()
         sentence_producer = SentenceProducer(
@@ -269,6 +269,13 @@ class DeckBuilder:
                 )
                 if not unit_tags:
                     print(f"Discarding untagged sentence: '{sentence}'")
+                    return
+                coverage = tagger.get_tagging_coverage(sentence, unit_tags)
+                if coverage < self.MIN_TAGGING_COVERAGE:
+                    print(
+                        "Discarding sentence with low tagging coverage "
+                        f"({coverage:.1%}): '{sentence}'"
+                    )
                     return
 
                 card = await self._card_index.create_card(

@@ -45,6 +45,16 @@ class TestTaggerHelpers(unittest.TestCase):
         self.assertEqual(tagger.strip_punctuation_and_space("abc"), "abc")
         self.assertEqual(tagger.strip_punctuation_and_space("  "), "")
 
+    def test_get_tagging_coverage(self) -> None:
+        sentence = "The cat sat on the mat."
+        tags = [
+            UnitTag(occurance="cat", unit_id="cat"),
+            UnitTag(occurance="mat", unit_id="mat"),
+        ]
+        coverage = tagger.get_tagging_coverage(sentence, tags)
+        self.assertAlmostEqual(coverage, 6 / 17)
+        self.assertEqual(tagger.get_tagging_coverage("...", []), 0.0)
+
 
 class TestCreateTags(unittest.IsolatedAsyncioTestCase):
     async def test_create_tags_basic(self) -> None:

@@ -43,6 +43,25 @@ def strip_punctuation_and_space(text: str) -> str:
     return text[start:end]
 
 
+def get_tagging_coverage(sentence: str, unit_tags: UnitTags) -> float:
+    """Returns the ratio of non-punctuation/non-space characters covered by unit tags."""
+    clean_total = sum(1 for c in sentence if not is_punctuation_or_space(c))
+    if clean_total == 0:
+        return 0.0
+
+    tagged_indices: set[int] = set()
+    current_idx = 0
+    for tag in unit_tags:
+        start_idx = sentence.find(tag.occurance, current_idx)
+        if start_idx != -1:
+            for i in range(start_idx, start_idx + len(tag.occurance)):
+                if not is_punctuation_or_space(sentence[i]):
+                    tagged_indices.add(i)
+            current_idx = start_idx + len(tag.occurance)
+
+    return len(tagged_indices) / clean_total
+
+
 async def create_tags(
     sentence: str,
     hint: list[Unit],
