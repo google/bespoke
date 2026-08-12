@@ -7,6 +7,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -339,15 +340,24 @@ fun StartScreen(
                     )
 
                     Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .horizontalScroll(rememberScrollState()),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         Difficulty.entries.forEach { diff ->
                             val isSelected = selectedDifficulty == diff
                             FilterChip(
                                 selected = isSelected,
                                 onClick = { selectedDifficulty = diff },
-                                label = { Text(diff.value, fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal) },
+                                label = {
+                                    Text(
+                                        diff.value,
+                                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                                        maxLines = 1,
+                                        softWrap = false
+                                    )
+                                },
                                 leadingIcon = if (isSelected) {
                                     { Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(16.dp)) }
                                 } else null,
@@ -378,13 +388,15 @@ fun StartScreen(
                     )
 
                     Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .horizontalScroll(rememberScrollState()),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         FilterChip(
                             selected = listenMode,
                             onClick = { listenMode = !listenMode },
-                            label = { Text("Listen") },
+                            label = { Text("Listen", maxLines = 1, softWrap = false) },
                             leadingIcon = if (listenMode) {
                                 { Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(16.dp)) }
                             } else null,
@@ -394,7 +406,7 @@ fun StartScreen(
                         FilterChip(
                             selected = speakMode,
                             onClick = { speakMode = !speakMode },
-                            label = { Text("Speak") },
+                            label = { Text("Speak", maxLines = 1, softWrap = false) },
                             leadingIcon = if (speakMode) {
                                 { Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(16.dp)) }
                             } else null,
@@ -404,7 +416,7 @@ fun StartScreen(
                         FilterChip(
                             selected = readMode,
                             onClick = { readMode = !readMode },
-                            label = { Text("Read") },
+                            label = { Text("Read", maxLines = 1, softWrap = false) },
                             leadingIcon = if (readMode) {
                                 { Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(16.dp)) }
                             } else null,
@@ -414,7 +426,7 @@ fun StartScreen(
                         FilterChip(
                             selected = writeMode,
                             onClick = { writeMode = !writeMode },
-                            label = { Text("Write") },
+                            label = { Text("Write", maxLines = 1, softWrap = false) },
                             leadingIcon = if (writeMode) {
                                 { Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(16.dp)) }
                             } else null,

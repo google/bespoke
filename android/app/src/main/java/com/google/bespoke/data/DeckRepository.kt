@@ -128,7 +128,7 @@ object DeckRepository {
 
     fun loadBundledDeck(
         context: Context,
-        assetName: String = "sample_deck.db"
+        assetName: String
     ): Pair<DatasetReader, DeckEngine> {
         val targetFile = copyAssetIfNewer(context, assetName)
         return loadDeckFromDb(targetFile)
@@ -270,7 +270,7 @@ object DeckRepository {
         modes: List<Mode>,
         assumeKnown: Difficulty?
     ): Pair<DatasetReader, DeckEngine> {
-        val file = deckInfo.file ?: File(context.filesDir, deckInfo.assetName ?: "sample_deck.db")
+        val file = deckInfo.file ?: (deckInfo.assetName?.let { copyAssetIfNewer(context, it) } ?: throw IllegalArgumentException("Deck file not found"))
         val (reader, deck) = loadDeckFromDb(file)
         loadProgress(context, deck)
         deck.setDifficulty(difficulty)

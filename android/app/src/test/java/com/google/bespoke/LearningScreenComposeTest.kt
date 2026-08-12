@@ -72,7 +72,9 @@ class LearningScreenComposeTest {
     fun setUp() {
         context = ApplicationProvider.getApplicationContext()
         dbFile = File(context.filesDir, "test_compose_deck.db")
-        context.assets.open("sample_deck.db").use { input ->
+        val resourceStream = LearningScreenComposeTest::class.java.classLoader?.getResourceAsStream("sample_deck.db")
+            ?: throw IllegalStateException("sample_deck.db resource not found in test resources")
+        resourceStream.use { input ->
             FileOutputStream(dbFile).use { output ->
                 input.copyTo(output)
             }

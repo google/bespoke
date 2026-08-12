@@ -26,6 +26,7 @@ data class ActiveLearningSession(
 class MainActivity : ComponentActivity() {
 
     private var audioPlayer: ExoAudioPlayer? = null
+    private var refreshDecksCallback: (() -> Unit)? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -42,6 +43,11 @@ class MainActivity : ComponentActivity() {
             BespokeTheme(darkTheme = isDarkMode) {
                 var availableDecks by remember {
                     mutableStateOf(DeckRepository.listAvailableDecks(this@MainActivity))
+                }
+                LaunchedEffect(Unit) {
+                    refreshDecksCallback = {
+                        availableDecks = DeckRepository.listAvailableDecks(this@MainActivity)
+                    }
                 }
                 var activeSession by remember { mutableStateOf<ActiveLearningSession?>(null) }
 
@@ -92,9 +98,15 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    override fun onResume() {
+        super.onResume()
+        refreshDecksCallback?.invoke()
+    }
+
     override fun onDestroy() {
         super.onDestroy()
         audioPlayer?.release()
         audioPlayer = null
+        refreshDecksCallback = null
     }
 }

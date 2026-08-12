@@ -46,7 +46,9 @@ class NavigationFlowComposeTest {
     fun setUp() {
         context = ApplicationProvider.getApplicationContext()
         dbFile = File(context.filesDir, "sample_deck.db")
-        context.assets.open("sample_deck.db").use { input ->
+        val resourceStream = NavigationFlowComposeTest::class.java.classLoader?.getResourceAsStream("sample_deck.db")
+            ?: throw IllegalStateException("sample_deck.db resource not found in test resources")
+        resourceStream.use { input ->
             FileOutputStream(dbFile).use { output ->
                 input.copyTo(output)
             }
