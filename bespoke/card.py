@@ -26,6 +26,7 @@ import pydantic
 import random
 from typing import Self
 
+from bespoke import database
 from bespoke.languages import Language
 from bespoke import llm
 from bespoke.unit import Unit
@@ -260,6 +261,7 @@ class CardIndex:
         native = native_language.code_name
         self._index_path = CARDS_DIR / f"index_{target}_{native}.json"
         self._card_directory = CARDS_DIR / f"{target}_{native}"
+        self._db_path: Path | None = None
         self._index: dict[str, list[str]] = {}
         self._cache: dict[str, Card] = {}
         self._card_directory.mkdir(parents=True, exist_ok=True)
@@ -275,6 +277,18 @@ class CardIndex:
                 target_language.initialize(use_definition=use_def)
         except Exception:
             print(f"Unable to open {obj._index_path}, creating empty CardIndex.")
+        return obj
+
+    @classmethod
+    def load_from_db(
+        cls,
+        target_language: Language,
+        native_language: Language,
+        db_path: Path | str,
+    ) -> Self:
+        obj = cls(target_language, native_language)
+        obj._db_path = Path(db_path)
+        obj._index = database.load_index_from_db(obj._db_path)
         return obj
 
     async def restart(self) -> None:
@@ -319,7 +333,12 @@ class CardIndex:
         with open(self._index_path, "w", encoding="utf-8") as f:
             json.dump(self._index, f)
 
-    def _get_card(self, card_id: str) -> Card | None:
+    def _get_cards_from_db(self, card_ids: list[str]) -> dict[str, Card]:
+        if self._db_path is None or not card_ids:
+            return {}
+        return database.load_cards_from_db(self._db_path, card_ids)
+
+    def _load_card(self, card_id: str) -> Card | None:
         if card_id in self._cache:
             return self._cache[card_id]
         card = Card.load(self._card_directory, card_id)
@@ -327,7 +346,7 @@ class CardIndex:
             self._cache[card_id] = card
         return card
 
-    async def _get_card_async(self, card_id: str) -> Card | None:
+    async def _load_card_async(self, card_id: str) -> Card | None:
         if card_id in self._cache:
             return self._cache[card_id]
         card = await Card.load_async(self._card_directory, card_id)
@@ -339,22 +358,26 @@ class CardIndex:
         card_ids = self._index.get(unit.id(), [])
         if limit is not None:
             card_ids = random.sample(card_ids, min(limit, len(card_ids)))
+        if self._db_path is not None:
+            missing_ids = [cid for cid in card_ids if cid not in self._cache]
+            if missing_ids:
+                loaded = self._get_cards_from_db(missing_ids)
+                self._cache.update(loaded)
+            return [self._cache[cid] for cid in card_ids if cid in self._cache]
         cards = []
         for card_id in card_ids:
-            card = self._get_card(card_id)
+            card = self._load_card(card_id)
             if card is not None:
                 cards.append(card)
         return cards
 
-    async def cards_async(self, unit: Unit) -> list[Card]:
-        card_ids = self._index.get(unit.id(), [])
-        tasks = []
-        for card_id in card_ids:
-            tasks.append(self._get_card_async(card_id))
-        cards = await asyncio.gather(*tasks)
-        return [card for card in cards if card is not None]
-
     async def all_cards(self) -> list[Card]:
+        if self._db_path is not None and self._db_path.is_file():
+            db_cards = database.load_all_cards_from_db(self._db_path)
+            for card in db_cards:
+                self._cache[card.id] = card
+            return db_cards
+
         card_ids = set()
         for unit_cards in self._index.values():
             card_ids.update(unit_cards)
@@ -362,17 +385,20 @@ class CardIndex:
 
         async def read_card_file(card_id: str) -> Card | None:
             async with semaphore:
-                return await self._get_card_async(card_id)
+                return await self._load_card_async(card_id)
 
         tasks = [read_card_file(card_id) for card_id in card_ids]
-        cards = await asyncio.gather(*tasks)
-        return [card for card in cards if card is not None]
+        raw_cards = await asyncio.gather(*tasks)
+        return [card for card in raw_cards if card is not None]
 
     def size(self, unit: Unit) -> int:
         return len(self._index.get(unit.id(), []))
 
     async def remove(self, card_id: str) -> None:
-        card = await self._get_card_async(card_id)
+        if self._db_path is not None:
+            print(f"Cannot remove card '{card_id}' from dataset db '{self._db_path}'")
+            return
+        card = await self._load_card_async(card_id)
         if card_id in self._cache:
             del self._cache[card_id]
         if card is None:

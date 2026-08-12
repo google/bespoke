@@ -109,6 +109,13 @@ class Language(pydantic.BaseModel):
     def initialize(self, use_definition: bool) -> None:
         self._initialize(use_definition=use_definition)
 
+    def set_units(self, units: list[Unit]) -> None:
+        """Initializes language directly with given units (e.g. loaded from .db)."""
+        self._units = list(units)
+        self._units_by_id = {unit.id(): unit for unit in units}
+        self._units_by_name = {}
+        self._initialized = True
+
     def units(self) -> list[Unit]:
         self._initialize()
         return self._units
@@ -138,7 +145,7 @@ class Language(pydantic.BaseModel):
 
     def has_data(self) -> bool:
         path = DATA_DIR / self.code_name / "vocabulary.csv"
-        return path.exists()
+        return self._initialized or path.exists()
 
 
 def load_grammar(code_name: str) -> dict[Difficulty, list[str]]:

@@ -40,8 +40,8 @@ from bespoke.languages import Difficulty
 from bespoke.languages import Language
 from bespoke.languages import LANGUAGES
 from bespoke.urgency import Mode
-from bespoke.unit import Unit
 from bespoke.unit import DictionaryUnit
+from bespoke.unit import Unit
 
 from bespoke.urgency import Rating
 from bespoke.urgency import RatingState
@@ -344,12 +344,17 @@ class Deck:
             json.dump(data, f)
 
     @classmethod
-    def load(cls, filename: Path | str) -> Self:
+    def load(
+        cls,
+        filename: Path | str,
+        card_index: CardIndex | None = None,
+    ) -> Self:
         with open(filename, "r", encoding="utf-8") as f:
             data = json.load(f)
         target_language = LANGUAGES[data["target_language"]]
         native_language = LANGUAGES[data["native_language"]]
-        card_index = CardIndex.load(target_language, native_language)
+        if card_index is None:
+            card_index = CardIndex.load(target_language, native_language)
         deck = cls(target_language, native_language, card_index)
         for unit_id, ratings_data in data["ratings"].items():
             ratings = list(Rating.model_validate(r) for r in ratings_data)

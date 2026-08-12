@@ -15,6 +15,7 @@
 """Simple user interface for learning."""
 
 import argparse
+import json
 import os
 from pathlib import Path
 import sys
@@ -28,6 +29,7 @@ from bespoke import Difficulty
 from bespoke import Mode
 from bespoke import Language
 from bespoke import languages
+from bespoke import database
 
 
 COLOR_MAP = {
@@ -51,10 +53,12 @@ class RatingWebApp:
         target_language: Language,
         deck: Deck,
         deck_filename: str,
+        db_path: Path | None = None,
     ) -> None:
         self._target_language = target_language
         self._deck = deck
         self._deck_filename = deck_filename
+        self._db_path = db_path
         self._ratings: dict[str, int] = {}
         self._audio_players: list[ui.audio] = []
         self._on_back = False
@@ -86,6 +90,17 @@ class RatingWebApp:
     ) -> ui.audio | None:
         with ui.row().classes("items-center gap-2"):
             ui.label(label).classes("font-bold w-16 readable-text")
+            if not os.path.exists(filename) and self._db_path:
+                blob = database.get_audio_blob(self._db_path, filename)
+                if blob:
+                    cache_dir = Path("/tmp/bespoke_audio")
+                    cache_dir.mkdir(parents=True, exist_ok=True)
+                    target_file = cache_dir / Path(filename).name
+                    if not target_file.exists() or target_file.stat().st_size != len(
+                        blob
+                    ):
+                        target_file.write_bytes(blob)
+                    filename = str(target_file)
             if os.path.exists(filename):
                 return ui.audio(filename, autoplay=autoplay, controls=True)
             else:
@@ -277,21 +292,37 @@ class RatingWebApp:
                 self._show_back()
 
 
-def open_latest_deck() -> tuple[Deck | None, str]:
+def open_latest_deck() -> tuple[Deck | None, str, Path | None]:
     paths = list(Path(".").glob("deck_*.json"))
     if not paths:
-        return None, ""
+        return None, "", None
     latest_filename = str(max(paths, key=lambda f: os.path.getmtime(f)))
-    deck = Deck.load(latest_filename)
-    return deck, latest_filename
+    with open(latest_filename, "r", encoding="utf-8") as f:
+        data = json.load(f)
+    target = languages.LANGUAGES[data["target_language"]]
+    native = languages.LANGUAGES[data["native_language"]]
+    db_path = Path("cards") / f"{target.code_name}.db"
+    active_db_path: Path | None = None
+    if db_path.exists():
+        active_db_path = db_path
+        units = database.load_vocabulary_from_db(db_path)
+        target.set_units(units)
+        translations = database.load_translations_from_db(db_path)
+        card_index = CardIndex.load_from_db(target, native, db_path)
+        deck = Deck.load(latest_filename, card_index=card_index)
+        if translations:
+            deck._translations = translations
+    else:
+        deck = Deck.load(latest_filename)
+    return deck, latest_filename, active_db_path
 
 
-def open_deck() -> tuple[Deck, str]:
+def open_deck() -> tuple[Deck, str, Path | None]:
     if len(sys.argv) == 1:
-        deck, filename = open_latest_deck()
+        deck, filename, db_path = open_latest_deck()
         if deck is not None:
             print(f"Continuing with '{filename}'")
-            return deck, filename
+            return deck, filename, db_path
 
     parser = argparse.ArgumentParser(description="Learn language cards.")
     target_choices = {}
@@ -344,22 +375,39 @@ def open_deck() -> tuple[Deck, str]:
     if args.use_write_mode:
         modes.append(Mode.WRITE)
 
+    db_path = Path("cards") / f"{target.code_name}.db"
     deck_filename = f"deck_{target.code_name}.json"
-    if not os.path.isfile(deck_filename):
+    active_db_path: Path | None = None
+
+    if db_path.exists():
+        print(f"Loading dataset from SQLite package: {db_path}...")
+        active_db_path = db_path
+        units = database.load_vocabulary_from_db(db_path)
+        target.set_units(units)
+        translations = database.load_translations_from_db(db_path)
+        card_index = CardIndex.load_from_db(target, native, db_path)
+        if os.path.isfile(deck_filename):
+            deck = Deck.load(deck_filename, card_index=card_index)
+        else:
+            deck = Deck(target, native, card_index)
+        if translations:
+            deck._translations = translations
+    elif not os.path.isfile(deck_filename):
         print("Creating a new deck...")
         card_index = CardIndex(target, native)
         deck = Deck(target, native, card_index)
         deck.save(deck_filename)
     else:
         deck = Deck.load(deck_filename)
+
     deck.set_difficulty(difficulty)
     deck.set_modes(modes)
     deck.set_assume_known(args.assume_known)
 
-    return deck, deck_filename
+    return deck, deck_filename, active_db_path
 
 
-deck, deck_filename = open_deck()
+deck, deck_filename, db_path = open_deck()
 
 
 @ui.page("/")
@@ -395,7 +443,7 @@ def index():
         ui.label("Bespoke").classes(
             "text-3xl font-light text-gray-600 dark:text-gray-300 mb-6"
         )
-        RatingWebApp(deck._target_language, deck, deck_filename)
+        RatingWebApp(deck._target_language, deck, deck_filename, db_path=db_path)
 
 
 ui.run(title="Bespoke", favicon="🐝", reconnect_timeout=60.0)

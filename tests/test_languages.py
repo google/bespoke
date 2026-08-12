@@ -14,7 +14,9 @@
 
 import unittest
 
+from bespoke import DictionaryUnit
 from bespoke import Difficulty
+from bespoke import Language
 from bespoke import languages
 
 
@@ -35,6 +37,30 @@ class TestLanguageData(unittest.TestCase):
                 grammar1 = grammar[d1]
                 grammar2 = grammar[d2]
                 self.assertTrue(set(grammar1).isdisjoint(grammar2))
+
+    def test_get_by_id_and_get_by_name(self) -> None:
+        language = languages.LANGUAGES["japanese"]
+        units = language.units()
+        first_unit = units[0]
+        self.assertEqual(language.get_by_id(first_unit.id()), first_unit)
+        by_name = language.get_by_name(first_unit.name())
+        self.assertIn(first_unit, by_name)
+
+    def test_set_units(self) -> None:
+        language = Language(
+            name="Test Language",
+            writing_system="Test",
+            phonetic_system=None,
+            code_name="test_lang",
+        )
+        unit = DictionaryUnit(
+            name="injected", definition="test def", difficulty=Difficulty.A1
+        )
+        language.set_units([unit])
+        self.assertTrue(language.has_data())
+        self.assertEqual(len(language.units()), 1)
+        self.assertEqual(language.units()[0].name(), "injected")
+        self.assertEqual(language.get_by_id("injected - test def"), unit)
 
 
 if __name__ == "__main__":
