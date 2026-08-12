@@ -1,3 +1,17 @@
 __pycache__/
 deck*.json
 cards/
+.coverage
+coverage.xml
+.agents/
+
+# IDE
+.idea/
+*.iml
+
+# Android
+android/.gradle/
+android/build/
+android/*/build/
+android/local.properties
+*.apk
