@@ -74,7 +74,7 @@ fun FrontCardView(
                         tracks = listOf(
                             AudioTrack(
                                 label = "",
-                                isPlaying = isPlaying,
+                                isPlaying = isPlaying && (currentlyPlayingFile == card.native_audio_filename || currentlyPlayingFile == null),
                                 hasAudio = true,
                                 onPlay = { onPlayAudio(card.native_audio_filename) }
                             )
@@ -101,7 +101,7 @@ fun FrontCardView(
                         tracks = listOf(
                             AudioTrack(
                                 label = "",
-                                isPlaying = isPlaying,
+                                isPlaying = isPlaying && (currentlyPlayingFile == card.native_audio_filename || currentlyPlayingFile == null),
                                 hasAudio = true,
                                 onPlay = { onPlayAudio(card.native_audio_filename) }
                             )

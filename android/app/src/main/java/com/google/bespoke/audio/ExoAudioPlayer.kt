@@ -24,9 +24,44 @@ class ExoAudioPlayer(private val context: Context) : AudioPlayer {
 
     init {
         try {
-            getOrCreatePlayer()
+            val player = getOrCreatePlayer()
+            preWarmAudioPipeline(player)
         } catch (e: Exception) {
             Log.w(tag, "Failed pre-warming ExoPlayer", e)
+        }
+    }
+
+    private fun preWarmAudioPipeline(player: ExoPlayer) {
+        try {
+            // A minimal 44-byte valid silent WAV header with 0 samples
+            val silentWav = byteArrayOf(
+                0x52, 0x49, 0x46, 0x46, // "RIFF"
+                0x24, 0x00, 0x00, 0x00, // file size - 8 = 36
+                0x57, 0x41, 0x56, 0x45, // "WAVE"
+                0x66, 0x6d, 0x74, 0x20, // "fmt "
+                0x10, 0x00, 0x00, 0x00, // chunk size 16
+                0x01, 0x00,             // PCM format
+                0x01, 0x00,             // 1 channel (mono)
+                0x44, 0xac.toByte(), 0x00, 0x00, // 44100 Hz sample rate
+                0x88.toByte(), 0x58, 0x01, 0x00, // byte rate (44100 * 2)
+                0x02, 0x00,             // block align 2
+                0x10, 0x00,             // 16 bits per sample
+                0x64, 0x61, 0x74, 0x61, // "data"
+                0x00, 0x00, 0x00, 0x00  // 0 data bytes
+            )
+            val tempFile = File(context.cacheDir, "prewarm_silence.wav")
+            if (!tempFile.exists()) {
+                tempFile.writeBytes(silentWav)
+            }
+            val mediaItem = MediaItem.fromUri(Uri.fromFile(tempFile))
+            player.volume = 0f
+            player.setMediaItem(mediaItem)
+            player.prepare()
+            player.stop()
+            player.volume = 1f
+            Log.d(tag, "Audio pipeline pre-warmed successfully")
+        } catch (e: Exception) {
+            Log.w(tag, "Audio pipeline pre-warm completed with notice", e)
         }
     }
 

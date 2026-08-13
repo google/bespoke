@@ -13,6 +13,7 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.google.bespoke.audio.AudioPlayer
+import com.google.bespoke.audio.ExoAudioPlayer
 import com.google.bespoke.data.DatasetReader
 import com.google.bespoke.model.*
 import com.google.bespoke.srs.DeckEngine

@@ -131,8 +131,13 @@ fun StartScreen(
                         if (idx >= 0) {
                             selectedDeckIndex = idx
                         }
-                        importStatusMessage = "Imported ${imported.title} (${imported.cardCount} cards)!"
-                        Toast.makeText(context, "Imported ${imported.title}", Toast.LENGTH_SHORT).show()
+                        importStatusMessage = "Imported deck: ${imported.title}"
+                        Toast.makeText(context, "Imported deck: ${imported.title}", Toast.LENGTH_SHORT).show()
+                    }
+                    is ImportResult.ProgressSuccess -> {
+                        val lang = result.targetLanguage.replaceFirstChar { it.uppercase() }
+                        importStatusMessage = "Imported progress for $lang!"
+                        Toast.makeText(context, "Imported progress for $lang", Toast.LENGTH_SHORT).show()
                     }
                     is ImportResult.Failure -> {
                         importStatusMessage = result.message
@@ -368,7 +373,7 @@ fun StartScreen(
                         )
                     }
 
-                    // Import Deck Button & Status
+                    // Import Button & Status
                     if (onImportDeck != null) {
                         OutlinedButton(
                             onClick = {
@@ -383,7 +388,7 @@ fun StartScreen(
                             if (isImporting) {
                                 CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
                                 Spacer(modifier = Modifier.width(8.dp))
-                                Text("Importing Deck...")
+                                Text("Importing...")
                             } else {
                                 Icon(
                                     imageVector = Icons.Default.FileUpload,
@@ -391,7 +396,7 @@ fun StartScreen(
                                     modifier = Modifier.size(18.dp)
                                 )
                                 Spacer(modifier = Modifier.width(8.dp))
-                                Text("Import .db File from Device")
+                                Text("Import")
                             }
                         }
 
@@ -536,15 +541,10 @@ fun StartScreen(
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     Text(
-                        text = "Assume Known Words (Optional)",
+                        text = "Assume Known",
                         fontSize = 15.sp,
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.onSurface
-                    )
-                    Text(
-                        text = "Words of this level (inclusive) are assumed known until failed.",
-                        fontSize = 12.sp,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
 
                     ExposedDropdownMenuBox(
@@ -553,10 +553,10 @@ fun StartScreen(
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         OutlinedTextField(
-                            value = selectedAssumeKnown?.value ?: "None",
+                            value = selectedAssumeKnown?.let { "Up to ${it.value}" } ?: "None",
                             onValueChange = {},
                             readOnly = true,
-                            label = { Text("Assume Known Level") },
+                            label = { Text("Word Level") },
                             trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = assumeDropdownExpanded) },
                             modifier = Modifier
                                 .menuAnchor()
@@ -575,7 +575,7 @@ fun StartScreen(
                                 },
                                 modifier = Modifier.testTag("AssumeKnownOption_None")
                             )
-                            Difficulty.entries.forEach { diff ->
+                            Difficulty.entries.filter { it != Difficulty.C2 }.forEach { diff ->
                                 DropdownMenuItem(
                                     text = { Text("Up to ${diff.value}") },
                                     onClick = {

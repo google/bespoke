@@ -27,6 +27,7 @@ import com.google.bespoke.srs.DeckEngine
 import com.google.bespoke.ui.LearningScreen
 import com.google.bespoke.ui.StartScreen
 import com.google.bespoke.ui.theme.BespokeTheme
+import androidx.core.view.WindowCompat
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -84,6 +85,13 @@ class MainActivity : ComponentActivity() {
             val coroutineScope = rememberCoroutineScope()
 
             BespokeTheme(darkTheme = isDarkMode) {
+                SideEffect {
+                    val insetsController = WindowCompat.getInsetsController(window, window.decorView)
+                    insetsController.isAppearanceLightStatusBars = !isDarkMode
+                    val bgColor = if (isDarkMode) 0xFF121212.toInt() else 0xFFF9FAFB.toInt()
+                    window.statusBarColor = bgColor
+                }
+
                 var availableDecks by remember {
                     mutableStateOf(DeckRepository.listAvailableDecks(this@MainActivity))
                 }
@@ -193,7 +201,7 @@ class MainActivity : ComponentActivity() {
                         isLoading = isStartingSession,
                         onImportDeck = { uri ->
                             val result = DeckRepository.importDeckFromUri(this@MainActivity, uri)
-                            if (result is ImportResult.Success) {
+                            if (result is ImportResult.Success || result is ImportResult.ProgressSuccess) {
                                 availableDecks = DeckRepository.listAvailableDecks(this@MainActivity)
                             }
                             result

@@ -2,6 +2,7 @@ package com.google.bespoke.data
 
 import android.content.Context
 import android.net.Uri
+import android.os.Environment
 import android.util.Log
 import com.google.bespoke.model.*
 import com.google.bespoke.srs.DeckEngine
@@ -10,6 +11,7 @@ import java.io.FileOutputStream
 
 sealed class ImportResult {
     data class Success(val deckInfo: DeckInfo) : ImportResult()
+    data class ProgressSuccess(val targetLanguage: String) : ImportResult()
     data class Failure(val message: String) : ImportResult()
 }
 
@@ -46,41 +48,86 @@ object DeckRepository {
     fun importDeckFromUri(context: Context, uri: Uri): ImportResult {
         return try {
             val freeBytes = context.filesDir.freeSpace
-            if (freeBytes < 20 * 1024 * 1024) {
+            if (freeBytes < 10 * 1024 * 1024) {
                 return ImportResult.Failure(
-                    "Not enough internal storage (${freeBytes / (1024 * 1024)} MB free). Please wipe emulator data or free space."
+                    "Not enough internal storage (${freeBytes / (1024 * 1024)} MB free)."
                 )
             }
 
-            var rawName = getFileNameFromUri(context, uri) ?: "deck_${System.currentTimeMillis()}.db"
-            if (!rawName.endsWith(".db", ignoreCase = true)) {
-                rawName = "$rawName.db"
-            }
-            val sanitizedName = rawName.replace(Regex("[^a-zA-Z0-9._-]"), "_")
-            val targetFile = File(context.filesDir, sanitizedName)
-
-            Log.i(TAG, "Importing deck from URI '$uri' to '${targetFile.absolutePath}'")
+            val fileName = getFileNameFromUri(context, uri)?.lowercase() ?: ""
 
             val inputStream = context.contentResolver.openInputStream(uri)
                 ?: return ImportResult.Failure("Cannot open input stream for selected file.")
 
+            val tempFile = File.createTempFile("import_", ".tmp", context.cacheDir)
             inputStream.use { input ->
-                FileOutputStream(targetFile).use { output ->
+                FileOutputStream(tempFile).use { output ->
                     val buffer = ByteArray(64 * 1024)
                     var bytesRead: Int
-                    var totalCopied = 0L
                     while (input.read(buffer).also { bytesRead = it } != -1) {
                         output.write(buffer, 0, bytesRead)
-                        totalCopied += bytesRead
                     }
                     output.flush()
-                    Log.i(TAG, "Copied $totalCopied bytes to ${targetFile.name}")
                 }
             }
 
+            // Check if it is a JSON progress file
+            var isJson = fileName.endsWith(".json")
+            if (!isJson) {
+                try {
+                    val header = tempFile.inputStream().use {
+                        val b = ByteArray(32)
+                        val n = it.read(b)
+                        if (n > 0) b.copyOf(n) else ByteArray(0)
+                    }
+                    val headerStr = String(header, Charsets.UTF_8).trimStart()
+                    if (headerStr.startsWith("{")) {
+                        isJson = true
+                    }
+                } catch (_: Exception) {}
+            }
+
+            if (isJson) {
+                try {
+                    val jsonStr = tempFile.readText(Charsets.UTF_8)
+                    val root = com.google.gson.JsonParser.parseString(jsonStr).asJsonObject
+                    val targetLang = when {
+                        root.has("target_language") && !root.get("target_language").isJsonNull ->
+                            root.get("target_language").asString
+                        fileName.startsWith("deck_") ->
+                            fileName.removePrefix("deck_").removeSuffix(".json")
+                        else -> null
+                    }
+                    if (targetLang.isNullOrBlank() || !root.has("ratings")) {
+                        tempFile.delete()
+                        return ImportResult.Failure("Unsupported file format. Please select a .db deck or .json progress file.")
+                    }
+
+                    val progressFile = getProgressFile(context, targetLang)
+                    tempFile.copyTo(progressFile, overwrite = true)
+                    tempFile.delete()
+                    return ImportResult.ProgressSuccess(targetLang)
+                } catch (e: Exception) {
+                    tempFile.delete()
+                    return ImportResult.Failure("Unsupported file format. Please select a .db deck or .json progress file.")
+                }
+            }
+
+            // Otherwise, treat as .db dataset
+            val rawName = getFileNameFromUri(context, uri) ?: "deck_${System.currentTimeMillis()}.db"
+            val sanitizedName = if (rawName.endsWith(".db", ignoreCase = true)) {
+                rawName.replace(Regex("[^a-zA-Z0-9._-]"), "_")
+            } else {
+                "${rawName.replace(Regex("[^a-zA-Z0-9._-]"), "_")}.db"
+            }
+            val targetFile = File(context.filesDir, sanitizedName)
+            tempFile.copyTo(targetFile, overwrite = true)
+            tempFile.delete()
+
             val deckInfo = inspectDeckFile(context, targetFile, isAsset = false, assetName = null)
             if (deckInfo == null) {
-                ImportResult.Failure("Failed to validate database schema. Please verify with 'maintainers/verify_package.py'.")
+                targetFile.delete()
+                ImportResult.Failure("Unsupported file format. Please select a .db deck or .json progress file.")
             } else {
                 ImportResult.Success(deckInfo)
             }
@@ -88,7 +135,7 @@ object DeckRepository {
             val msg = when {
                 e.message?.contains("ENOSPC", ignoreCase = true) == true ||
                 e.message?.contains("space", ignoreCase = true) == true ->
-                    "Out of storage space on device. Please wipe emulator data."
+                    "Out of storage space on device."
                 else ->
                     "Import failed: ${e.localizedMessage ?: e.javaClass.simpleName}"
             }
@@ -294,9 +341,37 @@ object DeckRepository {
         return file
     }
 
+    fun autoExportProgress(context: Context, deck: DeckEngine) {
+        try {
+            val prefs = context.getSharedPreferences("bespoke_backup", Context.MODE_PRIVATE)
+            val lastExportKey = "last_export_${deck.targetLanguageCode}"
+            val lastExportTime = prefs.getLong(lastExportKey, 0L)
+            val now = System.currentTimeMillis()
+            val oneDayMs = 24 * 60 * 60 * 1000L
+
+            if (now - lastExportTime < oneDayMs) {
+                return
+            }
+
+            val docsDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOCUMENTS)
+            val bespokeDir = File(docsDir, "Bespoke")
+            if (!bespokeDir.exists()) {
+                bespokeDir.mkdirs()
+            }
+            val sanitizedLang = deck.targetLanguageCode.replace(Regex("[^a-zA-Z0-9_-]"), "_").lowercase()
+            val backupFile = File(bespokeDir, "deck_${sanitizedLang}.json")
+            deck.save(backupFile)
+            prefs.edit().putLong(lastExportKey, now).apply()
+            Log.i(TAG, "Auto-exported progress backup to ${backupFile.absolutePath}")
+        } catch (e: Exception) {
+            Log.w(TAG, "Failed auto-exporting progress backup to Documents", e)
+        }
+    }
+
     fun saveProgress(context: Context, deck: DeckEngine) {
         val file = getProgressFile(context, deck.targetLanguageCode)
         deck.save(file)
+        autoExportProgress(context, deck)
     }
 
     fun loadProgress(context: Context, deck: DeckEngine) {
