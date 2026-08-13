@@ -3,7 +3,7 @@ package com.google.bespoke.srs
 import com.google.bespoke.model.*
 import com.google.gson.Gson
 import com.google.gson.GsonBuilder
-import com.google.gson.reflect.TypeToken
+import com.google.gson.JsonParser
 import java.io.File
 import kotlin.math.exp
 import kotlin.math.max
@@ -311,39 +311,64 @@ class DeckEngine(
     fun loadJson(jsonString: String) {
         synchronized(lock) {
             val gson = Gson()
-            val type = object : TypeToken<Map<String, Any>>() {}.type
-            val data: Map<String, Any> = gson.fromJson(jsonString, type)
+            val root = JsonParser.parseString(jsonString).asJsonObject
 
             ratingStates.clear()
-            val ratingsRaw = data["ratings"] as? Map<*, *> ?: emptyMap<String, Any>()
-            for ((unitIdKey, ratingsListRaw) in ratingsRaw) {
-                val listJson = gson.toJson(ratingsListRaw)
-                val ratingsListType = object : TypeToken<List<Rating>>() {}.type
-                val ratingsList: List<Rating> = gson.fromJson(listJson, ratingsListType) ?: emptyList()
-                ratingStates[unitIdKey.toString()] = RatingState(ratingsList)
+            val ratingsElem = root.get("ratings")
+            if (ratingsElem != null && ratingsElem.isJsonObject) {
+                val ratingsObj = ratingsElem.asJsonObject
+                for ((unitIdKey, elem) in ratingsObj.entrySet()) {
+                    val ratingsList = mutableListOf<Rating>()
+                    if (elem.isJsonArray) {
+                        for (item in elem.asJsonArray) {
+                            try {
+                                val r = gson.fromJson(item, Rating::class.java)
+                                if (r != null) ratingsList.add(r)
+                            } catch (_: Exception) {}
+                        }
+                    }
+                    ratingStates[unitIdKey] = RatingState(ratingsList)
+                }
             }
 
             cardIdUses.clear()
-            val usagesRaw = data["card_id_uses"] as? Map<*, *> ?: emptyMap<String, Any>()
-            for ((cardIdKey, usageListRaw) in usagesRaw) {
-                val listJson = gson.toJson(usageListRaw)
-                val usagesListType = object : TypeToken<List<CardUsage>>() {}.type
-                val usagesList: List<CardUsage> = gson.fromJson(listJson, usagesListType) ?: emptyList()
-                cardIdUses[cardIdKey.toString()] = usagesList.toMutableList()
+            val usagesElem = root.get("card_id_uses")
+            if (usagesElem != null && usagesElem.isJsonObject) {
+                val usagesObj = usagesElem.asJsonObject
+                for ((cardIdKey, elem) in usagesObj.entrySet()) {
+                    val usagesList = mutableListOf<CardUsage>()
+                    if (elem.isJsonArray) {
+                        for (item in elem.asJsonArray) {
+                            try {
+                                val u = gson.fromJson(item, CardUsage::class.java)
+                                if (u != null) usagesList.add(u)
+                            } catch (_: Exception) {}
+                        }
+                    }
+                    cardIdUses[cardIdKey] = usagesList
+                }
             }
 
-            val diffStr = data["difficulty"] as? String
-            if (diffStr != null) {
-                difficulty = Difficulty.fromValue(diffStr)
+            val diffElem = root.get("difficulty")
+            if (diffElem != null && !diffElem.isJsonNull) {
+                difficulty = Difficulty.fromValue(diffElem.asString)
             }
 
-            val modesRaw = data["modes"] as? List<*>
-            if (modesRaw != null) {
-                modes = modesRaw.map { Mode.fromValue(it.toString()) }
+            val modesElem = root.get("modes")
+            if (modesElem != null && modesElem.isJsonArray) {
+                val modesList = mutableListOf<Mode>()
+                for (elem in modesElem.asJsonArray) {
+                    modesList.add(Mode.fromValue(elem.asString))
+                }
+                modes = modesList
             }
 
-            val assumeStr = data["assume_known"] as? String
-            assumeKnown = if (assumeStr != null) Difficulty.fromValue(assumeStr) else null
+            val assumeElem = root.get("assume_known")
+            assumeKnown = if (assumeElem != null && !assumeElem.isJsonNull) {
+                Difficulty.fromValue(assumeElem.asString)
+            } else {
+                null
+            }
 
             // Recompute stats
             knownUnitModes = 0

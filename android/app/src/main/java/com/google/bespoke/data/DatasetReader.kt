@@ -5,7 +5,7 @@ import android.util.LruCache
 import com.google.bespoke.model.*
 import com.google.bespoke.srs.DeckEngine
 import com.google.gson.Gson
-import com.google.gson.reflect.TypeToken
+import com.google.gson.JsonParser
 import java.io.Closeable
 import java.io.File
 
@@ -73,27 +73,31 @@ class DatasetReader(private val dbFile: File) : Closeable {
 
     fun getCardsForUnit(unitId: String, limit: Int = 1000): List<Card> {
         val cards = mutableListOf<Card>()
-        val query = """
-            SELECT c.json FROM cards c
-            INNER JOIN card_index idx ON c.id = idx.card_id
-            WHERE idx.unit_id = ?
-            LIMIT ?
-        """.trimIndent()
-        val cursor = db.rawQuery(query, arrayOf(unitId, limit.toString()))
-        cursor.use {
-            while (it.moveToNext()) {
-                val jsonStr = it.getString(0)
-                parseCardJson(jsonStr)?.let { card ->
-                    cardCache.put(card.id, card)
-                    cards.add(card)
+        if (!db.isOpen) return cards
+        try {
+            val query = """
+                SELECT c.json FROM cards c
+                INNER JOIN card_index idx ON c.id = idx.card_id
+                WHERE idx.unit_id = ?
+                LIMIT ?
+            """.trimIndent()
+            val cursor = db.rawQuery(query, arrayOf(unitId, limit.toString()))
+            cursor.use {
+                while (it.moveToNext()) {
+                    val jsonStr = it.getString(0)
+                    parseCardJson(jsonStr)?.let { card ->
+                        cardCache.put(card.id, card)
+                        cards.add(card)
+                    }
                 }
             }
-        }
+        } catch (_: Exception) {}
         return cards
     }
 
     fun getUnitsWithCards(): Set<String> {
         val units = mutableSetOf<String>()
+        if (!db.isOpen) return units
         try {
             val cursor = db.rawQuery("SELECT DISTINCT unit_id FROM card_index", null)
             cursor.use {
@@ -106,7 +110,7 @@ class DatasetReader(private val dbFile: File) : Closeable {
     }
 
     fun getAudioBlob(filename: String): ByteArray? {
-        if (filename.isEmpty()) return null
+        if (filename.isEmpty() || !db.isOpen) return null
 
         try {
             // Try exact filename match first
@@ -135,6 +139,7 @@ class DatasetReader(private val dbFile: File) : Closeable {
 
     fun getTranslations(): Map<String, String> {
         val translations = mutableMapOf<String, String>()
+        if (!db.isOpen) return translations
         try {
             val cursor = db.rawQuery("SELECT unit_id, translation FROM translations", null)
             cursor.use {
@@ -212,30 +217,36 @@ class DatasetReader(private val dbFile: File) : Closeable {
             gson.fromJson(jsonStr, Card::class.java)
         } catch (e: Exception) {
             try {
-                val mapType = object : TypeToken<Map<String, Any>>() {}.type
-                val map: Map<String, Any> = gson.fromJson(jsonStr, mapType)
-                val id = map["id"] as? String ?: return null
-                val sentence = map["sentence"] as? String ?: ""
-                val nativeSentence = map["native_sentence"] as? String ?: ""
-                val audioFilename = map["audio_filename"] as? String ?: ""
-                val slowAudioFilename = map["slow_audio_filename"] as? String ?: ""
-                val nativeAudioFilename = map["native_audio_filename"] as? String ?: ""
-                val phonetic = map["phonetic"] as? String
-                val notes = (map["notes"] as? List<*>)?.map { it.toString() } ?: emptyList()
+                val root = JsonParser.parseString(jsonStr).asJsonObject
+                val id = root.get("id")?.asString ?: return null
+                val sentence = root.get("sentence")?.asString ?: ""
+                val nativeSentence = root.get("native_sentence")?.asString ?: ""
+                val audioFilename = root.get("audio_filename")?.asString ?: ""
+                val slowAudioFilename = root.get("slow_audio_filename")?.asString ?: ""
+                val nativeAudioFilename = root.get("native_audio_filename")?.asString ?: ""
+                val phonetic = if (root.has("phonetic") && !root.get("phonetic").isJsonNull) root.get("phonetic").asString else null
+                val notes = if (root.has("notes") && root.get("notes").isJsonArray) {
+                    val list = mutableListOf<String>()
+                    for (elem in root.getAsJsonArray("notes")) {
+                        list.add(elem.asString)
+                    }
+                    list
+                } else emptyList()
 
                 val unitTagsList = mutableListOf<UnitTag>()
-                val unitTagsRaw = map["unit_tags"]
-                if (unitTagsRaw is List<*>) {
-                    for (tagObj in unitTagsRaw) {
-                        if (tagObj is Map<*, *>) {
-                            val occ = tagObj["occurance"]?.toString() ?: ""
-                            val uid = tagObj["unit_id"]?.toString() ?: ""
+                val unitTagsRaw = root.get("unit_tags")
+                if (unitTagsRaw != null && unitTagsRaw.isJsonArray) {
+                    for (tagObj in unitTagsRaw.asJsonArray) {
+                        if (tagObj.isJsonObject) {
+                            val obj = tagObj.asJsonObject
+                            val occ = obj.get("occurance")?.asString ?: ""
+                            val uid = obj.get("unit_id")?.asString ?: ""
                             unitTagsList.add(UnitTag(occ, uid))
                         }
                     }
-                } else if (unitTagsRaw is Map<*, *>) {
-                    for ((k, v) in unitTagsRaw) {
-                        unitTagsList.add(UnitTag(k.toString(), v.toString()))
+                } else if (unitTagsRaw != null && unitTagsRaw.isJsonObject) {
+                    for ((k, v) in unitTagsRaw.asJsonObject.entrySet()) {
+                        unitTagsList.add(UnitTag(k, v.asString))
                     }
                     unitTagsList.sortBy { sentence.indexOf(it.occurance) }
                 }

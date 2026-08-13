@@ -197,11 +197,8 @@ object DeckRepository {
                 }
             }
 
-            var cardCount = 0
+            var cardCount = meta["card_count"]?.toIntOrNull() ?: 0
             var vocabCount = 0
-            try {
-                reader.getVocabulary().size.also { vocabCount = it }
-            } catch (_: Exception) {}
 
             try {
                 val db = android.database.sqlite.SQLiteDatabase.openDatabase(
@@ -209,29 +206,38 @@ object DeckRepository {
                     null,
                     android.database.sqlite.SQLiteDatabase.OPEN_READONLY
                 )
-                val c1 = db.rawQuery("SELECT count(*) FROM cards", null)
-                if (c1.moveToFirst()) cardCount = c1.getInt(0)
-                c1.close()
+                if (cardCount == 0) {
+                    val c1 = db.rawQuery("SELECT count(*) FROM cards", null)
+                    if (c1.moveToFirst()) cardCount = c1.getInt(0)
+                    c1.close()
+                }
+                val c2 = db.rawQuery("SELECT count(*) FROM vocabulary", null)
+                if (c2.moveToFirst()) vocabCount = c2.getInt(0)
+                c2.close()
                 db.close()
             } catch (_: Exception) {}
             reader.close()
 
             val progressFile = getProgressFile(context, target)
-            var stats: DeckStats? = null
             var savedDiff: Difficulty? = null
             var savedModes: List<Mode>? = null
             var savedAssume: Difficulty? = null
 
             if (progressFile.exists()) {
                 try {
-                    val tempReader = DatasetReader(file)
-                    val tempDeck = tempReader.createDeckEngine()
-                    tempDeck.load(progressFile)
-                    stats = tempDeck.stats()
-                    savedDiff = tempDeck.getDifficulty()
-                    savedModes = tempDeck.getModes()
-                    savedAssume = tempDeck.getAssumeKnown()
-                    tempReader.close()
+                    val jsonStr = progressFile.readText(Charsets.UTF_8)
+                    val root = com.google.gson.JsonParser.parseString(jsonStr).asJsonObject
+                    if (root.has("difficulty") && !root.get("difficulty").isJsonNull) {
+                        savedDiff = Difficulty.fromValue(root.get("difficulty").asString)
+                    }
+                    if (root.has("modes") && root.get("modes").isJsonArray) {
+                        savedModes = root.getAsJsonArray("modes").mapNotNull {
+                            Mode.fromValue(it.asString)
+                        }
+                    }
+                    if (root.has("assume_known") && !root.get("assume_known").isJsonNull) {
+                        savedAssume = Difficulty.fromValue(root.get("assume_known").asString)
+                    }
                 } catch (_: Exception) {}
             }
 
@@ -252,7 +258,7 @@ object DeckRepository {
                 isAsset = isAsset,
                 cardCount = cardCount,
                 vocabCount = vocabCount,
-                savedStats = stats,
+                savedStats = null,
                 savedDifficulty = savedDiff,
                 savedModes = savedModes,
                 savedAssumeKnown = savedAssume
@@ -294,9 +300,13 @@ object DeckRepository {
     }
 
     fun loadProgress(context: Context, deck: DeckEngine) {
-        val file = getProgressFile(context, deck.targetLanguageCode)
-        if (file.exists()) {
-            deck.load(file)
+        try {
+            val file = getProgressFile(context, deck.targetLanguageCode)
+            if (file.exists()) {
+                deck.load(file)
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed loading progress for ${deck.targetLanguageCode}", e)
         }
     }
 }

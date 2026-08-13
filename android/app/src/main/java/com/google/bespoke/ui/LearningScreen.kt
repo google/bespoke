@@ -17,6 +17,9 @@ import com.google.bespoke.data.DatasetReader
 import com.google.bespoke.model.*
 import com.google.bespoke.srs.DeckEngine
 import com.google.bespoke.ui.theme.*
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 @Composable
 fun LearningScreen(
@@ -57,50 +60,60 @@ fun LearningScreen(
     var stats by remember { mutableStateOf(DeckStats(0, 0, 0)) }
     val ratings = remember { mutableStateMapOf<String, Int>() }
 
+    val coroutineScope = rememberCoroutineScope()
+
     fun playAudioFile(filename: String) {
         if (filename.isEmpty()) return
         isPlaying = true
         currentlyPlayingFile = filename
-        val blob = datasetReader.getAudioBlob(filename)
-        if (blob != null && blob.isNotEmpty()) {
-            audioPlayer.playBytes(blob) {
-                isPlaying = false
-                if (currentlyPlayingFile == filename) {
-                    currentlyPlayingFile = null
-                }
+        coroutineScope.launch {
+            val blob = withContext(Dispatchers.IO) {
+                datasetReader.getAudioBlob(filename)
             }
-        } else {
-            audioPlayer.playFile(filename) {
-                isPlaying = false
-                if (currentlyPlayingFile == filename) {
-                    currentlyPlayingFile = null
+            if (blob != null && blob.isNotEmpty()) {
+                audioPlayer.playBytes(blob) {
+                    isPlaying = false
+                    if (currentlyPlayingFile == filename) {
+                        currentlyPlayingFile = null
+                    }
+                }
+            } else {
+                audioPlayer.playFile(filename) {
+                    isPlaying = false
+                    if (currentlyPlayingFile == filename) {
+                        currentlyPlayingFile = null
+                    }
                 }
             }
         }
     }
 
     fun loadNextCard() {
-        try {
-            audioPlayer.stop()
-            isPlaying = false
-            currentlyPlayingFile = null
+        coroutineScope.launch {
+            try {
+                audioPlayer.stop()
+                isPlaying = false
+                currentlyPlayingFile = null
 
-            val (mode, card) = deckEngine.draw()
-            currentMode = mode
-            currentCard = card
-            isOnBack = false
-            stats = deckEngine.stats()
-            ratings.clear()
-            for (uid in card.unitIds()) {
-                ratings[uid] = 0
-            }
+                val (mode, card) = withContext(Dispatchers.IO) {
+                    deckEngine.draw()
+                }
+                currentMode = mode
+                currentCard = card
+                isOnBack = false
+                stats = deckEngine.stats()
+                ratings.clear()
+                for (uid in card.unitIds()) {
+                    ratings[uid] = 0
+                }
 
-            // Autoplay in LISTEN mode on front view
-            if (mode == Mode.LISTEN && card.audio_filename.isNotEmpty()) {
-                playAudioFile(card.audio_filename)
+                // Autoplay in LISTEN mode on front view
+                if (mode == Mode.LISTEN && card.audio_filename.isNotEmpty()) {
+                    playAudioFile(card.audio_filename)
+                }
+            } catch (e: Exception) {
+                android.util.Log.e("LearningScreen", "Error loading card", e)
             }
-        } catch (e: Exception) {
-            android.util.Log.e("LearningScreen", "Error loading card", e)
         }
     }
 
@@ -219,7 +232,24 @@ fun LearningScreen(
                         )
                     }
                 } else {
-                    CircularProgressIndicator(modifier = Modifier.padding(32.dp))
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(300.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            CircularProgressIndicator()
+                            Text(
+                                text = "Loading card...",
+                                fontSize = 16.sp,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
                 }
             }
         }

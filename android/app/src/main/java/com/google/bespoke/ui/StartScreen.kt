@@ -1,5 +1,8 @@
 package com.google.bespoke.ui
 
+import android.content.ClipData
+import android.content.ClipboardManager
+import android.content.Context
 import android.net.Uri
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -16,6 +19,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.DarkMode
 import androidx.compose.material.icons.filled.FileUpload
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.LightMode
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -26,6 +30,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -39,6 +44,7 @@ import com.google.bespoke.ui.theme.*
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.io.File
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -48,6 +54,7 @@ fun StartScreen(
     isDarkMode: Boolean = false,
     onToggleDarkMode: ((Boolean) -> Unit)? = null,
     onImportDeck: (suspend (Uri) -> ImportResult)? = null,
+    isLoading: Boolean = false,
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
@@ -136,6 +143,70 @@ fun StartScreen(
         }
     }
 
+    var showLogsDialog by remember { mutableStateOf(false) }
+
+    if (showLogsDialog) {
+        val internal = File(context.filesDir, "crash.log")
+        val ext = context.getExternalFilesDir(null)?.let { File(it, "crash.log") }
+        var logContent by remember {
+            val content = when {
+                internal.exists() -> internal.readText(Charsets.UTF_8)
+                ext?.exists() == true -> ext.readText(Charsets.UTF_8)
+                else -> "No crash logs recorded. System is operating normally."
+            }
+            mutableStateOf(content)
+        }
+
+        AlertDialog(
+            onDismissRequest = { showLogsDialog = false },
+            title = { Text("Diagnostics & Crash Logs") },
+            text = {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(max = 320.dp)
+                        .verticalScroll(rememberScrollState())
+                ) {
+                    Text(
+                        text = logContent,
+                        fontSize = 12.sp,
+                        fontFamily = FontFamily.Monospace
+                    )
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as? ClipboardManager
+                        val clip = ClipData.newPlainText("Bespoke Logs", logContent)
+                        clipboard?.setPrimaryClip(clip)
+                        Toast.makeText(context, "Copied to clipboard", Toast.LENGTH_SHORT).show()
+                    }
+                ) {
+                    Text("Copy")
+                }
+            },
+            dismissButton = {
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    TextButton(
+                        onClick = {
+                            try {
+                                internal.delete()
+                                ext?.delete()
+                                logContent = "Logs cleared."
+                            } catch (_: Exception) {}
+                        }
+                    ) {
+                        Text("Clear")
+                    }
+                    TextButton(onClick = { showLogsDialog = false }) {
+                        Text("Close")
+                    }
+                }
+            }
+        )
+    }
+
     Scaffold(
         modifier = modifier
             .fillMaxSize()
@@ -151,7 +222,7 @@ fun StartScreen(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(14.dp)
         ) {
-            // App Title Header (Rounded pill icon, Dark Mode toggle switch)
+            // App Title Header (Rounded pill icon, Logs button, Dark Mode toggle switch)
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -191,23 +262,39 @@ fun StartScreen(
                     )
                 }
 
-                if (onToggleDarkMode != null) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(6.dp),
-                        modifier = Modifier.testTag("DarkModeToggleRow")
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    IconButton(
+                        onClick = { showLogsDialog = true },
+                        modifier = Modifier.size(36.dp).testTag("LogsButton")
                     ) {
                         Icon(
-                            imageVector = if (isDarkMode) Icons.Default.DarkMode else Icons.Default.LightMode,
-                            contentDescription = "Toggle Dark Mode",
-                            modifier = Modifier.size(18.dp),
+                            imageVector = Icons.Default.Info,
+                            contentDescription = "Diagnostics and Logs",
                             tint = if (isDark) Color(0xFF9CA3AF) else Color(0xFF4B5563)
                         )
-                        Switch(
-                            checked = isDarkMode,
-                            onCheckedChange = { onToggleDarkMode(it) },
-                            modifier = Modifier.testTag("DarkModeSwitch")
-                        )
+                    }
+
+                    if (onToggleDarkMode != null) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(6.dp),
+                            modifier = Modifier.testTag("DarkModeToggleRow")
+                        ) {
+                            Icon(
+                                imageVector = if (isDarkMode) Icons.Default.DarkMode else Icons.Default.LightMode,
+                                contentDescription = "Toggle Dark Mode",
+                                modifier = Modifier.size(18.dp),
+                                tint = if (isDark) Color(0xFF9CA3AF) else Color(0xFF4B5563)
+                            )
+                            Switch(
+                                checked = isDarkMode,
+                                onCheckedChange = { onToggleDarkMode(it) },
+                                modifier = Modifier.testTag("DarkModeSwitch")
+                            )
+                        }
                     }
                 }
             }
@@ -514,22 +601,36 @@ fun StartScreen(
 
             Button(
                 onClick = {
-                    if (currentDeck != null && canStart) {
+                    if (currentDeck != null && canStart && !isLoading) {
                         onStartDeck(currentDeck, selectedDifficulty, activeModes, selectedAssumeKnown)
                     }
                 },
-                enabled = canStart,
+                enabled = canStart && !isLoading,
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(54.dp)
                     .testTag("StartLearningButton"),
                 shape = RoundedCornerShape(12.dp)
             ) {
-                Text(
-                    text = if (currentDeck?.savedStats != null) "Continue Learning" else "Start Learning",
-                    fontSize = 17.sp,
-                    fontWeight = FontWeight.Bold
-                )
+                if (isLoading) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(22.dp),
+                        strokeWidth = 2.5.dp,
+                        color = Color.White
+                    )
+                    Spacer(modifier = Modifier.width(10.dp))
+                    Text(
+                        text = "Loading Deck...",
+                        fontSize = 17.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                } else {
+                    Text(
+                        text = "Start Learning",
+                        fontSize = 17.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
             }
         }
     }

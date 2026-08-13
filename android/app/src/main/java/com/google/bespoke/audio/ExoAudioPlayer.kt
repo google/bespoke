@@ -22,6 +22,14 @@ class ExoAudioPlayer(private val context: Context) : AudioPlayer {
     private var currentCompletionCallback: (() -> Unit)? = null
     private var isCurrentlyPlaying = false
 
+    init {
+        try {
+            getOrCreatePlayer()
+        } catch (e: Exception) {
+            Log.w(tag, "Failed pre-warming ExoPlayer", e)
+        }
+    }
+
     private fun getOrCreatePlayer(): ExoPlayer {
         val existing = exoPlayer
         if (existing != null) return existing
@@ -99,8 +107,6 @@ class ExoAudioPlayer(private val context: Context) : AudioPlayer {
             if (!tempFile.exists() || tempFile.length() != audioBytes.size.toLong()) {
                 FileOutputStream(tempFile).use { fos ->
                     fos.write(audioBytes)
-                    fos.flush()
-                    fos.fd.sync()
                 }
             }
 
