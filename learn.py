@@ -21,7 +21,8 @@ from pathlib import Path
 import sys
 import threading
 
-from nicegui import events, ui
+from nicegui import events
+from nicegui import ui
 
 from bespoke import CardIndex
 from bespoke import Deck

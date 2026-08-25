@@ -30,6 +30,7 @@ from bespoke.languages import Language
 from bespoke.unit import DictionaryUnit
 from bespoke.unit import Difficulty
 from bespoke.unit import Unit
+from bespoke.unit import UnitTag
 from bespoke.unit import UnitTags
 
 
@@ -60,6 +61,270 @@ class DisambiguatedTagSchema(pydantic.BaseModel):
 
 class DisambiguatedTagsSchema(pydantic.BaseModel):
     tags: list[DisambiguatedTagSchema]
+
+
+JAPANESE_SUGGEST_NAMES_EXAMPLES = """
+Examples:
+Sentence: 私が注目しているのはゲーム業界の成長だ。
+Names: ["私", "が", "注目", "する", "いる", "の", "は", "ゲーム", "業界", "成長", "だ"]
+
+Sentence: この店は安くて美味しいし、料理もいい。
+Names: ["この", "店", "は", "安い", "美味しい", "おいしい", "し", "料理", "も", "いい", "良い"]
+
+Sentence: 忙しい仕事のスケジュールにしても休日の計画を立てたい。
+Names: ["忙しい", "仕事", "の", "スケジュール", "に", "する", "も", "休日", "計画", "を", "立てる"]
+
+Sentence: 計画的に仕事を進めることが重要だ。
+Names: ["計画", "的", "計画的", "に", "仕事", "を", "進める", "こと", "事", "が", "重要", "だ"]
+
+Sentence: 最近新しい技術が次々と導入されている。
+Names: ["最近", "新しい", "技術", "が", "次々", "と", "導入", "する", "いる"]
+
+Sentence: 彼こそ本当の意味でのリーダーになりやすい人です。
+Names: ["彼", "こそ", "本当", "の", "意味", "で", "リーダー", "に", "なる", "やすい", "人", "です"]
+
+Sentence: これといった理由はないはずだ。
+Names: ["これ", "と", "言う", "いう", "理由", "は", "ない", "はず", "筈", "だ"]
+
+Sentence: 彼の行動の理由は理解しがたい。
+Names: ["彼", "の", "行動", "理由", "は", "理解", "する", "がたい", "だ"]
+"""
+
+JAPANESE_TAG_SENTENCE_EXAMPLES = """
+Examples of correct tagging for Japanese:
+
+Example 1:
+Sentence: 私が注目しているのはゲーム業界の成長だ。
+Hints: ["私", "が", "注目", "する", "いる", "の", "は", "ゲーム", "業界", "成長", "だ"]
+Tags:
+- occurance: "私", unit_id: "私"
+- occurance: "が", unit_id: "が"
+- occurance: "注目", unit_id: "注目"
+- occurance: "して", unit_id: "する"
+- occurance: "いる", unit_id: "いる"
+- occurance: "の", unit_id: "の"
+- occurance: "は", unit_id: "は"
+- occurance: "ゲーム", unit_id: "ゲーム"
+- occurance: "業界", unit_id: "業界"
+- occurance: "の", unit_id: "の"
+- occurance: "成長", unit_id: "成長"
+- occurance: "だ", unit_id: "だ"
+
+Example 2:
+Sentence: この店は安くて美味しいし、料理もいい。
+Hints: ["この", "店", "は", "安い", "おいしい", "し", "料理", "も", "良い"]
+Tags:
+- occurance: "この", unit_id: "この"
+- occurance: "店", unit_id: "店"
+- occurance: "は", unit_id: "は"
+- occurance: "安くて", unit_id: "安い"
+- occurance: "美味しい", unit_id: "おいしい"
+- occurance: "し", unit_id: "し"
+- occurance: "料理", unit_id: "料理"
+- occurance: "も", unit_id: "も"
+- occurance: "いい", unit_id: "良い"
+
+Example 3:
+Sentence: 忙しい仕事のスケジュールにしても休日の計画を立てたい。
+Hints: ["忙しい", "仕事", "の", "に", "する", "も", "休日", "計画", "を", "立てる"]
+Tags:
+- occurance: "忙しい", unit_id: "忙しい"
+- occurance: "仕事", unit_id: "仕事"
+- occurance: "の", unit_id: "の"
+- occurance: "スケジュール", unit_id: "スケジュール"
+- occurance: "に", unit_id: "に"
+- occurance: "して", unit_id: "する"
+- occurance: "も", unit_id: "も"
+- occurance: "休日", unit_id: "休日"
+- occurance: "の", unit_id: "の"
+- occurance: "計画", unit_id: "計画"
+- occurance: "を", unit_id: "を"
+- occurance: "立てたい", unit_id: "立てる"
+
+Example 4:
+Sentence: 計画的に仕事を進めることが重要だ。
+Hints: ["計画", "的", "計画的", "に", "仕事", "を", "進める", "こと", "が", "重要", "だ"]
+Tags:
+- occurance: "計画", unit_id: "計画"
+- occurance: "的", unit_id: "的"
+- occurance: "に", unit_id: "に"
+- occurance: "仕事", unit_id: "仕事"
+- occurance: "を", unit_id: "を"
+- occurance: "進める", unit_id: "進める"
+- occurance: "こと", unit_id: "こと"
+- occurance: "が", unit_id: "が"
+- occurance: "重要", unit_id: "重要"
+- occurance: "だ", unit_id: "だ"
+
+Example 5:
+Sentence: 最近新しい技術が次々と導入されている。
+Hints: ["最近", "新しい", "技術", "が", "次々", "と", "導入", "する", "いる"]
+Tags:
+- occurance: "最近", unit_id: "最近"
+- occurance: "新しい", unit_id: "新しい"
+- occurance: "技術", unit_id: "技術"
+- occurance: "が", unit_id: "が"
+- occurance: "次々", unit_id: "次々"
+- occurance: "と", unit_id: "と"
+- occurance: "導入", unit_id: "導入"
+- occurance: "されて", unit_id: "する"
+- occurance: "いる", unit_id: "いる"
+
+Example 6:
+Sentence: 彼こそ本当の意味でのリーダーになりやすい人です。
+Hints: ["彼", "こそ", "本当", "の", "意味", "で", "リーダー", "に", "なる", "やすい", "人", "です"]
+Tags:
+- occurance: "彼", unit_id: "彼"
+- occurance: "こそ", unit_id: "こそ"
+- occurance: "本当", unit_id: "本当"
+- occurance: "の", unit_id: "の"
+- occurance: "意味", unit_id: "意味"
+- occurance: "で", unit_id: "で"
+- occurance: "の", unit_id: "の"
+- occurance: "リーダー", unit_id: "リーダー"
+- occurance: "に", unit_id: "に"
+- occurance: "なり", unit_id: "なる"
+- occurance: "やすい", unit_id: "やすい"
+- occurance: "人", unit_id: "人"
+- occurance: "です", unit_id: "です"
+
+Example 7:
+Sentence: これといった理由はないはずだ。
+Hints: ["これ", "と", "言う", "理由", "は", "ない", "はず", "だ"]
+Tags:
+- occurance: "これ", unit_id: "これ"
+- occurance: "と", unit_id: "と"
+- occurance: "いった", unit_id: "言う"
+- occurance: "理由", unit_id: "理由"
+- occurance: "は", unit_id: "は"
+- occurance: "ない", unit_id: "ない"
+- occurance: "はず", unit_id: "はず"
+- occurance: "だ", unit_id: "だ"
+
+Example 8:
+Sentence: 彼の行動の理由は理解しがたい。
+Hints: ["彼", "の", "行動", "理由", "は", "理解", "する", "がたい", "だ"]
+Tags:
+- occurance: "彼", unit_id: "彼"
+- occurance: "の", unit_id: "の"
+- occurance: "行動", unit_id: "行動"
+- occurance: "の", unit_id: "の"
+- occurance: "理由", unit_id: "理由"
+- occurance: "は", unit_id: "は"
+- occurance: "理解", unit_id: "理解"
+- occurance: "し", unit_id: "する"
+- occurance: "がたい", unit_id: "がたい"
+"""
+
+
+def _build_suggest_names_prompt(sentence: str, language: Language) -> str:
+    japanese_instruction = ""
+    if language.code_name == "japanese":
+        japanese_instruction = (
+            "For Japanese, list dictionary base forms of all content words, "
+            "verbs, adjectives, particles, and individual components of "
+            "compound words. "
+            "If a word is a compound (e.g. 効率的, 予想外, 計画的, 見直し), "
+            "list both the compound and its individual component words "
+            "(e.g. 効率, 的, 予想, 外, 計画, 見直す). "
+            "For verbs and adjectives, provide all dictionary/base forms "
+            "(e.g. 忘れる and しまう for 忘れてしまう, 発生 and する for "
+            "発生したい, 言う for いう/といった/といえば/という). "
+            "For verbs or adjectives with auxiliary suffixes (e.g. -やすい, "
+            "-にくい, -づらい, -がたい, -がち, -だらけ, -っぱなし, -たて, "
+            "-べからず, -かねる, -すぎる, -たい, -そう), output both the base "
+            "dictionary form of the verb/adjective (e.g. 見る for 見やすい, "
+            "なる for なりやすい, 理解 and する for 理解しがたい, 忙しい for "
+            "忙しすぎて) and the suffix/grammar word itself (e.g. やすい, "
+            "がたい, すぎる). "
+            "Create hiragana and possible multiple kanji versions of the "
+            "word, if both are used. \n"
+            f"{JAPANESE_SUGGEST_NAMES_EXAMPLES}\n"
+        )
+    return (
+        f"Given is a sentence in {language.writing_system}: \n{sentence} \n"
+        "List all base forms of words in the sentence. "
+        f"{japanese_instruction}"
+    )
+
+
+def _build_tag_sentence_prompt(
+    sentence: str,
+    language: Language,
+    hint: list[Unit],
+    marked_sentence: str | None = None,
+    existing_tags: list[UnitTag] | None = None,
+) -> str:
+    hints_str = "\n".join(u.id() for u in hint)
+    uses_dictionary_unit = bool(hint and isinstance(hint[0], DictionaryUnit))
+    equal_occurance_text = ""
+    examples_text = ""
+    if language.code_name in ["simp_chinese", "trad_chinese"]:
+        equal_occurance_text = "The occurance needs to exactly match the "
+        if uses_dictionary_unit:
+            equal_occurance_text += 'part of unit ID before " - ". '
+        else:
+            equal_occurance_text += "unit ID. "
+    else:
+        equal_occurance_text = (
+            "You may leave words, particles or grammatical word parts "
+            "untagged if there is no good matching unit in the hints. "
+            "Do not invent or force tags for unlisted words. "
+        )
+        if language.code_name == "japanese":
+            equal_occurance_text += (
+                "For Japanese, grammatical endings of words "
+                "(such as verb or adjective inflections like -た, -たり, "
+                "-て, -ます, -ない) should be included in the occurrence "
+                "of the word stem, but particles (such as を, に, は, が, で, "
+                "と) must NOT be included in verb or adjective occurrences. "
+                "For suru-verbs (Noun + する), tag the full inflection of する "
+                "as unit する. "
+                "Compound or consecutive particles (such as よりも, さえも, "
+                "には, とは, からも, だけの) may be split into separate "
+                "individual particle tags (e.g. tag より as より and "
+                "も as も). \n"
+            )
+            examples_text = f"{JAPANESE_TAG_SENTENCE_EXAMPLES}\n"
+    unit_id_shape_text = ""
+    if uses_dictionary_unit:
+        unit_id_shape_text = (
+            'Output unit IDs in the format of the examples: "NAME - DEFINITION"'
+        )
+    only_missing_text = ""
+    if marked_sentence:
+        only_missing_text = (
+            "Only the parts enclosed in brackets `[]` need to be tagged. "
+            f"The rest is already tagged correctly: \n{marked_sentence}\n"
+        )
+    existing_tags_text = ""
+    if existing_tags:
+        existing_tags_list = "\n".join(
+            f"- {tag.occurance} -> {tag.unit_id}" for tag in existing_tags
+        )
+        existing_tags_text = (
+            "The following tags were identified in previous rounds:\n"
+            f"{existing_tags_list}\n"
+            "You can keep correct tags, correct mistakes, and add tags for "
+            "untagged parts of the sentence using the provided unit IDs.\n"
+        )
+
+    return (
+        f"Given is a sentence in {language.writing_system}: \n{sentence} \n"
+        f"{only_missing_text}"
+        f"{existing_tags_text}"
+        "I want to tag the words in this sentence with vocabulary. "
+        "From the suggested unit IDs, find which best fits the occurance in "
+        "the sentence. \n"
+        f"The tags are a list of occurrences and unit IDs. {equal_occurance_text}\n"
+        f"{examples_text}"
+        "Output them in order of occurance without overlap. \n"
+        "Unit IDs need to precisely match our stored IDs, so stick to the "
+        "example format. "
+        f"{unit_id_shape_text}"
+        "The following are example unit IDs, each line is exactly one unit ID:\n"
+        f"{hints_str}\n"
+    )
 
 
 class LlmClient(abc.ABC):
@@ -110,6 +375,7 @@ class LlmClient(abc.ABC):
         language: Language,
         hint: list[Unit],
         marked_sentence: str | None = None,
+        existing_tags: list[UnitTag] | None = None,
     ) -> UnitTags:
         """Tags words in a sentence with their dictionary form."""
 
@@ -200,7 +466,8 @@ class GeminiLlmClient(LlmClient):
             f"Don't add numbering. Don't mark words as bold {spaces}etc. "
             "Only respond with the sentences, no introduction or explanations. "
             "The sentences should represent how native speakers naturally talk. \n"
-            f"All sentences together should use the following words as defined: \n{unit_infos} \n"
+            "All sentences together should use the following words as defined: \n"
+            f"{unit_infos} \n"
             "All words should occur with the meaning matching their definition. "
             "If the word is part of a longer compound word, don't use the compound. "
             "Make the sentences unique and different. "
@@ -224,15 +491,7 @@ class GeminiLlmClient(LlmClient):
 
     @standard_retry
     async def suggest_names(self, sentence: str, language: Language) -> list[str]:
-        japanese_instruction = ""
-        if language.code_name == "japanese":
-            japanese_instruction = "Create hiragana and possible multiple kanji versions of the word, if both are used. "
-        prompt = (
-            f"Given is a sentence in {language.writing_system}: \n{sentence} \n"
-            "List all base forms of words in the sentence. "
-            f"{japanese_instruction}"
-        )
-
+        prompt = _build_suggest_names_prompt(sentence, language)
         response = await self._client.aio.models.generate_content(
             model=self.TEXT_MODEL,
             contents=[prompt],
@@ -253,55 +512,14 @@ class GeminiLlmClient(LlmClient):
         language: Language,
         hint: list[Unit],
         marked_sentence: str | None = None,
+        existing_tags: list[UnitTag] | None = None,
     ) -> UnitTags:
-        hints_str = "\n".join(u.id() for u in hint)
-        uses_dictionary_unit = hint and isinstance(hint[0], DictionaryUnit)
-        equal_occurance_text = ""
-        if language.code_name in ["simp_chinese", "trad_chinese"]:
-            equal_occurance_text = "The occurance needs to exactly match the "
-            if uses_dictionary_unit:
-                equal_occurance_text += 'part of unit ID before " - ". '
-            else:
-                equal_occurance_text += "unit ID. "
-        else:
-            equal_occurance_text = (
-                "You may leave words, particles or grammatical word parts "
-                "untagged if there is no good matching unit in the hints. "
-                "Do not invent or force tags for unlisted words. "
-            )
-            if language.code_name == "japanese":
-                equal_occurance_text += (
-                    "For Japanese, grammatical endings of words "
-                    "(such as verb or adjective inflections like -た, -たり, "
-                    "-て, -ます, -ない) should be included in the occurrence "
-                    "of the word stem, but particles (such as を, に, は, が, "
-                    "で, と) must NOT be included in verb or adjective "
-                    "occurrences. For suru-verbs (Noun + する), tag the full "
-                    "inflection of する (e.g. した, します) as する. "
-                    "Tag the noun separately, if it has a matching unit. \n"
-                )
-        unit_id_shape_text = ""
-        if uses_dictionary_unit:
-            unit_id_shape_text = (
-                'Output unit IDs in the format of the examples: "NAME - DEFINITION"'
-            )
-        only_missing_text = ""
-        if marked_sentence:
-            only_missing_text = (
-                "Only the parts enclosed in brackets `[]` need to be tagged. "
-                f"The rest is already tagged correctly: \n{marked_sentence}\n"
-            )
-
-        prompt = (
-            f"Given is a sentence in {language.writing_system}: \n{sentence} \n"
-            f"{only_missing_text}"
-            "I want to tag the words in this sentence with vocabulary. "
-            "From the suggested unit IDs, find which best fits the occurance in the sentence. \n"
-            f"The tags are a list of occurrences and unit IDs. {equal_occurance_text}\n"
-            "Output them in order of occurance without overlap. \n"
-            "Unit IDs need to precisely match our stored IDs, so stick to the example format. "
-            f"{unit_id_shape_text}"
-            f"The following are example unit IDs, each line is exactly one unit ID:\n{hints_str}\n"
+        prompt = _build_tag_sentence_prompt(
+            sentence=sentence,
+            language=language,
+            hint=hint,
+            marked_sentence=marked_sentence,
+            existing_tags=existing_tags,
         )
         response = await self._client.aio.models.generate_content(
             model=self.TEXT_MODEL,
@@ -422,7 +640,8 @@ class OpenRouterElevenLabsLlmClient(LlmClient):
             f"Don't add numbering. Don't mark words as bold {spaces}etc. "
             "Only respond with the sentences, no introduction or explanations. "
             "The sentences should represent how native speakers naturally talk. \n"
-            f"All sentences together should use the following words as defined: \n{unit_infos} \n"
+            "All sentences together should use the following words as defined: \n"
+            f"{unit_infos} \n"
             "All words should occur with the meaning matching their definition. "
             "If the word is part of a longer compound word, don't use the compound. "
             "Make the sentences unique and different. "
@@ -444,16 +663,8 @@ class OpenRouterElevenLabsLlmClient(LlmClient):
 
     @standard_retry
     async def suggest_names(self, sentence: str, language: Language) -> list[str]:
-        japanese_instruction = ""
-        if language.code_name == "japanese":
-            japanese_instruction = "Create hiragana and possible multiple kanji versions of the word, if both are used. "
-        prompt = (
-            f"Given is a sentence in {language.writing_system}: \n{sentence} \n"
-            "List all base forms of words in the sentence. "
-            f"{japanese_instruction}"
-            "Respond with a JSON list of strings."
-        )
-
+        prompt = _build_suggest_names_prompt(sentence, language)
+        prompt += "Respond with a JSON list of strings."
         response = await self._litellm.acompletion(
             model=self.TEXT_MODEL,
             messages=[{"role": "user", "content": prompt}],
@@ -471,64 +682,21 @@ class OpenRouterElevenLabsLlmClient(LlmClient):
         language: Language,
         hint: list[Unit],
         marked_sentence: str | None = None,
+        existing_tags: list[UnitTag] | None = None,
     ) -> UnitTags:
-        hints_str = "\n".join(u.id() for u in hint)
-        uses_dictionary_unit = hint and isinstance(hint[0], DictionaryUnit)
-        equal_occurance_text = ""
-        if language.code_name in ["simp_chinese", "trad_chinese"]:
-            equal_occurance_text = "The occurance needs to exactly match the "
-            if uses_dictionary_unit:
-                equal_occurance_text += 'part of unit ID before " - ". '
-            else:
-                equal_occurance_text += "unit ID. "
-        else:
-            equal_occurance_text = (
-                "You may leave words, particles or grammatical word parts "
-                "untagged if there is no good matching unit in the hints. "
-                "Do not invent or force tags for unlisted words. "
-            )
-            if language.code_name == "japanese":
-                equal_occurance_text += (
-                    "For Japanese, grammatical endings of words "
-                    "(such as verb or adjective inflections like -た, -たり, "
-                    "-て, -ます, -ない) should be included in the occurrence "
-                    "of the word stem, but particles (such as を, に, は, が, "
-                    "で, と) must NOT be included in verb or adjective "
-                    "occurrences. For suru-verbs (Noun + する), tag the full "
-                    "inflection of する (e.g. した, します) as する. "
-                    "Tag the noun separately, if it has a matching unit. \n"
-                )
-        unit_id_shape_text = ""
-        if uses_dictionary_unit:
-            unit_id_shape_text = (
-                'Output unit IDs in the format of the examples: "NAME - DEFINITION"'
-            )
-        only_missing_text = ""
-        if marked_sentence:
-            only_missing_text = (
-                "Only the parts enclosed in brackets `[]` need to be tagged. "
-                f"The rest is already tagged correctly: \n{marked_sentence}\n"
-            )
-
-        prompt = (
-            f"Given is a sentence in {language.writing_system}: \n{sentence} \n"
-            f"{only_missing_text}"
-            "I want to tag the words in this sentence with vocabulary. "
-            "From the suggested unit IDs, find which best fits the occurance in the sentence. \n"
-            f"The tags are a list of occurrences and unit IDs. {equal_occurance_text}\n"
-            "Output them in order of occurance without overlap. \n"
-            "Unit IDs need to precisely match our stored IDs, so stick to the example format. "
-            f"{unit_id_shape_text}"
-            f"The following are example unit IDs, each line is exactly one unit ID:\n{hints_str}\n"
+        prompt = _build_tag_sentence_prompt(
+            sentence=sentence,
+            language=language,
+            hint=hint,
+            marked_sentence=marked_sentence,
+            existing_tags=existing_tags,
         )
-
         response = await self._litellm.acompletion(
             model=self.TEXT_MODEL,
             messages=[{"role": "user", "content": prompt}],
             response_format=UnitTags,
             api_key=self.openrouter_api_key,
         )
-
         content = response.choices[0].message.content
         return pydantic.TypeAdapter(UnitTags).validate_json(content)
 
@@ -540,7 +708,10 @@ class OpenRouterElevenLabsLlmClient(LlmClient):
         slowly: bool = False,
     ) -> np.ndarray:
         voice_id = random.choice(self.ELEVENLABS_VOICES)
-        url = f"https://api.elevenlabs.io/v1/text-to-speech/{voice_id}?output_format=pcm_16000"
+        url = (
+            "https://api.elevenlabs.io/v1/text-to-speech/"
+            f"{voice_id}?output_format=pcm_16000"
+        )
         headers = {
             "xi-api-key": self.elevenlabs_api_key,
             "Content-Type": "application/json",
@@ -599,7 +770,8 @@ class OpenAiLlmClient(LlmClient):
             f"Don't add numbering. Don't mark words as bold {spaces}etc. "
             "Only respond with the sentences, no introduction or explanations. "
             "The sentences should represent how native speakers naturally talk. \n"
-            f"All sentences together should use the following words as defined: \n{unit_infos} \n"
+            "All sentences together should use the following words as defined: \n"
+            f"{unit_infos} \n"
             "All words should occur with the meaning matching their definition. "
             "If the word is part of a longer compound word, don't use the compound. "
             "Make the sentences unique and different. "
@@ -621,16 +793,8 @@ class OpenAiLlmClient(LlmClient):
 
     @standard_retry
     async def suggest_names(self, sentence: str, language: Language) -> list[str]:
-        japanese_instruction = ""
-        if language.code_name == "japanese":
-            japanese_instruction = "Create hiragana and possible multiple kanji versions of the word, if both are used. "
-        prompt = (
-            f"Given is a sentence in {language.writing_system}: \n{sentence} \n"
-            "List all base forms of words in the sentence. "
-            f"{japanese_instruction}"
-            "Respond with a JSON list of strings."
-        )
-
+        prompt = _build_suggest_names_prompt(sentence, language)
+        prompt += "Respond with a JSON list of strings."
         response = await self._litellm.acompletion(
             model=self.TEXT_MODEL,
             messages=[{"role": "user", "content": prompt}],
@@ -646,66 +810,23 @@ class OpenAiLlmClient(LlmClient):
         self,
         sentence: str,
         language: Language,
-        hint: typing.Sequence[Unit],
+        hint: list[Unit],
         marked_sentence: str | None = None,
+        existing_tags: list[UnitTag] | None = None,
     ) -> UnitTags:
-        hints_str = "\n".join(u.id() for u in hint)
-        uses_dictionary_unit = hint and isinstance(hint[0], DictionaryUnit)
-        equal_occurance_text = ""
-        if language.code_name in ["simp_chinese", "trad_chinese"]:
-            equal_occurance_text = "The occurance needs to exactly match the "
-            if uses_dictionary_unit:
-                equal_occurance_text += 'part of unit ID before " - ". '
-            else:
-                equal_occurance_text += "unit ID. "
-        else:
-            equal_occurance_text = (
-                "You may leave words, particles or grammatical word parts "
-                "untagged if there is no good matching unit in the hints. "
-                "Do not invent or force tags for unlisted words. "
-            )
-            if language.code_name == "japanese":
-                equal_occurance_text += (
-                    "For Japanese, grammatical endings of words "
-                    "(such as verb or adjective inflections like -た, -たり, "
-                    "-て, -ます, -ない) should be included in the occurrence "
-                    "of the word stem, but particles (such as を, に, は, が, "
-                    "で, と) must NOT be included in verb or adjective "
-                    "occurrences. For suru-verbs (Noun + する), tag the full "
-                    "inflection of する (e.g. した, します) as する. "
-                    "Tag the noun separately, if it has a matching unit. \n"
-                )
-        unit_id_shape_text = ""
-        if uses_dictionary_unit:
-            unit_id_shape_text = (
-                'Output unit IDs in the format of the examples: "NAME - DEFINITION"'
-            )
-        only_missing_text = ""
-        if marked_sentence:
-            only_missing_text = (
-                "Only the parts enclosed in brackets `[]` need to be tagged. "
-                f"The rest is already tagged correctly: \n{marked_sentence}\n"
-            )
-
-        prompt = (
-            f"Given is a sentence in {language.writing_system}: \n{sentence} \n"
-            f"{only_missing_text}"
-            "I want to tag the words in this sentence with vocabulary. "
-            "From the suggested unit IDs, find which best fits the occurance in the sentence. \n"
-            f"The tags are a list of occurrences and unit IDs. {equal_occurance_text}\n"
-            "Output them in order of occurance without overlap. \n"
-            "Unit IDs need to precisely match our stored IDs, so stick to the example format. "
-            f"{unit_id_shape_text}"
-            f"The following are example unit IDs, each line is exactly one unit ID:\n{hints_str}\n"
+        prompt = _build_tag_sentence_prompt(
+            sentence=sentence,
+            language=language,
+            hint=hint,
+            marked_sentence=marked_sentence,
+            existing_tags=existing_tags,
         )
-
         response = await self._litellm.acompletion(
             model=self.TEXT_MODEL,
             messages=[{"role": "user", "content": prompt}],
             response_format=UnitTags,
             api_key=self._api_key,
         )
-
         content = response.choices[0].message.content
         return pydantic.TypeAdapter(UnitTags).validate_json(content)
 

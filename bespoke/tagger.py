@@ -20,49 +20,183 @@ import unicodedata
 from bespoke import languages
 from bespoke import llm
 from bespoke.unit import Unit
+from bespoke.unit import UnitTag
 from bespoke.unit import UnitTags
 
 PUNCTUATION_TO_PRUNE = ("。", "、", "？", "！", ".", ",", "!", "?", ";", ":")
 
-JAPANESE_PARTICLES = {
-    "は",
-    "が",
-    "を",
-    "に",
-    "で",
-    "と",
-    "へ",
-    "か",
-    "ね",
-    "よ",
-    "から",
-    "まで",
-    "の",
-    "も",
-    "や",
-    "し",
-    "こと",
-    "もの",
-    "だけ",
-    "しか",
-    "くらい",
-    "ぐらい",
-    "など",
-    "ほど",
-    "ごろ",
-    "でも",
-    "かも",
-    "な",
-    "わ",
-    "さ",
-    "ぞ",
-    "かしら",
-    "って",
+JAPANESE_GRAMMAR_WORDS: dict[str, str] = {
+    # Suru inflections (longest first)
+    "したくありませんでした": "する",
+    "したくありません": "する",
+    "しませんでした": "する",
+    "したくなかった": "する",
+    "したかったです": "する",
+    "しなかった": "する",
+    "させられた": "する",
+    "させられる": "する",
+    "させられて": "する",
+    "させません": "する",
+    "させました": "する",
+    "されません": "する",
+    "されました": "する",
+    "させたくない": "する",
+    "させたくて": "する",
+    "したければ": "する",
+    "したいです": "する",
+    "したくない": "する",
+    "したかった": "する",
+    "したくて": "する",
+    "しないで": "する",
+    "しました": "する",
+    "しません": "する",
+    "させない": "する",
+    "させます": "する",
+    "されない": "する",
+    "されます": "する",
+    "できる": "できる",
+    "できた": "できる",
+    "できて": "できる",
+    "できない": "できる",
+    "できます": "できる",
+    "できれば": "できる",
+    "させたい": "する",
+    "させる": "する",
+    "させた": "する",
+    "させて": "する",
+    "される": "する",
+    "された": "する",
+    "されて": "する",
+    "しない": "する",
+    "します": "する",
+    "しよう": "する",
+    "すれば": "する",
+    "したい": "する",
+    "すれ": "する",
+    "せよ": "する",
+    "しろ": "する",
+    "して": "する",
+    "した": "する",
+    "する": "する",
+    # Particles and functional words
+    "けれども": "けれども",
+    "かしら": "かしら",
+    "けれど": "けれど",
+    "ばかり": "ばかり",
+    "くらい": "くらい",
+    "ぐらい": "ぐらい",
+    "ながら": "ながら",
+    "ならば": "なら",
+    "から": "から",
+    "まで": "まで",
+    "こと": "こと",
+    "もの": "もの",
+    "だけ": "だけ",
+    "しか": "しか",
+    "など": "など",
+    "ほど": "ほど",
+    "ごろ": "ごろ",
+    "でも": "でも",
+    "かも": "かも",
+    "って": "って",
+    "より": "より",
+    "さえ": "さえ",
+    "すら": "すら",
+    "こそ": "こそ",
+    "べき": "べき",
+    "かけて": "かける",
+    "っけ": "っけ",
+    "くせに": "くせに",
+    "ものの": "ものの",
+    "どころか": "どころか",
+    "ばかりか": "ばかりか",
+    "のみならず": "のみならず",
+    "まい": "まい",
+    "つつ": "つつ",
+    "だに": "だに",
+    "たりとも": "たりとも",
+    "とて": "とて",
+    "っこない": "っこない",
+    "べからず": "べからず",
+    "べく": "べく",
+    "っぱなし": "っぱなし",
+    "だらけ": "だらけ",
+    "たて": "たて",
+    "がち": "がち",
+    "放題": "放題",
+    "ずつ": "ずつ",
+    "けど": "けど",
+    "ので": "ので",
+    "のに": "のに",
+    "なら": "なら",
+    "かい": "かい",
+    "だい": "だい",
+    "この": "この",
+    "その": "その",
+    "あの": "あの",
+    "どの": "どの",
+    "は": "は",
+    "が": "が",
+    "を": "を",
+    "に": "に",
+    "で": "で",
+    "と": "と",
+    "へ": "へ",
+    "か": "か",
+    "ね": "ね",
+    "よ": "よ",
+    "の": "の",
+    "も": "も",
+    "や": "や",
+    "し": "し",
+    "な": "な",
+    "わ": "わ",
+    "さ": "さ",
+    "ぞ": "ぞ",
 }
 
+EXCLUDED_FROM_PREMATCH = {"し", "さ"}
 
-def is_japanese_particle(unit: Unit) -> bool:
-    return unit.name() in JAPANESE_PARTICLES
+
+def grammar_word_occurance(
+    occurance: str,
+    stem: str,
+) -> str | None:
+    """Finds the longest matching grammar word pattern for a stem within occurance."""
+    patterns = [p for p, s in JAPANESE_GRAMMAR_WORDS.items() if s == stem]
+    patterns.sort(key=len, reverse=True)
+    for pattern in patterns:
+        if pattern in occurance:
+            return pattern
+    return None
+
+
+def find_grammar_word_matches(sentence: str) -> list[str]:
+    """Finds non-overlapping grammar word stems present in the sentence, longest pattern first."""
+    sorted_patterns = [
+        p
+        for p in sorted(JAPANESE_GRAMMAR_WORDS.keys(), key=len, reverse=True)
+        if p not in EXCLUDED_FROM_PREMATCH
+    ]
+    claimed = [False] * len(sentence)
+    matches: list[tuple[int, str]] = []
+
+    for pattern in sorted_patterns:
+        start = 0
+        while True:
+            idx = sentence.find(pattern, start)
+            if idx == -1:
+                break
+            end = idx + len(pattern)
+            if not any(claimed[idx:end]):
+                for k in range(idx, end):
+                    claimed[k] = True
+                stem = JAPANESE_GRAMMAR_WORDS[pattern]
+                matches.append((idx, stem))
+            start = idx + 1
+
+    matches.sort(key=lambda m: m[0])
+    return [m[1] for m in matches]
 
 
 def is_punctuation_or_space(char: str) -> bool:
@@ -122,8 +256,85 @@ async def create_tags(
     """Tags words in a sentence with their dictionary form."""
     if language.code_name in ["simp_chinese", "trad_chinese"]:
         return await _create_tags_chinese(sentence, hint, language, llm_client)
+    elif language.code_name == "japanese":
+        return await _create_tags_japanese(sentence, hint, language, llm_client)
     else:
         return await _create_tags_general(sentence, hint, language, llm_client)
+
+
+async def _create_tags_japanese(
+    sentence: str,
+    hint: list[Unit],
+    language: languages.Language,
+    llm_client: llm.LlmClient,
+) -> UnitTags:
+    """Tags words in a Japanese sentence using iterative LLM refinement."""
+    max_rounds = 4
+    known_units = {}
+    for unit in hint:
+        known_units[unit.id()] = unit
+
+    # Add grammar words using longest-first matching to prevent 1-char false positives
+    for stem in find_grammar_word_matches(sentence):
+        for unit in language.get_by_name(stem):
+            known_units[unit.id()] = unit
+
+    last_filtered_tags: list[UnitTag] = []
+
+    for round_index in range(max_rounds):
+        suggested_names = await llm_client.suggest_names(
+            sentence=sentence,
+            language=language,
+        )
+        added_new_unit = False
+        for name in suggested_names:
+            name_clean = strip_explicit_punctuation(name.strip())
+            if not name_clean:
+                continue
+            for unit in language.get_by_name(name_clean):
+                if unit.id() not in known_units:
+                    known_units[unit.id()] = unit
+                    added_new_unit = True
+
+        tags = await llm_client.tag_sentence(
+            sentence=sentence,
+            language=language,
+            hint=list(known_units.values()),
+            existing_tags=list(last_filtered_tags) if last_filtered_tags else None,
+        )
+
+        new_filtered_tags: list[UnitTag] = []
+        current_index = 0
+        for tag in tags:
+            occurance = strip_explicit_punctuation(tag.occurance)
+            if not occurance or not tag.unit_id:
+                continue
+            found_unit = language.get_by_id(tag.unit_id)
+            if not found_unit:
+                continue
+            if found_unit.name() in JAPANESE_GRAMMAR_WORDS.values():
+                shortened = grammar_word_occurance(occurance, found_unit.name())
+                if shortened:
+                    occurance = shortened
+                else:
+                    continue
+            start_index = sentence.find(occurance, current_index)
+            if start_index != -1:
+                new_filtered_tags.append(
+                    UnitTag(occurance=occurance, unit_id=found_unit.id())
+                )
+                current_index = start_index + len(occurance)
+
+        if (
+            len(new_filtered_tags) > 0
+            and get_tagging_coverage(sentence, new_filtered_tags) >= 1.0
+        ):
+            return new_filtered_tags
+        if not added_new_unit and new_filtered_tags == last_filtered_tags:
+            return new_filtered_tags
+        last_filtered_tags = new_filtered_tags
+
+    return last_filtered_tags
 
 
 async def _create_tags_chinese(
@@ -243,18 +454,11 @@ async def _create_tags_general(
             suggestions = set()
 
         for part in missing_parts:
-            if language.code_name == "japanese":
-                for i in range(len(part)):
-                    for j in range(i + 1, len(part) + 1):
-                        substring = part[i:j]
-                        units = language.get_by_name(substring)
-                        suggestions.update(units)
-            else:
-                words = part.split()
-                for word in words:
-                    word = strip_punctuation_and_space(word)
-                    units = language.get_by_name(word)
-                    suggestions.update(units)
+            words = part.split()
+            for word in words:
+                word = strip_punctuation_and_space(word)
+                units = language.get_by_name(word)
+                suggestions.update(units)
 
         suggested_name_lists = await asyncio.gather(
             *[
@@ -288,12 +492,6 @@ async def _create_tags_general(
                 unit = language.get_by_id(unit_tag.unit_id)
                 if not unit:
                     continue
-                if language.code_name == "japanese" and is_japanese_particle(unit):
-                    particle_name = unit.name()
-                    if particle_name in unit_tag.occurance:
-                        unit_tag.occurance = particle_name
-                    else:
-                        continue
                 start_index = sentence.find(unit_tag.occurance, sentence_index)
                 if start_index < 0:
                     continue
