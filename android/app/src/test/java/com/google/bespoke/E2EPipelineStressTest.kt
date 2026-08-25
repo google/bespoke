@@ -158,9 +158,9 @@ class E2EPipelineStressTest {
 
         val cards = listOf(card1, card2, card3)
         val audioMap = mapOf(
-            "cards/japanese_english/audio_1.ogg" to audioData1,
-            "cards/japanese_english/slow_1.ogg" to audioData1,
-            "cards/japanese_english/native_1.ogg" to audioData1,
+            "audio_1.ogg" to audioData1,
+            "slow_1.ogg" to audioData1,
+            "native_1.ogg" to audioData1,
             "audio_2.ogg" to audioData2,
             "slow_2.ogg" to audioData2,
             "native_2.ogg" to audioData2,

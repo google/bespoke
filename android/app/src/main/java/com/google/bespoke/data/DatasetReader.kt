@@ -121,15 +121,14 @@ class DatasetReader(private val dbFile: File) : Closeable {
                 }
             }
 
-            // Try basename fallback
+            // Try basename fallback (exact indexed match)
             val basename = File(filename).name
-            cursor = db.rawQuery(
-                "SELECT data FROM audio WHERE filename = ? OR filename LIKE ?",
-                arrayOf(basename, "%/$basename")
-            )
-            cursor.use {
-                if (it.moveToFirst()) {
-                    return it.getBlob(0)
+            if (basename != filename) {
+                cursor = db.rawQuery("SELECT data FROM audio WHERE filename = ?", arrayOf(basename))
+                cursor.use {
+                    if (it.moveToFirst()) {
+                        return it.getBlob(0)
+                    }
                 }
             }
         } catch (_: Exception) {}
