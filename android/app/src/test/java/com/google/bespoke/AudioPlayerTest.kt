@@ -24,14 +24,19 @@ class AudioPlayerTest {
     }
 
     @Test
-    fun testPlayBytesAndCacheCreation() {
+    fun testPlayBytesInMemory() {
         val dummyAudio = "OggS_TEST_AUDIO_BYTES".toByteArray(Charsets.UTF_8)
         audioPlayer.playBytes(dummyAudio)
 
-        // Cache file should be generated in cacheDir
+        // Verify in-memory playback does not litter temp files on flash storage
         val cacheFiles = context.cacheDir.listFiles { _, name -> name.startsWith("audio_") && name.endsWith(".ogg") }
-        assertNotNull(cacheFiles)
-        assertTrue(cacheFiles!!.isNotEmpty())
+        assertTrue(cacheFiles == null || cacheFiles.isEmpty())
+    }
+
+    @Test
+    fun testPreWarm() {
+        audioPlayer.preWarm()
+        assertFalse(audioPlayer.isPlaying())
     }
 
     @Test

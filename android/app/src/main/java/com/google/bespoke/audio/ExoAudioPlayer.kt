@@ -9,11 +9,12 @@ import androidx.media3.common.MediaItem
 import androidx.media3.common.MimeTypes
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
+import androidx.media3.datasource.ByteArrayDataSource
+import androidx.media3.datasource.DataSource
 import androidx.media3.exoplayer.DefaultLoadControl
 import androidx.media3.exoplayer.ExoPlayer
+import androidx.media3.exoplayer.source.ProgressiveMediaSource
 import java.io.File
-import java.io.FileOutputStream
-import java.security.MessageDigest
 
 class ExoAudioPlayer(private val context: Context) : AudioPlayer {
     private val tag = "BespokeAudioPlayer"
@@ -23,6 +24,15 @@ class ExoAudioPlayer(private val context: Context) : AudioPlayer {
     private var isCurrentlyPlaying = false
 
     init {
+        try {
+            val player = getOrCreatePlayer()
+            preWarmAudioPipeline(player)
+        } catch (e: Exception) {
+            Log.w(tag, "Failed pre-warming ExoPlayer", e)
+        }
+    }
+
+    override fun preWarm() {
         try {
             val player = getOrCreatePlayer()
             preWarmAudioPipeline(player)
@@ -49,17 +59,20 @@ class ExoAudioPlayer(private val context: Context) : AudioPlayer {
                 0x64, 0x61, 0x74, 0x61, // "data"
                 0x00, 0x00, 0x00, 0x00  // 0 data bytes
             )
-            val tempFile = File(context.cacheDir, "prewarm_silence.wav")
-            if (!tempFile.exists()) {
-                tempFile.writeBytes(silentWav)
-            }
-            val mediaItem = MediaItem.fromUri(Uri.fromFile(tempFile))
+            val dataSourceFactory = DataSource.Factory { ByteArrayDataSource(silentWav) }
+            val mediaItem = MediaItem.Builder()
+                .setUri(Uri.parse("data:audio/wav;base64,"))
+                .setMimeType(MimeTypes.AUDIO_WAV)
+                .build()
+            val mediaSource = ProgressiveMediaSource.Factory(dataSourceFactory)
+                .createMediaSource(mediaItem)
+
             player.volume = 0f
-            player.setMediaItem(mediaItem)
+            player.setMediaSource(mediaSource)
             player.prepare()
             player.stop()
             player.volume = 1f
-            Log.d(tag, "Audio pipeline pre-warmed successfully")
+            Log.d(tag, "Audio pipeline pre-warmed successfully in-memory")
         } catch (e: Exception) {
             Log.w(tag, "Audio pipeline pre-warm completed with notice", e)
         }
@@ -113,19 +126,6 @@ class ExoAudioPlayer(private val context: Context) : AudioPlayer {
         return player
     }
 
-    private fun pruneCacheIfNeeded(maxSizeBytes: Long = 20 * 1024 * 1024) {
-        val cacheFiles = context.cacheDir.listFiles { _, name -> name.startsWith("audio_") } ?: return
-        var totalSize = cacheFiles.sumOf { it.length() }
-        if (totalSize > maxSizeBytes) {
-            cacheFiles.sortBy { it.lastModified() }
-            for (file in cacheFiles) {
-                if (totalSize <= maxSizeBytes) break
-                totalSize -= file.length()
-                file.delete()
-            }
-        }
-    }
-
     override fun playBytes(audioBytes: ByteArray, onComplete: (() -> Unit)?) {
         if (audioBytes.isEmpty()) {
             onComplete?.invoke()
@@ -133,21 +133,26 @@ class ExoAudioPlayer(private val context: Context) : AudioPlayer {
         }
 
         try {
-            pruneCacheIfNeeded()
-            // Write audio bytes to a cached temp file
-            val hash = MessageDigest.getInstance("SHA-256")
-                .digest(audioBytes)
-                .joinToString("") { "%02x".format(it) }
-            val tempFile = File(context.cacheDir, "audio_$hash.ogg")
-            if (!tempFile.exists() || tempFile.length() != audioBytes.size.toLong()) {
-                FileOutputStream(tempFile).use { fos ->
-                    fos.write(audioBytes)
-                }
-            }
+            val player = getOrCreatePlayer()
+            currentCompletionCallback = onComplete
 
-            playFile(tempFile.absolutePath, onComplete)
+            val dataSourceFactory = DataSource.Factory {
+                ByteArrayDataSource(audioBytes)
+            }
+            val mediaItem = MediaItem.Builder()
+                .setUri(Uri.parse("data:audio/ogg;base64,"))
+                .setMimeType(MimeTypes.AUDIO_OGG)
+                .build()
+            val mediaSource = ProgressiveMediaSource.Factory(dataSourceFactory)
+                .createMediaSource(mediaItem)
+
+            player.stop()
+            player.setMediaSource(mediaSource)
+            player.playWhenReady = true
+            player.prepare()
+            isCurrentlyPlaying = true
         } catch (e: Exception) {
-            Log.e(tag, "Failed playing audio bytes", e)
+            Log.e(tag, "Failed playing audio bytes in memory", e)
             onComplete?.invoke()
         }
     }

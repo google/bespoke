@@ -209,6 +209,7 @@ class MainActivity : ComponentActivity() {
                         onStartDeck = { deckInfo, difficulty, modes, assumeKnown ->
                             if (!isStartingSession) {
                                 isStartingSession = true
+                                audioPlayer?.preWarm()
                                 coroutineScope.launch {
                                     try {
                                         withContext(Dispatchers.IO) {
@@ -248,6 +249,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onResume() {
         super.onResume()
+        audioPlayer?.preWarm()
         refreshDecksCallback?.invoke()
     }
 

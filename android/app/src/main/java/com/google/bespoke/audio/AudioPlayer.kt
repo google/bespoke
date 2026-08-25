@@ -5,5 +5,6 @@ interface AudioPlayer {
     fun playFile(filePath: String, onComplete: (() -> Unit)? = null)
     fun stop()
     fun isPlaying(): Boolean
+    fun preWarm() {}
     fun release()
 }

@@ -17,8 +17,10 @@ import com.google.bespoke.audio.ExoAudioPlayer
 import com.google.bespoke.data.DatasetReader
 import com.google.bespoke.model.*
 import com.google.bespoke.srs.DeckEngine
-import com.google.bespoke.ui.theme.*
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
@@ -32,10 +34,29 @@ fun LearningScreen(
     deckTitle: String? = null,
     modifier: Modifier = Modifier
 ) {
+    var activeAudioJob by remember { mutableStateOf<Job?>(null) }
+    var isPlaying by remember { mutableStateOf(false) }
+    var currentlyPlayingFile by remember { mutableStateOf<String?>(null) }
+
+    fun stopAudio() {
+        activeAudioJob?.cancel()
+        activeAudioJob = null
+        audioPlayer.stop()
+        isPlaying = false
+        currentlyPlayingFile = null
+    }
+
     if (onNavigateBack != null) {
         BackHandler(enabled = true) {
+            stopAudio()
             onSaveProgress?.invoke()
             onNavigateBack()
+        }
+    }
+
+    DisposableEffect(Unit) {
+        onDispose {
+            stopAudio()
         }
     }
 
@@ -56,8 +77,6 @@ fun LearningScreen(
         )
     }
     var isOnBack by remember { mutableStateOf(false) }
-    var isPlaying by remember { mutableStateOf(false) }
-    var currentlyPlayingFile by remember { mutableStateOf<String?>(null) }
     var stats by remember { mutableStateOf(DeckStats(0, 0, 0)) }
     val ratings = remember { mutableStateMapOf<String, Int>() }
 
@@ -65,37 +84,42 @@ fun LearningScreen(
 
     fun playAudioFile(filename: String) {
         if (filename.isEmpty()) return
+        stopAudio()
         isPlaying = true
         currentlyPlayingFile = filename
-        coroutineScope.launch {
-            val blob = withContext(Dispatchers.IO) {
-                datasetReader.getAudioBlob(filename)
-            }
-            if (blob != null && blob.isNotEmpty()) {
-                audioPlayer.playBytes(blob) {
-                    isPlaying = false
-                    if (currentlyPlayingFile == filename) {
-                        currentlyPlayingFile = null
+        activeAudioJob = coroutineScope.launch {
+            try {
+                val blob = withContext(Dispatchers.IO) {
+                    datasetReader.getAudioBlob(filename)
+                }
+                if (!isActive) return@launch
+                if (blob != null && blob.isNotEmpty()) {
+                    audioPlayer.playBytes(blob) {
+                        isPlaying = false
+                        if (currentlyPlayingFile == filename) {
+                            currentlyPlayingFile = null
+                        }
+                    }
+                } else {
+                    audioPlayer.playFile(filename) {
+                        isPlaying = false
+                        if (currentlyPlayingFile == filename) {
+                            currentlyPlayingFile = null
+                        }
                     }
                 }
-            } else {
-                audioPlayer.playFile(filename) {
-                    isPlaying = false
-                    if (currentlyPlayingFile == filename) {
-                        currentlyPlayingFile = null
-                    }
+            } catch (e: Exception) {
+                if (e !is CancellationException) {
+                    android.util.Log.e("LearningScreen", "Audio playback error", e)
                 }
             }
         }
     }
 
     fun loadNextCard() {
+        stopAudio()
         coroutineScope.launch {
             try {
-                audioPlayer.stop()
-                isPlaying = false
-                currentlyPlayingFile = null
-
                 val (mode, card) = withContext(Dispatchers.IO) {
                     deckEngine.draw()
                 }
@@ -124,6 +148,7 @@ fun LearningScreen(
     }
 
     fun flipCard() {
+        stopAudio()
         isOnBack = true
         // Autoplay target audio in back view if not Mode.LISTEN
         if (currentMode != Mode.LISTEN && currentCard.audio_filename.isNotEmpty()) {
@@ -132,6 +157,7 @@ fun LearningScreen(
     }
 
     fun finalizeCard(isReported: Boolean) {
+        stopAudio()
         for ((unitId, score) in ratings) {
             val unit = deckEngine.unitLookup[unitId] ?: WordUnit(unitId, Difficulty.A1)
             deckEngine.rate(unit, currentMode, score)
