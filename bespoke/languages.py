@@ -21,36 +21,30 @@ If you want to be able to learn the language, additionally navigate to
 -> `DATA_DIR` -> `language.code_name`
 and add the files:
 
-- `vocabulary.csv` with entries for at least A1.
-- `grammar_{difficulty}.txt` with grammar concepts in the language, at least A1.
+- `vocabulary_{difficulty}.txt` for all difficulties with vocabulary.
+- `grammar_{difficulty}.txt` with grammar concepts in the language.
 
-The txt files are one entry per line.
-The csv is a table with name, definition and difficulty.
+The txt files have one entry per line. You need at least the files for A1.
 """
 
-import csv
-
+from enum import StrEnum
 from pathlib import Path
 import pydantic
 from typing import Self
-from bespoke.unit import DictionaryUnit
-from bespoke.unit import Unit
-from bespoke.unit import WordUnit
-from bespoke.unit import Difficulty
-
-DATA_DIR = Path("languages")
-
-ARTICLES = ["der ", "die ", "das ", "Der ", "Die ", "Das "]
 
 
-def _get_stripped_forms(text: str) -> list[str]:
-    forms = [text]
-    for article in ARTICLES:
-        if text.startswith(article):
-            stripped = text[len(article) :].strip()
-            if stripped:
-                forms.append(stripped)
-    return forms
+UnitTags = dict[str, tuple[str, int, int] | str]
+
+DATA_DIR = Path(__file__).resolve().parent.parent / "languages"
+
+
+class Difficulty(StrEnum):
+    A1 = "A1"
+    A2 = "A2"
+    B1 = "B1"
+    B2 = "B2"
+    C1 = "C1"
+    C2 = "C2"
 
 
 class Language(pydantic.BaseModel):
@@ -63,102 +57,79 @@ class Language(pydantic.BaseModel):
     # Used for filenames etc. and needs to be unique
     code_name: str
 
-    # Private attributes for lazy loading/lookups
-    _units: list[Unit] = pydantic.PrivateAttr(default_factory=list)
-    _units_by_id: dict[str, Unit] = pydantic.PrivateAttr(default_factory=dict)
-    _units_by_name: dict[str, list[Unit]] = pydantic.PrivateAttr(default_factory=dict)
-    _initialized: bool = pydantic.PrivateAttr(default=False)
+    def vocabulary(self, difficulty: Difficulty) -> list[str]:
+        return LANGUAGE_DATA[self.code_name].vocabulary(difficulty)
 
-    def _initialize(self, use_definition: bool | None = None) -> None:
-        if self._initialized:
-            return
+    def full_vocabulary(self) -> list[str]:
+        data = LANGUAGE_DATA[self.code_name]
+        return [word for d in Difficulty for word in data.vocabulary(d)]
 
-        csv_path = DATA_DIR / self.code_name / "vocabulary.csv"
-        if not csv_path.exists():
-            return
-
-        with open(csv_path, "r", encoding="utf-8") as f:
-            reader = csv.DictReader(f)
-            rows = list(reader)
-            if not rows:
-                return
-
-            if use_definition is None:
-                use_definition = bool(rows[0].get("definition"))
-            for row in rows:
-                word = row["name"]
-                definition = row.get("definition", "")
-                difficulty = Difficulty(row["difficulty"])
-                unit: Unit
-                if use_definition:
-                    if not definition:
-                        raise ValueError(
-                            f"Missing definition for word '{word}' in {csv_path}"
-                        )
-                    unit = DictionaryUnit(
-                        name=word, definition=definition, difficulty=difficulty
-                    )
-                else:
-                    unit = WordUnit(word, difficulty=difficulty)
-
-                self._units.append(unit)
-                self._units_by_id[unit.id()] = unit
-
-        self._initialized = True
-
-    def initialize(self, use_definition: bool) -> None:
-        self._initialize(use_definition=use_definition)
-
-    def set_units(self, units: list[Unit]) -> None:
-        """Initializes language directly with given units (e.g. loaded from .db)."""
-        self._units = list(units)
-        self._units_by_id = {unit.id(): unit for unit in units}
-        self._units_by_name = {}
-        self._initialized = True
-
-    def units(self) -> list[Unit]:
-        self._initialize()
-        return self._units
-
-    def get_by_id(self, unit_id: str) -> Unit | None:
-        self._initialize()
-        return self._units_by_id.get(unit_id)
-
-    def get_by_name(self, name: str) -> list[Unit]:
-        self._initialize()
-        # Even lazier initialization, since unused in learning
-        if self._units and not self._units_by_name:
-            for unit in self._units:
-                self._units_by_name.setdefault(unit.name(), []).append(unit)
-                # The parts is how units often appear in sentences
-                parts = [p.strip() for p in unit.name().split(",")]
-                for part in parts:
-                    for form in _get_stripped_forms(part):
-                        if form != unit.name():
-                            self._units_by_name.setdefault(form, []).append(unit)
-        return self._units_by_name.get(name, [])
+    def grammar(self, difficulty: Difficulty) -> list[str]:
+        return LANGUAGE_DATA[self.code_name].grammar(difficulty)
 
     @classmethod
     def load(cls, path: Path | str) -> Self:
         with open(path, "r", encoding="utf-8") as f:
-            return cls.model_validate_json(f.read())
+            return Language.model_validate_json(f.read())
 
     def has_data(self) -> bool:
-        path = DATA_DIR / self.code_name / "vocabulary.csv"
-        return self._initialized or path.exists()
+        for prefix in ["vocabulary", "grammar"]:
+            path = DATA_DIR / self.code_name / f"{prefix}_{Difficulty.A1}.txt"
+            if not path.exists():
+                return False
+        return True
 
 
-def load_grammar(code_name: str) -> dict[Difficulty, list[str]]:
-    grammar = {}
-    for difficulty in Difficulty:
-        path = DATA_DIR / code_name / f"grammar_{difficulty}.txt"
-        if path.exists():
-            with open(path, "r", encoding="utf-8") as f:
-                grammar[difficulty] = [line.strip() for line in f if line.strip()]
-        else:
-            grammar[difficulty] = []
-    return grammar
+def _read_textfile(path: Path | str) -> list[str]:
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            return [line.strip() for line in f if line.strip()]
+    except FileNotFoundError:
+        print(f"Unreadable file '{path}'")
+        return []
+
+
+class LanguageData:
+    """Lazily initialized vocabulary and grammar lists."""
+
+    def __init__(self, code_name: str) -> None:
+        self._code_name = code_name
+        self._vocabulary = {}
+        self._grammar = {}
+
+    def _initialize(self) -> None:
+        if self._vocabulary:
+            return
+        self._vocabulary = self._read_all_difficulties("vocabulary")
+        self._grammar = self._read_all_difficulties("grammar")
+
+    def vocabulary(self, difficulty: Difficulty) -> list[str]:
+        self._initialize()
+        return self._vocabulary[difficulty]
+
+    def grammar(self, difficulty: Difficulty) -> list[str]:
+        self._initialize()
+        return self._grammar[difficulty]
+
+    def _read_all_difficulties(self, prefix: str) -> dict[Difficulty, list[str]]:
+        content = {}
+        all_content = set()
+        for difficulty in Difficulty:
+            path = DATA_DIR / self._code_name / f"{prefix}_{difficulty}.txt"
+            wordlist = _read_textfile(path)
+            filtered = []
+            for word in wordlist:
+                if word not in all_content:
+                    all_content.add(word)
+                    filtered.append(word)
+            content[difficulty] = filtered
+        return content
 
 
 _ALL_LANGUAGES = [Language.load(path) for path in DATA_DIR.glob("*.json")]
 LANGUAGES = {language.code_name: language for language in _ALL_LANGUAGES}
+LANGUAGE_DATA = {
+    code_name: LanguageData(code_name)
+    for code_name, language in LANGUAGES.items()
+    if language.has_data()
+}

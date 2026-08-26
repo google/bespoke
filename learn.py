@@ -15,21 +15,31 @@
 """Simple user interface for learning."""
 
 import argparse
-import json
+from nicegui import ui
 import os
 from pathlib import Path
 import sys
-import threading
-
-from nicegui import events, ui
 
 from bespoke import CardIndex
 from bespoke import Deck
 from bespoke import Difficulty
 from bespoke import Mode
-from bespoke import Language
 from bespoke import languages
-from bespoke import database
+
+import json
+DICTIONARY = {}
+try:
+    base_dir = Path(__file__).resolve().parent
+    print("Loading primary dictionary into learn.py...")
+    with open(base_dir / "dict-by-title.json", "r", encoding="utf-8") as f:
+        DICTIONARY.update(json.load(f))
+    print("Successfully loaded primary dictionary into learn.py")
+    print("Loading grammar dictionary into learn.py...")
+    with open(base_dir / "dict-grammar-missing.json", "r", encoding="utf-8") as f:
+        DICTIONARY.update(json.load(f))
+    print(f"Successfully loaded dictionaries into learn.py. Total size: {len(DICTIONARY)} keys")
+except Exception as e:
+    print(f"Error loading dictionaries in learn.py: {e}")
 
 
 COLOR_MAP = {
@@ -48,21 +58,10 @@ SCORE_ROTATION = {
 
 
 class RatingWebApp:
-    def __init__(
-        self,
-        target_language: Language,
-        deck: Deck,
-        deck_filename: str,
-        db_path: Path | None = None,
-    ) -> None:
-        self._target_language = target_language
+    def __init__(self, deck: Deck, deck_filename: str) -> None:
         self._deck = deck
         self._deck_filename = deck_filename
-        self._db_path = db_path
         self._ratings: dict[str, int] = {}
-        self._audio_players: list[ui.audio] = []
-        self._on_back = False
-        self._keyboard = ui.keyboard(on_key=self._handle_key)
 
         self.main_container = ui.column().classes(
             "w-full max-w-2xl mx-auto items-center gap-4 p-4"
@@ -87,60 +86,53 @@ class RatingWebApp:
 
     def _render_audio_player(
         self, label: str, filename: str, autoplay: bool = False
-    ) -> ui.audio | None:
+    ) -> None:
         with ui.row().classes("items-center gap-2"):
-            ui.label(label).classes("font-bold w-16 readable-text")
-            if not os.path.exists(filename) and self._db_path:
-                blob = database.get_audio_blob(self._db_path, filename)
-                if blob:
-                    cache_dir = Path("/tmp/bespoke_audio")
-                    cache_dir.mkdir(parents=True, exist_ok=True)
-                    target_file = cache_dir / Path(filename).name
-                    if not target_file.exists() or target_file.stat().st_size != len(
-                        blob
-                    ):
-                        target_file.write_bytes(blob)
-                    filename = str(target_file)
+            ui.label(label).classes("font-bold w-16")
             if os.path.exists(filename):
-                return ui.audio(filename, autoplay=autoplay, controls=True)
+                ui.audio(filename, autoplay=autoplay, controls=True)
             else:
                 ui.icon("volume_off", color="grey").tooltip(f"Missing file: {filename}")
-                return None
 
-    def _add_audio_player(
-        self, label: str, filename: str, autoplay: bool = False
-    ) -> None:
-        player = self._render_audio_player(label, filename, autoplay)
-        if player:
-            self._audio_players.append(player)
-
-    def _create_color_cycling_button(
-        self,
-        word: str,
-        unit_id: str,
-        def_label: ui.label,
-        all_buttons: list[tuple[str, ui.button]],
-    ) -> ui.button:
+    def _create_color_cycling_button(self, word: str, unit: str) -> ui.button:
         initial_rating = 0
-        self._ratings[unit_id] = initial_rating
+        self._ratings[unit] = initial_rating
         btn = ui.button(word, on_click=lambda e: cycle(e.sender))
         btn.props(f"color={COLOR_MAP[initial_rating]} push")
 
         def cycle(b):
-            rating = SCORE_ROTATION.get(self._ratings[unit_id], initial_rating)
-            self._ratings[unit_id] = rating
-
-            for u_id, button in all_buttons:
-                if u_id == unit_id:
-                    button.props(f"color={COLOR_MAP[rating]}")
-
-            def_label.text = self._deck.translated_unit(unit_id)
+            rating = SCORE_ROTATION.get(self._ratings[unit], initial_rating)
+            self._ratings[unit] = rating
+            b.props(f"color={COLOR_MAP[rating]}")
+            meaning = "Meaning not found in dictionary."
+            try:
+                w = unit.split("_")[0]
+                if w in DICTIONARY:
+                    h_idx = 0
+                    d_idx = 0
+                    if "_" in unit:
+                        parts = unit.split("_")
+                        if len(parts) >= 3:
+                            h_idx = int(parts[1])
+                            d_idx = int(parts[2])
+                    
+                    # Ensure indices are within bounds safely
+                    heteronyms = DICTIONARY[w]
+                    if h_idx < len(heteronyms):
+                        defs = heteronyms[h_idx].get("definitions", [])
+                        if d_idx < len(defs):
+                            meaning = defs[d_idx].get("def", "No definition text provided.")
+                        elif defs:
+                            meaning = defs[0].get("def", "No definition text provided.")
+            except Exception as e:
+                print(f"Error getting definition for {unit}: {e}")
+                
+            if hasattr(self, "def_label"):
+                self.def_label.text = f"Meaning of '{word}': {meaning}"
 
         return btn
 
     def _show_front(self) -> None:
-        self._on_back = False
-        self._audio_players = []
         self.main_container.clear()
 
         with self.main_container:
@@ -149,10 +141,12 @@ class RatingWebApp:
                     with ui.card().classes(
                         "w-full items-center bg-gray-100 dark:bg-zinc-800"
                     ):
-                        self._add_audio_player(
+                        self._render_audio_player(
                             "Play:", self._card.audio_filename, autoplay=True
                         )
-                        self._add_audio_player("Slow:", self._card.slow_audio_filename)
+                        self._render_audio_player(
+                            "Slow:", self._card.slow_audio_filename
+                        )
                 case Mode.SPEAK:
                     ui.label("Speak the sentence!").classes(
                         "text-gray-500 dark:text-gray-400 text-xl font-mono"
@@ -160,7 +154,7 @@ class RatingWebApp:
                     with ui.card().classes(
                         "w-full items-center bg-gray-100 dark:bg-zinc-800"
                     ):
-                        self._add_audio_player("", self._card.native_audio_filename)
+                        self._render_audio_player("", self._card.native_audio_filename)
                     self._render_sentence(self._card.native_sentence)
                 case Mode.READ:
                     self._render_sentence(self._card.sentence)
@@ -171,36 +165,32 @@ class RatingWebApp:
                     with ui.card().classes(
                         "w-full items-center bg-gray-100 dark:bg-zinc-800"
                     ):
-                        self._add_audio_player("", self._card.native_audio_filename)
+                        self._render_audio_player("", self._card.native_audio_filename)
                     self._render_sentence(self._card.native_sentence)
 
             ui.separator().classes("my-4")
 
             stats = self._deck.stats()
+            satisfied = stats["satisfied"]
             waiting = stats["waiting"]
-            known = stats["known"]
-            mature = stats["mature"]
             with ui.row().classes("w-full justify-end gap-2 mb-2"):
+                ui.badge(f"Known: {satisfied}", color="grey").props("outline")
                 ui.badge(f"To Do: {waiting}", color="grey").props("outline")
-                ui.badge(f"Known: {known}", color="grey").props("outline")
-                ui.badge(f"Mature: {mature}", color="grey").props("outline")
 
             ui.button("Flip", on_click=self._show_back).classes("w-full h-12 text-lg")
 
     def _show_back(self) -> None:
-        self._on_back = True
-        self._audio_players = []
         self.main_container.clear()
 
         with self.main_container:
             # 1. Playback Section
             with ui.card().classes("w-full items-center bg-gray-100 dark:bg-zinc-800"):
                 autoplay = self._mode != Mode.LISTEN
-                self._add_audio_player(
+                self._render_audio_player(
                     "Play:", self._card.audio_filename, autoplay=autoplay
                 )
-                self._add_audio_player("Slow:", self._card.slow_audio_filename)
-                self._add_audio_player("Native:", self._card.native_audio_filename)
+                self._render_audio_player("Slow:", self._card.slow_audio_filename)
+                self._render_audio_player("Native:", self._card.native_audio_filename)
 
             # 2. Text Section
             self._render_sentence(self._card.sentence)
@@ -215,29 +205,22 @@ class RatingWebApp:
                 "text-sm text-gray-400 dark:text-gray-300 mt-4"
             )
             row_container = ui.row().classes("wrap justify-center gap-2 w-full")
-            definition_label = ui.label("").classes(
-                "w-full text-center text-sm text-gray-800 dark:text-gray-300 h-6 mt-2"
-            )
-            all_buttons: list[tuple[str, ui.button]] = []
+            all_buttons = []
 
             with row_container:
-                for tag in self._card.split_into_parts():
-                    if not tag.unit_id:
-                        ui.label(tag.occurance).classes(
-                            "self-center text-lg p-2 readable-text"
-                        )
+                for part, unit in self._card.split_into_parts():
+                    if unit is None:
+                        ui.label(part).classes("self-center text-lg p-2")
                     else:
                         with ui.column().classes("items-center gap-0"):
-                            btn = self._create_color_cycling_button(
-                                tag.occurance,
-                                tag.unit_id,
-                                definition_label,
-                                all_buttons,
+                            btn = self._create_color_cycling_button(part, unit)
+                            all_buttons.append((unit, btn))
+                            ui.label(unit).classes(
+                                "text-[10px] text-[#888] dark:text-gray-400"
                             )
-                            all_buttons.append((tag.unit_id, btn))
-                            u = self._target_language.get_by_id(tag.unit_id)
-                            name = u.name() if u else tag.unit_id
-                            ui.label(name).classes("text-[10px] gray-text")
+            self.def_label = ui.label("Click any word above to inspect its meaning...").classes(
+                "text-sm text-blue-600 dark:text-blue-400 mt-4 p-3 bg-blue-50 dark:bg-zinc-900 rounded w-full text-center font-medium shadow-inner"
+            )
 
             # 4. Controls
             ui.separator().classes("my-4")
@@ -251,84 +234,43 @@ class RatingWebApp:
                 ui.button("All Success", on_click=make_all_green).props(
                     "outline color=positive"
                 )
-                with ui.row().classes("items-center gap-2"):
-                    report_switch = ui.switch()
-                    ui.label("Report Error").classes("gray-text")
+                report_switch = ui.switch("Report Error")
 
             ui.button(
                 "Next", on_click=lambda: self._finalize(report_switch.value)
             ).props("color=primary size=lg").classes("w-full")
 
     def _finalize(self, is_reported) -> None:
-        for unit_id, rating in self._ratings.items():
-            unit = self._target_language.get_by_id(unit_id)
-            if unit:
-                self._deck.rate(unit, self._mode, rating)
+        for unit, rating in self._ratings.items():
+            self._deck.rate(unit, self._mode, rating)
         self._deck.log_usage(self._card.id, is_reported=is_reported)
-        threading.Thread(
-            target=self._deck.save, args=(self._deck_filename,), daemon=True
-        ).start()
+        self._deck.save(self._deck_filename)
 
         self._ratings = {}
         self._load_next_card()
 
-    def _handle_key(self, e: events.KeyEventArguments) -> None:
-        if not e.action.keydown or e.action.repeat:
-            return
 
-        if e.key == "1":
-            if len(self._audio_players) >= 1:
-                self._audio_players[0].play()
-        elif e.key == "2":
-            if len(self._audio_players) >= 2:
-                self._audio_players[1].play()
-        elif e.key == "3":
-            if len(self._audio_players) >= 3:
-                self._audio_players[2].play()
-        elif e.key == " ":
-            if self._on_back:
-                self._show_front()
-            else:
-                self._show_back()
-
-
-def open_latest_deck() -> tuple[Deck | None, str, Path | None]:
+def open_latest_deck() -> tuple[Deck | None, str]:
     paths = list(Path(".").glob("deck_*.json"))
     if not paths:
-        return None, "", None
+        return None, ""
     latest_filename = str(max(paths, key=lambda f: os.path.getmtime(f)))
-    with open(latest_filename, "r", encoding="utf-8") as f:
-        data = json.load(f)
-    target = languages.LANGUAGES[data["target_language"]]
-    native = languages.LANGUAGES[data["native_language"]]
-    db_path = Path("cards") / f"{target.code_name}.db"
-    active_db_path: Path | None = None
-    if db_path.exists():
-        active_db_path = db_path
-        units = database.load_vocabulary_from_db(db_path)
-        target.set_units(units)
-        translations = database.load_translations_from_db(db_path)
-        card_index = CardIndex.load_from_db(target, native, db_path)
-        deck = Deck.load(latest_filename, card_index=card_index)
-        if translations:
-            deck._translations = translations
-    else:
-        deck = Deck.load(latest_filename)
-    return deck, latest_filename, active_db_path
+    deck = Deck.load(latest_filename)
+    return deck, latest_filename
 
 
-def open_deck() -> tuple[Deck, str, Path | None]:
+def open_deck() -> tuple[Deck, str]:
     if len(sys.argv) == 1:
-        deck, filename, db_path = open_latest_deck()
+        deck, filename = open_latest_deck()
         if deck is not None:
             print(f"Continuing with '{filename}'")
-            return deck, filename, db_path
+            return deck, filename
 
     parser = argparse.ArgumentParser(description="Learn language cards.")
     target_choices = {}
-    for language in languages.LANGUAGES.values():
-        if language.has_data():
-            target_choices[language.writing_system] = language
+    for code_name in languages.LANGUAGE_DATA:
+        language = languages.LANGUAGES[code_name]
+        target_choices[language.writing_system] = language
     native_choices = {
         lang.writing_system: lang for lang in languages.LANGUAGES.values()
     }
@@ -375,75 +317,33 @@ def open_deck() -> tuple[Deck, str, Path | None]:
     if args.use_write_mode:
         modes.append(Mode.WRITE)
 
-    db_path = Path("cards") / f"{target.code_name}.db"
     deck_filename = f"deck_{target.code_name}.json"
-    active_db_path: Path | None = None
-
-    if db_path.exists():
-        print(f"Loading dataset from SQLite package: {db_path}...")
-        active_db_path = db_path
-        units = database.load_vocabulary_from_db(db_path)
-        target.set_units(units)
-        translations = database.load_translations_from_db(db_path)
-        card_index = CardIndex.load_from_db(target, native, db_path)
-        if os.path.isfile(deck_filename):
-            deck = Deck.load(deck_filename, card_index=card_index)
-        else:
-            deck = Deck(target, native, card_index)
-        if translations:
-            deck._translations = translations
-    elif not os.path.isfile(deck_filename):
+    if not os.path.isfile(deck_filename):
         print("Creating a new deck...")
         card_index = CardIndex(target, native)
         deck = Deck(target, native, card_index)
         deck.save(deck_filename)
     else:
         deck = Deck.load(deck_filename)
-
     deck.set_difficulty(difficulty)
     deck.set_modes(modes)
     deck.set_assume_known(args.assume_known)
 
-    return deck, deck_filename, active_db_path
+    return deck, deck_filename
 
 
-deck, deck_filename, db_path = open_deck()
+deck, deck_filename = open_deck()
 
 
 @ui.page("/")
 def index():
     ui.dark_mode(value="auto")
     ui.query("body").classes("bg-gray-50 dark:bg-zinc-900 m-0 p-0")
-
-    # Custom CSS for dark mode support where Tailwind fails or Quasar overrides
-    ui.add_head_html("""
-        <style>
-        .readable-text {
-            color: #111827 !important; /* text-gray-900 */
-        }
-        .body--dark .readable-text {
-            color: #f9fafb !important; /* text-gray-50 */
-        }
-        .gray-text {
-            color: #374151 !important; /* text-gray-700 */
-        }
-        .body--dark .gray-text {
-            color: #9ca3af !important; /* text-gray-400 */
-        }
-        .q-toggle__track {
-            background-color: #cbd5e1 !important; /* gray-300 */
-        }
-        .body--dark .q-toggle__track {
-            background-color: #475569 !important; /* gray-600 */
-        }
-        </style>
-    """)
-
     with ui.column().classes("w-full items-center p-8"):
         ui.label("Bespoke").classes(
             "text-3xl font-light text-gray-600 dark:text-gray-300 mb-6"
         )
-        RatingWebApp(deck._target_language, deck, deck_filename, db_path=db_path)
+        RatingWebApp(deck, deck_filename)
 
 
-ui.run(title="Bespoke", favicon="🐝", reconnect_timeout=60.0)
+ui.run(title="Bespoke", favicon="🐝")

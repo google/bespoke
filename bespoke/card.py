@@ -14,24 +14,18 @@
 
 """Class that represent flash cards."""
 
-import aiofiles  # type: ignore
+import aiofiles
 import asyncio
-from collections.abc import Iterable
 import hashlib
 import json
 import numpy as np
-import os
 from pathlib import Path
 import pydantic
-import random
 from typing import Self
 
-from bespoke import database
 from bespoke.languages import Language
+from bespoke.languages import UnitTags
 from bespoke import llm
-from bespoke.unit import Unit
-from bespoke.unit import UnitTag
-from bespoke.unit import UnitTags
 
 CARDS_DIR = Path("cards")
 
@@ -44,124 +38,73 @@ class Card(pydantic.BaseModel):
     slow_audio_filename: str
     native_audio_filename: str
     phonetic: str | None
+    units: list[str]
     unit_tags: UnitTags
     notes: list[str]
 
     model_config = pydantic.ConfigDict(frozen=True)
 
-    def unit_ids(self) -> list[str]:
-        return list(set(t.unit_id for t in self.unit_tags if t.unit_id))
-
-    @pydantic.model_validator(mode="after")
-    def _verify_tags_sorted(self) -> "Card":
-        sentence_index = 0
-        for tag in self.unit_tags:
-            start_idx = self.sentence.find(tag.occurance, sentence_index)
-            if start_idx < 0:
-                raise ValueError(
-                    f"Tag occurance '{tag.occurance}' not found in sentence after index {sentence_index}"
-                )
-            sentence_index = start_idx + len(tag.occurance)
-        return self
-
-    def split_into_parts(self) -> list[UnitTag]:
-        parts = []
-        sentence_index = 0
-        for tag in self.unit_tags:
-            start_idx = self.sentence.find(tag.occurance, sentence_index)
-            if start_idx >= 0:
-                if start_idx > sentence_index:
-                    parts.append(
-                        UnitTag(
-                            occurance=self.sentence[sentence_index:start_idx],
-                            unit_id="",
-                        )
-                    )
-                parts.append(tag)
-                sentence_index = start_idx + len(tag.occurance)
-        if sentence_index < len(self.sentence):
-            parts.append(UnitTag(occurance=self.sentence[sentence_index:], unit_id=""))
-        return parts
-
     def __str__(self) -> str:
         parts = []
-        for tag in self.split_into_parts():
-            if not tag.unit_id:
-                parts.append(tag.occurance)
+        for occurance, unit in self.split_into_parts():
+            if unit is None:
+                parts.append(occurance)
             else:
-                parts.append(f"[{tag.occurance}]({tag.unit_id})")
+                entry_str = unit[0] if isinstance(unit, tuple) else unit
+                parts.append(f"[{occurance}]({entry_str})")
         return f"Card: {''.join(parts)} = {self.native_sentence}"
+
+    def split_into_parts(self) -> list[tuple[str, str | None]]:
+        sorted_tags = list(self.unit_tags.items())
+        sorted_tags.sort(key=lambda x: len(x[1]), reverse=True)
+        sorted_tags.sort(key=lambda x: len(x[0]), reverse=True)
+        result = [(self.sentence, None)]
+        for word, unit in sorted_tags:
+            new_result = []
+            found = False
+            for part, tag in result:
+                if found or tag is not None or word not in part:
+                    new_result.append((part, tag))
+                    continue
+                prefix, suffix = part.split(word, maxsplit=1)
+                if prefix.strip():
+                    new_result.append((prefix.strip(), None))
+                formatted_unit = f"{unit[0]}_{unit[1]}_{unit[2]}" if isinstance(unit, tuple) else unit
+                new_result.append((word, formatted_unit))
+                if suffix.strip():
+                    new_result.append((suffix.strip(), None))
+                found = True
+            result = new_result
+        return result
 
     def write_json(self, directory: Path) -> None:
         path = directory / f"{self.id}.json"
         with open(path, "w", encoding="utf-8") as f:
             f.write(self.model_dump_json())
 
-    @classmethod
-    def load(cls, directory: Path, card_id: str) -> "Card | None":
-        path = directory / f"{card_id}.json"
-        try:
-            with open(path, "r", encoding="utf-8") as f:
-                content = f.read()
-                try:
-                    return cls.model_validate_json(content)
-                except pydantic.ValidationError:
-                    try:
-                        old_card = OldCard.model_validate_json(content)
-                        return old_card.to_card()
-                    except pydantic.ValidationError:
-                        print(f"Failed to read card from file '{path}'")
-        except OSError as e:
-            print(f"An error occurred while accessing '{path}': {e}")
-        return None
 
-    @classmethod
-    async def load_async(cls, directory: Path, card_id: str) -> "Card | None":
-        path = directory / f"{card_id}.json"
-        try:
-            async with aiofiles.open(path, mode="r", encoding="utf-8") as f:
-                content = await f.read()
-                try:
-                    return cls.model_validate_json(content)
-                except pydantic.ValidationError:
-                    try:
-                        old_card = OldCard.model_validate_json(content)
-                        return old_card.to_card()
-                    except pydantic.ValidationError:
-                        print(f"Failed to read card from file '{path}'")
-        except OSError as e:
-            print(f"An error occurred while accessing '{path}': {e}")
-        return None
+def _load_card(directory: Path, card_id: str) -> Card | None:
+    path = directory / f"{card_id}.json"
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            return Card.model_validate_json(f.read())
+    except pydantic.ValidationError:
+        print(f"Failed to read card from file '{path}'")
+    except OSError as e:
+        print(f"An error occurred while accessing '{path}': {e}")
+    return None
 
 
-class OldCard(pydantic.BaseModel):
-    id: str
-    sentence: str
-    native_sentence: str
-    audio_filename: str
-    slow_audio_filename: str
-    native_audio_filename: str
-    phonetic: str | None
-    units: list[str]
-    unit_tags: dict[str, str]
-    notes: list[str]
-
-    def to_card(self) -> Card:
-        new_unit_tags = [
-            UnitTag(occurance=k, unit_id=v) for k, v in self.unit_tags.items()
-        ]
-        new_unit_tags.sort(key=lambda tag: self.sentence.find(tag.occurance))
-        return Card(
-            id=self.id,
-            sentence=self.sentence,
-            native_sentence=self.native_sentence,
-            audio_filename=self.audio_filename,
-            slow_audio_filename=self.slow_audio_filename,
-            native_audio_filename=self.native_audio_filename,
-            phonetic=self.phonetic,
-            unit_tags=new_unit_tags,
-            notes=self.notes,
-        )
+async def _load_card_async(directory: Path, card_id: str) -> Card | None:
+    path = directory / f"{card_id}.json"
+    try:
+        async with aiofiles.open(path, mode="r", encoding="utf-8") as f:
+            return Card.model_validate_json(await f.read())
+    except pydantic.ValidationError:
+        print(f"Failed to read card from file '{path}'")
+    except OSError as e:
+        print(f"An error occurred while accessing '{path}': {e}")
+    return None
 
 
 async def _write_ogg(audio: np.ndarray, filename: str, bitrate="16k") -> None:
@@ -199,54 +142,20 @@ async def _write_ogg(audio: np.ndarray, filename: str, bitrate="16k") -> None:
 
 
 async def _write_audio_file(
-    llm_client: llm.LlmClient,
     *,
     directory: Path,
     sentence: str,
     slowly: bool,
 ) -> str:
+    audio = await llm.speak(sentence, slowly=slowly)
     sentence_hash = hashlib.sha256(sentence.encode("utf-8")).hexdigest()
     if slowly:
         suffix = "_slow"
     else:
         suffix = ""
     filename = str(directory / f"{sentence_hash}{suffix}.ogg")
-    if not os.path.exists(filename):
-        audio = await llm_client.speak(sentence, slowly=slowly)
-        await _write_ogg(audio, filename)
+    await _write_ogg(audio, filename)
     return filename
-
-
-async def _read_cards(directory: Path) -> list[Card]:
-    semaphore = asyncio.Semaphore(16)
-
-    async def read_card_file(card_id: str) -> Card | None:
-        async with semaphore:
-            return await Card.load_async(directory, card_id)
-
-    tasks = [read_card_file(p.stem) for p in directory.glob("*.json")]
-    cards = await asyncio.gather(*tasks)
-    return [card for card in cards if card is not None]
-
-
-def _print_or_write_list(items: Iterable[str], name: str) -> None:
-    if not items:
-        return
-    items_list = sorted(list(items))
-    count = len(items_list)
-    if count <= 100:
-        print(name)
-        for item in items_list:
-            print(item)
-    else:
-        filename = name.lower().replace(" ", "_") + ".txt"
-        with open(filename, "w", encoding="utf-8") as f:
-            for item in items_list:
-                f.write(f"{item}\n")
-        print(f"{name} written to {filename}")
-        print(f"Sample of 10 / {count}:")
-        for item in items_list[:10]:
-            print(item)
 
 
 class CardIndex:
@@ -261,9 +170,7 @@ class CardIndex:
         native = native_language.code_name
         self._index_path = CARDS_DIR / f"index_{target}_{native}.json"
         self._card_directory = CARDS_DIR / f"{target}_{native}"
-        self._db_path: Path | None = None
-        self._index: dict[str, list[str]] = {}
-        self._cache: dict[str, Card] = {}
+        self._index = {}
         self._card_directory.mkdir(parents=True, exist_ok=True)
 
     @classmethod
@@ -272,46 +179,22 @@ class CardIndex:
         try:
             with open(obj._index_path, "r", encoding="utf-8") as f:
                 obj._index = json.load(f)
-            if obj._index:
-                use_def = " - " in next(iter(obj._index.keys()))
-                target_language.initialize(use_definition=use_def)
         except Exception:
             print(f"Unable to open {obj._index_path}, creating empty CardIndex.")
         return obj
 
-    @classmethod
-    def load_from_db(
-        cls,
-        target_language: Language,
-        native_language: Language,
-        db_path: Path | str,
-    ) -> Self:
-        obj = cls(target_language, native_language)
-        obj._db_path = Path(db_path)
-        obj._index = database.load_index_from_db(obj._db_path)
-        return obj
-
     async def restart(self) -> None:
         self._index = {}
-        self._cache = {}
-        cards = await _read_cards(self._card_directory)
+        cards = await self.all_cards()
         print(f"Starting CardIndex with {len(cards)} cards.")
         for card in cards:
             self._add(card)
         self.save()
 
     async def check(self) -> None:
-        available_cards = await _read_cards(self._card_directory)
         cards = await self.all_cards()
         language_system = self._target_language.writing_system
         print(f"Found {len(cards)} cards for {language_system}")
-        available_card_ids = {card.id for card in available_cards}
-        indexed_card_ids = {card.id for card in cards}
-        missing_in_index = available_card_ids - indexed_card_ids
-        missing_on_disk = indexed_card_ids - available_card_ids
-        _print_or_write_list(missing_in_index, "Cards missing in index")
-        _print_or_write_list(missing_on_disk, "Cards missing on disk")
-
         audio_filenames = set()
         for path in self._card_directory.glob("*.ogg"):
             audio_filenames.add(str(path))
@@ -327,157 +210,111 @@ class CardIndex:
             if card.native_audio_filename not in audio_filenames:
                 print(f"Missing native audio file for '{card.id}'")
         extra_filenames = audio_filenames - card_filenames
-        _print_or_write_list(extra_filenames, "Unused audio files")
+        if extra_filenames:
+            print(f"Unused audio files found: {extra_filenames}")
 
     def save(self) -> None:
         with open(self._index_path, "w", encoding="utf-8") as f:
             json.dump(self._index, f)
 
-    def _get_cards_from_db(self, card_ids: list[str]) -> dict[str, Card]:
-        if self._db_path is None or not card_ids:
-            return {}
-        return database.load_cards_from_db(self._db_path, card_ids)
-
-    def _load_card(self, card_id: str) -> Card | None:
-        if card_id in self._cache:
-            return self._cache[card_id]
-        card = Card.load(self._card_directory, card_id)
-        if card is not None:
-            self._cache[card_id] = card
-        return card
-
-    async def _load_card_async(self, card_id: str) -> Card | None:
-        if card_id in self._cache:
-            return self._cache[card_id]
-        card = await Card.load_async(self._card_directory, card_id)
-        if card is not None:
-            self._cache[card_id] = card
-        return card
-
-    def cards(self, unit: Unit, limit: int | None = None) -> list[Card]:
-        card_ids = self._index.get(unit.id(), [])
-        if limit is not None:
-            card_ids = random.sample(card_ids, min(limit, len(card_ids)))
-        if self._db_path is not None:
-            missing_ids = [cid for cid in card_ids if cid not in self._cache]
-            if missing_ids:
-                loaded = self._get_cards_from_db(missing_ids)
-                self._cache.update(loaded)
-            return [self._cache[cid] for cid in card_ids if cid in self._cache]
+    def cards(self, unit: str) -> list[Card]:
+        card_ids = self._index.get(unit, [])
+        if not card_ids and "_" in unit:
+            base = unit.split("_")[0]
+            card_ids = self._index.get(base, [])
         cards = []
         for card_id in card_ids:
-            card = self._load_card(card_id)
+            card = _load_card(self._card_directory, card_id)
             if card is not None:
                 cards.append(card)
         return cards
 
-    async def all_cards(self) -> list[Card]:
-        if self._db_path is not None and self._db_path.is_file():
-            db_cards = database.load_all_cards_from_db(self._db_path)
-            for card in db_cards:
-                self._cache[card.id] = card
-            return db_cards
+    async def cards_async(self, unit: str) -> list[Card]:
+        card_ids = self._index.get(unit, [])
+        tasks = []
+        for card_id in card_ids:
+            tasks.append(_load_card_async(self._card_directory, card_id))
+        cards = await asyncio.gather(*tasks)
+        return [card for card in cards if card is not None]
 
-        card_ids = set()
-        for unit_cards in self._index.values():
-            card_ids.update(unit_cards)
+    async def all_cards(self) -> list[Card]:
         semaphore = asyncio.Semaphore(16)
 
         async def read_card_file(card_id: str) -> Card | None:
             async with semaphore:
-                return await self._load_card_async(card_id)
+                return await _load_card_async(self._card_directory, card_id)
 
-        tasks = [read_card_file(card_id) for card_id in card_ids]
-        raw_cards = await asyncio.gather(*tasks)
-        return [card for card in raw_cards if card is not None]
+        tasks = [read_card_file(p.stem) for p in self._card_directory.glob("*.json")]
+        cards = await asyncio.gather(*tasks)
+        return [card for card in cards if card is not None]
 
-    def size(self, unit: Unit) -> int:
-        return len(self._index.get(unit.id(), []))
-
-    async def remove(self, card_id: str) -> None:
-        if self._db_path is not None:
-            print(f"Cannot remove card '{card_id}' from dataset db '{self._db_path}'")
-            return
-        card = await self._load_card_async(card_id)
-        if card_id in self._cache:
-            del self._cache[card_id]
-        if card is None:
-            print(f"Card JSON not found: {self._card_directory / f'{card_id}.json'}")
-            for unit_id in list(self._index.keys()):
-                if card_id in self._index[unit_id]:
-                    self._index[unit_id].remove(card_id)
-                    if not self._index[unit_id]:
-                        del self._index[unit_id]
-            return
-
-        for path in [card.audio_filename, card.slow_audio_filename]:
-            if path:
-                try:
-                    Path(path).unlink()
-                except Exception as e:
-                    print(f"Error deleting audio {path}: {e}")
-        if card.native_audio_filename:
-            try:
-                other_cards = await self.all_cards()
-                shared = any(
-                    other.id != card_id
-                    and other.native_audio_filename == card.native_audio_filename
-                    for other in other_cards
-                )
-                if not shared:
-                    Path(card.native_audio_filename).unlink()
-            except Exception as e:
-                print(f"Error deleting native audio {card.native_audio_filename}: {e}")
-
-        card_json_path = self._card_directory / f"{card_id}.json"
-        try:
-            card_json_path.unlink()
-        except Exception as e:
-            print(f"Error deleting card JSON {card_json_path}: {e}")
-
-        for unit_id in card.unit_ids():
-            if unit_id in self._index:
-                if card_id in self._index[unit_id]:
-                    self._index[unit_id].remove(card_id)
-                    if not self._index[unit_id]:
-                        del self._index[unit_id]
+    def size(self, unit: str) -> int:
+        count = len(self._index.get(unit, []))
+        if not count and "_" in unit:
+            base = unit.split("_")[0]
+            count = len(self._index.get(base, []))
+        return count
 
     def _add(self, card: Card) -> None:
-        for unit in card.unit_ids():
+        for unit in card.units:
             card_ids = self._index.get(unit, [])
             card_ids.append(card.id)
             self._index[unit] = card_ids
-        self._cache[card.id] = card
 
     @llm.standard_retry
     async def create_card(
         self,
-        llm_client: llm.LlmClient,
         sentence: str,
         unit_tags: UnitTags,
         notes: list[str] = [],
+        overwrite: bool = False,
     ) -> Card:
         id = hashlib.sha256(sentence.encode("utf-8")).hexdigest()
-        native_sentence = await llm_client.translate(sentence, self._native_language)
+
+        if not overwrite:
+            existing_card = _load_card(self._card_directory, id)
+            if existing_card is not None:
+                if (
+                    Path(existing_card.audio_filename).exists()
+                    and Path(existing_card.slow_audio_filename).exists()
+                    and Path(existing_card.native_audio_filename).exists()
+                ):
+                    units = list(
+                        set(
+                            [
+                                f"{val[0]}_{val[1]}_{val[2]}" if isinstance(val, tuple) else val
+                                for val in unit_tags.values()
+                            ]
+                        )
+                    )
+                    updated_card = existing_card.model_copy(
+                        update={
+                            "units": units,
+                            "unit_tags": unit_tags,
+                            "notes": notes,
+                        }
+                    )
+                    updated_card.write_json(self._card_directory)
+                    self._add(updated_card)
+                    return updated_card
+        native_sentence = await llm.translate(sentence, self._native_language)
         audio_filename = await _write_audio_file(
-            llm_client,
             directory=self._card_directory,
             sentence=sentence,
             slowly=False,
         )
         slow_audio_filename = await _write_audio_file(
-            llm_client,
             directory=self._card_directory,
             sentence=sentence,
             slowly=True,
         )
         native_audio_filename = await _write_audio_file(
-            llm_client,
             directory=self._card_directory,
             sentence=native_sentence,
             slowly=False,
         )
-        phonetic = await llm_client.to_phonetic(sentence, self._target_language)
+        phonetic = await llm.to_phonetic(sentence, self._target_language)
+        units = list(set([f"{val[0]}_{val[1]}_{val[2]}" if isinstance(val, tuple) else val for val in unit_tags.values()]))
         card = Card(
             id=id,
             sentence=sentence,
@@ -486,6 +323,7 @@ class CardIndex:
             slow_audio_filename=slow_audio_filename,
             native_audio_filename=native_audio_filename,
             phonetic=phonetic,
+            units=units,
             unit_tags=unit_tags,
             notes=notes,
         )
