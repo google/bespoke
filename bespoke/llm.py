@@ -53,6 +53,10 @@ class SuggestedNamesSchema(pydantic.BaseModel):
     names: list[str]
 
 
+class CheckCardSchema(pydantic.BaseModel):
+    allowed: bool
+
+
 class DisambiguatedTagSchema(pydantic.BaseModel):
     occurance: str
     word: str
@@ -327,6 +331,35 @@ def _build_tag_sentence_prompt(
     )
 
 
+def _build_check_card_prompt(
+    sentence: str,
+    native_sentence: str,
+    phonetic: str | None,
+    unit_tags: UnitTags,
+    target_language: Language,
+    native_language: Language,
+) -> str:
+    tags_str = "\n".join(f"- '{tag.occurance}' -> '{tag.unit_id}'" for tag in unit_tags)
+    phonetic_line = ""
+    if phonetic and target_language.phonetic_system:
+        phonetic_line = f"Phonetic ({target_language.phonetic_system}): {phonetic}\n"
+    return (
+        "Validate the following language learning card for correctness and consistency.\n"
+        f"Target language: {target_language.name}\n"
+        f"Native language: {native_language.name}\n"
+        f"Sentence: {sentence}\n"
+        f"{phonetic_line}"
+        f"Translation: {native_sentence}\n"
+        f"Vocabulary tags:\n{tags_str}\n\n"
+        "Instructions:\n"
+        "Check if the card contains any actual mistakes or inconsistencies:\n"
+        "1. Inconsistency between sentences in its different versions, and/or vocabulary tags.\n"
+        "2. Grammatical error or severly unnatural phrasing in the target language.\n"
+        "3. Incorrect vocabulary tagging for the sentence context. Untagged words are okay.\n\n"
+        "Set allowed to false if you find any of the above, otherwise allowed is true."
+    )
+
+
 class LlmClient(abc.ABC):
     @abc.abstractmethod
     async def text_call(self, prompt: str) -> str:
@@ -378,6 +411,18 @@ class LlmClient(abc.ABC):
         existing_tags: list[UnitTag] | None = None,
     ) -> UnitTags:
         """Tags words in a sentence with their dictionary form."""
+
+    @abc.abstractmethod
+    async def check_card(
+        self,
+        sentence: str,
+        native_sentence: str,
+        phonetic: str | None,
+        unit_tags: UnitTags,
+        target_language: Language,
+        native_language: Language,
+    ) -> bool:
+        """Checks if a generated card content is accurate and consistent."""
 
     @abc.abstractmethod
     async def speak(
@@ -532,6 +577,37 @@ class GeminiLlmClient(LlmClient):
         if response.parsed is None:
             raise ValueError("Missing content")
         return typing.cast(UnitTags, response.parsed)
+
+    @standard_retry
+    async def check_card(
+        self,
+        sentence: str,
+        native_sentence: str,
+        phonetic: str | None,
+        unit_tags: UnitTags,
+        target_language: Language,
+        native_language: Language,
+    ) -> bool:
+        prompt = _build_check_card_prompt(
+            sentence=sentence,
+            native_sentence=native_sentence,
+            phonetic=phonetic,
+            unit_tags=unit_tags,
+            target_language=target_language,
+            native_language=native_language,
+        )
+        response = await self._client.aio.models.generate_content(
+            model=self.TEXT_MODEL,
+            contents=[prompt],
+            config=self._genai.types.GenerateContentConfig(
+                response_mime_type="application/json",
+                response_schema=CheckCardSchema,
+            ),
+        )
+        if response.parsed is None:
+            raise ValueError("Missing content")
+        parsed = typing.cast(CheckCardSchema, response.parsed)
+        return parsed.allowed
 
     @standard_retry
     async def speak(
@@ -701,6 +777,35 @@ class OpenRouterElevenLabsLlmClient(LlmClient):
         return pydantic.TypeAdapter(UnitTags).validate_json(content)
 
     @standard_retry
+    async def check_card(
+        self,
+        sentence: str,
+        native_sentence: str,
+        phonetic: str | None,
+        unit_tags: UnitTags,
+        target_language: Language,
+        native_language: Language,
+    ) -> bool:
+        prompt = _build_check_card_prompt(
+            sentence=sentence,
+            native_sentence=native_sentence,
+            phonetic=phonetic,
+            unit_tags=unit_tags,
+            target_language=target_language,
+            native_language=native_language,
+        )
+        prompt += ' Respond in JSON format: {"allowed": true} or {"allowed": false}.'
+        response = await self._litellm.acompletion(
+            model=self.TEXT_MODEL,
+            messages=[{"role": "user", "content": prompt}],
+            response_format=CheckCardSchema,
+            api_key=self.openrouter_api_key,
+        )
+        content = response.choices[0].message.content
+        parsed = CheckCardSchema.model_validate_json(content)
+        return parsed.allowed
+
+    @standard_retry
     async def speak(
         self,
         sentence: str,
@@ -829,6 +934,35 @@ class OpenAiLlmClient(LlmClient):
         )
         content = response.choices[0].message.content
         return pydantic.TypeAdapter(UnitTags).validate_json(content)
+
+    @standard_retry
+    async def check_card(
+        self,
+        sentence: str,
+        native_sentence: str,
+        phonetic: str | None,
+        unit_tags: UnitTags,
+        target_language: Language,
+        native_language: Language,
+    ) -> bool:
+        prompt = _build_check_card_prompt(
+            sentence=sentence,
+            native_sentence=native_sentence,
+            phonetic=phonetic,
+            unit_tags=unit_tags,
+            target_language=target_language,
+            native_language=native_language,
+        )
+        prompt += ' Respond in JSON format: {"allowed": true} or {"allowed": false}.'
+        response = await self._litellm.acompletion(
+            model=self.TEXT_MODEL,
+            messages=[{"role": "user", "content": prompt}],
+            response_format=CheckCardSchema,
+            api_key=self._api_key,
+        )
+        content = response.choices[0].message.content
+        parsed = CheckCardSchema.model_validate_json(content)
+        return parsed.allowed
 
     @standard_retry
     async def speak(

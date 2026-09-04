@@ -284,6 +284,8 @@ class DeckBuilder:
                     unit_tags,
                     notes=[grammar],
                 )
+                if card is None:
+                    return
                 sentence_producer.register_card(card.unit_ids())
                 self._created_count += 1
                 if self._created_count % 1000 == 0 or self._created_count == 100:

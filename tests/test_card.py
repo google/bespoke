@@ -15,6 +15,7 @@
 from pathlib import Path
 import tempfile
 import unittest
+from unittest import mock
 
 import pydantic
 
@@ -24,6 +25,7 @@ from bespoke.languages import LANGUAGES
 from bespoke.unit import Difficulty
 from bespoke.unit import UnitTag
 from bespoke.unit import WordUnit
+from tests.fakes import FakeLlmClient
 
 
 class TestCard(unittest.IsolatedAsyncioTestCase):
@@ -259,6 +261,72 @@ class TestCard(unittest.IsolatedAsyncioTestCase):
             self.assertFalse(audio2_path.exists())
             self.assertFalse(slow2_path.exists())
             self.assertFalse(shared_native_path.exists())
+            self.assertEqual(card_index.size(student_unit), 0)
+
+    @mock.patch("bespoke.card._write_ogg")
+    async def test_card_index_create_card_allowed(
+        self, mock_write_ogg: mock.AsyncMock
+    ) -> None:
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            temporary_path = Path(temporary_directory)
+            target_language = LANGUAGES["japanese"]
+            native_language = LANGUAGES["english"]
+            card_index = CardIndex(target_language, native_language)
+            card_index._card_directory = temporary_path / "cards"
+            card_index._index_path = temporary_path / "index.json"
+            card_index._card_directory.mkdir(parents=True, exist_ok=True)
+            fake_llm_client = FakeLlmClient(check_card_allowed=True)
+            sentence = "大学生は学生より年上です。"
+            unit_tags = [
+                UnitTag(occurance="大学生", unit_id="大学生"),
+                UnitTag(occurance="学生", unit_id="学生"),
+            ]
+            created_card = await card_index.create_card(
+                llm_client=fake_llm_client,
+                sentence=sentence,
+                unit_tags=unit_tags,
+            )
+            self.assertIsNotNone(created_card)
+            assert created_card is not None
+            self.assertEqual(created_card.sentence, sentence)
+            self.assertTrue(
+                (card_index._card_directory / f"{created_card.id}.json").exists()
+            )
+            self.assertTrue(created_card.audio_filename.endswith(".ogg"))
+            self.assertTrue(created_card.slow_audio_filename.endswith("_slow.ogg"))
+            self.assertTrue(created_card.native_audio_filename.endswith(".ogg"))
+            self.assertEqual(mock_write_ogg.await_count, 3)
+            student_unit = WordUnit("学生", Difficulty.A1)
+            self.assertEqual(card_index.size(student_unit), 1)
+
+    @mock.patch("bespoke.card._write_ogg")
+    async def test_card_index_create_card_rejected(
+        self, mock_write_ogg: mock.AsyncMock
+    ) -> None:
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            temporary_path = Path(temporary_directory)
+            target_language = LANGUAGES["japanese"]
+            native_language = LANGUAGES["english"]
+            card_index = CardIndex(target_language, native_language)
+            card_index._card_directory = temporary_path / "cards"
+            card_index._index_path = temporary_path / "index.json"
+            card_index._card_directory.mkdir(parents=True, exist_ok=True)
+            fake_llm_client = FakeLlmClient(check_card_allowed=False)
+            sentence = "大学生は学生より年上です。"
+            unit_tags = [
+                UnitTag(occurance="大学生", unit_id="大学生"),
+                UnitTag(occurance="学生", unit_id="学生"),
+            ]
+            created_card = await card_index.create_card(
+                llm_client=fake_llm_client,
+                sentence=sentence,
+                unit_tags=unit_tags,
+            )
+            self.assertIsNone(created_card)
+            card_files = list(card_index._card_directory.glob("*.json"))
+            self.assertEqual(len(card_files), 0)
+            self.assertEqual(mock_write_ogg.await_count, 0)
+            student_unit = WordUnit("学生", Difficulty.A1)
             self.assertEqual(card_index.size(student_unit), 0)
 
 

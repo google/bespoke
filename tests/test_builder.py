@@ -120,6 +120,27 @@ class TestDeckBuilder(unittest.IsolatedAsyncioTestCase):
         index_size = len(await card_index.all_cards())
         self.assertGreaterEqual(index_size, vocabulary_size * 2)
 
+    async def test_creation_with_rejected_cards(self) -> None:
+        language = fakes.fake_language()
+        card_index = fakes.FakeCardIndex(language)
+        llm_client = fakes.FakeLlmClient(check_card_allowed=False)
+        deck_builder = builder.DeckBuilder(
+            language,
+            card_index,  # type: ignore
+            llm_client,
+            fakes.FAKE_GRAMMAR,
+        )
+        vocabulary_size = len(language.units())
+        index_size = len(await card_index.all_cards())
+        self.assertEqual(index_size, vocabulary_size)
+
+        await deck_builder.create_cards(
+            cards_per_unit=2,
+            cards_per_call=8,
+        )
+        index_size_after = len(await card_index.all_cards())
+        self.assertEqual(index_size_after, vocabulary_size)
+
 
 if __name__ == "__main__":
     unittest.main()

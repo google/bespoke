@@ -456,9 +456,26 @@ class CardIndex:
         sentence: str,
         unit_tags: UnitTags,
         notes: list[str] = [],
-    ) -> Card:
+    ) -> Card | None:
         id = hashlib.sha256(sentence.encode("utf-8")).hexdigest()
         native_sentence = await llm_client.translate(sentence, self._native_language)
+        phonetic = await llm_client.to_phonetic(sentence, self._target_language)
+        if not await llm_client.check_card(
+            sentence=sentence,
+            native_sentence=native_sentence,
+            phonetic=phonetic,
+            unit_tags=unit_tags,
+            target_language=self._target_language,
+            native_language=self._native_language,
+        ):
+            tag_details = ", ".join(f"{t.occurance}->{t.unit_id}" for t in unit_tags)
+            phonetic_details = f", phonetic='{phonetic}'" if phonetic else ""
+            print(
+                f"Discarding invalid card: sentence='{sentence}', "
+                f"translation='{native_sentence}'{phonetic_details}, "
+                f"tags=[{tag_details}]"
+            )
+            return None
         audio_filename = await _write_audio_file(
             llm_client,
             directory=self._card_directory,
@@ -477,7 +494,6 @@ class CardIndex:
             sentence=native_sentence,
             slowly=False,
         )
-        phonetic = await llm_client.to_phonetic(sentence, self._target_language)
         card = Card(
             id=id,
             sentence=sentence,

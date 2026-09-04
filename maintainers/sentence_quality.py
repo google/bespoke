@@ -31,6 +31,8 @@ async def tag_and_format(
     language: Language,
     llm_client: llm.LlmClient,
     producer: builder.SentenceProducer,
+    native_language: Language | None = None,
+    check_rejection: bool = False,
 ) -> str:
     unit_tags = await tagger.create_tags(
         sentence=sentence,
@@ -39,7 +41,32 @@ async def tag_and_format(
         llm_client=llm_client,
     )
     producer.register_card([tag.unit_id for tag in unit_tags])
-    lines = [f"Sentence: {sentence}", "Tags:"]
+    lines = [f"Sentence: {sentence}"]
+    if check_rejection and native_language:
+        native_sentence = await llm_client.translate(sentence, native_language)
+        phonetic = await llm_client.to_phonetic(sentence, language)
+        is_allowed = await llm_client.check_card(
+            sentence=sentence,
+            native_sentence=native_sentence,
+            phonetic=phonetic,
+            unit_tags=unit_tags,
+            target_language=language,
+            native_language=native_language,
+        )
+        lines.append(f"Translation: {native_sentence}")
+        if phonetic:
+            lines.append(f"Phonetic: {phonetic}")
+        if not is_allowed:
+            tag_details = ", ".join(f"{t.occurance}->{t.unit_id}" for t in unit_tags)
+            phonetic_details = f", phonetic='{phonetic}'" if phonetic else ""
+            lines.append(
+                f"Rejection: Discarding invalid card: sentence='{sentence}', "
+                f"translation='{native_sentence}'{phonetic_details}, "
+                f"tags=[{tag_details}]"
+            )
+        else:
+            lines.append("Rejection check: Allowed")
+    lines.append("Tags:")
     for tag in unit_tags:
         lines.append(f"  {tag.occurance} -> {tag.unit_id}")
 
@@ -73,6 +100,9 @@ async def main_async():
     for language in languages.LANGUAGES.values():
         if language.has_data():
             target_choices[language.writing_system] = language
+    native_choices = {
+        lang.writing_system: lang for lang in languages.LANGUAGES.values()
+    }
 
     difficulties = [str(d) for d in Difficulty]
     parser.add_argument(
@@ -81,6 +111,12 @@ async def main_async():
         choices=list(target_choices),
         required=True,
         help="The language you are learning.",
+    )
+    parser.add_argument(
+        "--native",
+        type=str,
+        choices=list(native_choices),
+        help="A language that you know.",
     )
     parser.add_argument(
         "--difficulty",
@@ -95,10 +131,19 @@ async def main_async():
         default=8,
         help="Number of cards per call",
     )
+    parser.add_argument(
+        "--check_rejection",
+        action="store_true",
+        help="Check if cards are rejected.",
+    )
 
     args = parser.parse_args()
 
+    if args.check_rejection and not args.native:
+        parser.error("--native is required when --check_rejection is set.")
+
     real_language = target_choices[args.target]
+    native_language = native_choices[args.native] if args.native else None
     grammar = languages.load_grammar(real_language.code_name)
     llm_client = llm.get_llm_client()
 
@@ -148,7 +193,13 @@ async def main_async():
                 tasks.append(
                     tg.create_task(
                         tag_and_format(
-                            sentence, units, real_language, llm_client, producer
+                            sentence=sentence,
+                            units=units,
+                            language=real_language,
+                            llm_client=llm_client,
+                            producer=producer,
+                            native_language=native_language,
+                            check_rejection=args.check_rejection,
                         )
                     )
                 )

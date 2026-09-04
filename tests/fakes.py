@@ -98,8 +98,8 @@ class FakeCardIndex:
         target_language: Language,
         native_language: Language | None = None,
     ) -> None:
-        del native_language
         self._target_language = target_language
+        self._native_language = native_language or target_language
         self._cards = {}
         for unit in self._target_language.units():
             card = _fake_card(
@@ -132,7 +132,16 @@ class FakeCardIndex:
         sentence: str,
         unit_tags: UnitTags,
         notes: list[str] = [],
-    ) -> Card:
+    ) -> Card | None:
+        if not await llm_client.check_card(
+            sentence=sentence,
+            native_sentence="dummy",
+            phonetic="phonetic",
+            unit_tags=unit_tags,
+            target_language=self._target_language,
+            native_language=self._native_language,
+        ):
+            return None
         card = _fake_card(sentence, unit_tags, notes)
         for unit_str in card.unit_ids():
             # Intentionally fails if the unit does not exist yet.
@@ -141,6 +150,9 @@ class FakeCardIndex:
 
 
 class FakeLlmClient(llm.LlmClient):
+    def __init__(self, check_card_allowed: bool = True) -> None:
+        self.check_card_allowed = check_card_allowed
+
     async def suggest_names(self, sentence: str, language: Language) -> list[str]:
         names = []
         for unit in language.units():
@@ -181,10 +193,21 @@ class FakeLlmClient(llm.LlmClient):
     ) -> list[tuple[str, str, int]]:
         return []
 
+    async def check_card(
+        self,
+        sentence: str,
+        native_sentence: str,
+        phonetic: str | None,
+        unit_tags: UnitTags,
+        target_language: Language,
+        native_language: Language,
+    ) -> bool:
+        return self.check_card_allowed
+
     async def speak(
         self,
         sentence: str,
         *,
         slowly: bool = False,
     ) -> np.ndarray:
-        return np.array([], dtype=np.int16)
+        return np.zeros(2400, dtype=np.int16)
