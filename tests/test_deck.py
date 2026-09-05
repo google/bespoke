@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from pathlib import Path
+import tempfile
 import unittest
 
 from bespoke import Deck
@@ -155,6 +157,59 @@ class TestDeck(unittest.TestCase):
         self.assertEqual(stats["waiting"], 1)
         self.assertEqual(stats["known"], 2)
         self.assertEqual(stats["mature"], 1)
+
+    def test_block_and_unblock_unit(self) -> None:
+        target = languages.LANGUAGES["japanese"]
+        native = languages.LANGUAGES["english"]
+        index = fakes.FakeCardIndex(target, native)
+        deck = Deck(target, native, index)  # type: ignore
+        unit1 = target.units()[0]
+        unit2 = target.units()[1]
+        unit3 = target.units()[2]
+        self.assertFalse(deck.is_blocked(unit1.id()))
+        self.assertEqual(deck.blocked_units(), [])
+        deck.block_unit(unit1.id())
+        deck.block_unit(unit2.id())
+        deck.block_unit(unit3.id())
+        self.assertTrue(deck.is_blocked(unit1.id()))
+        self.assertTrue(deck.is_blocked(unit2.id()))
+        self.assertTrue(deck.is_blocked(unit3.id()))
+        # Reverse chronological order: last added is first
+        self.assertEqual(deck.blocked_units(), [unit3.id(), unit2.id(), unit1.id()])
+        deck.unblock_unit(unit2.id())
+        self.assertFalse(deck.is_blocked(unit2.id()))
+        self.assertEqual(deck.blocked_units(), [unit3.id(), unit1.id()])
+        # Re-blocking unit1 moves it to the most recent position
+        deck.block_unit(unit1.id())
+        self.assertEqual(deck.blocked_units(), [unit1.id(), unit3.id()])
+
+    def test_draw_skips_blocked_unit(self) -> None:
+        target = languages.LANGUAGES["japanese"]
+        native = languages.LANGUAGES["english"]
+        index = fakes.FakeCardIndex(target, native)
+        deck = Deck(target, native, index)  # type: ignore
+        first_unit = target.units()[0]
+        second_unit = target.units()[1]
+        deck.block_unit(first_unit.id())
+        _mode, card = deck.draw(current_time=1)
+        self.assertEqual(card.unit_tags[0].unit_id, second_unit.id())
+
+    def test_save_load_blocked_units(self) -> None:
+        target = languages.LANGUAGES["japanese"]
+        native = languages.LANGUAGES["english"]
+        index = fakes.FakeCardIndex(target, native)
+        deck = Deck(target, native, index)  # type: ignore
+        unit1 = target.units()[0]
+        unit2 = target.units()[1]
+        deck.block_unit(unit1.id())
+        deck.block_unit(unit2.id())
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            filename = Path(temporary_directory) / "deck.json"
+            deck.save(filename)
+            loaded_deck = Deck.load(filename, card_index=index)  # type: ignore
+            self.assertTrue(loaded_deck.is_blocked(unit1.id()))
+            self.assertTrue(loaded_deck.is_blocked(unit2.id()))
+            self.assertEqual(loaded_deck.blocked_units(), [unit2.id(), unit1.id()])
 
 
 if __name__ == "__main__":

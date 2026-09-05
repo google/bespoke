@@ -55,6 +55,7 @@ INTRODUCE_OUT_OF_ORDER = False
 REPORT_PENALTY = 1000000.0
 CARD_USAGE_FACTOR = 1000.0
 CARD_USAGE_DECAY = 0.1
+BLOCKED_UNIT_PENALTY = 500.0
 UNTOUCHED_PENALTY = 200.0
 UNINTRODUCED_PENALTY = 100.0
 URGENCY_BONUS = 10.0
@@ -81,6 +82,8 @@ class Deck:
         self._card_index = card_index
         self._rating_states: dict[str, RatingState] = {}
         self._card_id_uses: dict[str, list[CardUsage]] = {}
+        self._blocked_units: list[str] = []
+        self._blocked_units_set: set[str] = set()
         self._difficulty = Difficulty.A1
         self._modes = list(Mode)
         self._assume_known: Difficulty | None = None
@@ -112,6 +115,26 @@ class Deck:
             return unit.definition()
         return ""
 
+    def block_unit(self, unit_id: str) -> None:
+        with self._lock:
+            if unit_id in self._blocked_units_set:
+                self._blocked_units.remove(unit_id)
+            self._blocked_units.append(unit_id)
+            self._blocked_units_set.add(unit_id)
+
+    def unblock_unit(self, unit_id: str) -> None:
+        with self._lock:
+            if unit_id in self._blocked_units_set:
+                self._blocked_units.remove(unit_id)
+                self._blocked_units_set.remove(unit_id)
+
+    def is_blocked(self, unit_id: str) -> bool:
+        return unit_id in self._blocked_units_set
+
+    def blocked_units(self) -> list[str]:
+        with self._lock:
+            return list(reversed(self._blocked_units))
+
     def _choose_task(self, current_time: float) -> tuple[Mode, str]:
         default_state = RatingState([])
 
@@ -124,6 +147,8 @@ class Deck:
         introduction_unit_id = None
         introduction_is_touched = False
         for i, unit in enumerate(self._units_with_cards):
+            if unit.id() in self._blocked_units_set:
+                continue
             state = self._rating_states.get(unit.id(), default_state)
             is_skipped = (
                 self._assume_known is not None
@@ -165,6 +190,8 @@ class Deck:
         for i, unit in enumerate(
             self._units_with_cards[introduction_index:tolerance_index]
         ):
+            if unit.id() in self._blocked_units_set:
+                continue
             if not self._card_index.size(unit):
                 continue
             state = self._rating_states.get(unit.id(), default_state)
@@ -213,6 +240,8 @@ class Deck:
             if days >= 0.0:
                 score -= CARD_USAGE_FACTOR * math.exp(-CARD_USAGE_DECAY * days)
         for unit_id in card.unit_ids():
+            if unit_id in self._blocked_units_set:
+                score -= BLOCKED_UNIT_PENALTY
             state = self._rating_states.get(unit_id, default_state)
             if not state.is_touched():
                 score -= UNTOUCHED_PENALTY
@@ -241,6 +270,7 @@ class Deck:
             print(f"No cards found for unit '{unit_id}', showing random card.")
             self.rate(unit, mode, 0)
             unit = random.choice(self._units_with_cards)
+            unit = random.choice(available_units)
             # Limit number of scored cards to improve worst case performance
             cards = self._card_index.cards(unit, limit=1000)
         scored_cards = [
@@ -302,6 +332,8 @@ class Deck:
             current_time = datetime.now().timestamp()
         waiting = 0
         for unit in self._units_with_cards:
+            if unit.id() in self._blocked_units_set:
+                continue
             state = self._rating_states.get(unit.id())
             is_skipped = (
                 self._assume_known is not None
@@ -336,6 +368,7 @@ class Deck:
                 },
                 "difficulty": str(self._difficulty),
                 "modes": [str(m) for m in self._modes],
+                "blocked_units": list(self._blocked_units),
             }
             if self._assume_known is not None:
                 data["assume_known"] = str(self._assume_known)
@@ -365,6 +398,8 @@ class Deck:
             deck._card_id_uses[card_id] = usages
         deck._difficulty = Difficulty(data["difficulty"])
         deck.set_modes([Mode(m) for m in data["modes"]])
+        deck._blocked_units = list(data.get("blocked_units", []))
+        deck._blocked_units_set = set(deck._blocked_units)
         assume_known = data.get("assume_known")
         if assume_known is not None:
             deck._assume_known = Difficulty(assume_known)

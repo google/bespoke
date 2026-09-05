@@ -9,7 +9,7 @@ Before submitting changes to the Python codebase, run the formatters, linters, t
 ```
 uv run ruff format
 uv run ruff check
-uv run -m unittest
+uv run -m unittest -b
 uv run --with=mypy mypy .
 ```
 

@@ -15,6 +15,7 @@
 """Simple user interface for learning."""
 
 import argparse
+from collections.abc import Callable
 import json
 import os
 from pathlib import Path
@@ -121,6 +122,7 @@ class RatingWebApp:
         unit_id: str,
         def_label: ui.label,
         all_buttons: list[tuple[str, ui.button]],
+        on_select: Callable[[str], None],
     ) -> ui.button:
         initial_rating = 0
         self._ratings[unit_id] = initial_rating
@@ -136,8 +138,69 @@ class RatingWebApp:
                     button.props(f"color={COLOR_MAP[rating]}")
 
             def_label.text = self._deck.translated_unit(unit_id)
+            on_select(unit_id)
 
         return btn
+
+    def _show_blocked_dialog(self) -> None:
+        with (
+            ui.dialog() as dialog,
+            ui.card().classes("w-full max-w-md p-4 bg-white dark:bg-zinc-800"),
+        ):
+            with ui.row().classes("w-full justify-between items-center mb-2"):
+                ui.label("Blocked Units").classes("text-lg font-bold readable-text")
+                ui.button(icon="close", on_click=dialog.close).props("flat round dense")
+
+            container = ui.column().classes("w-full gap-2 max-h-96 overflow-y-auto")
+
+            def refresh_list():
+                container.clear()
+                blocked_ids = self._deck.blocked_units()
+                if not blocked_ids:
+                    with container:
+                        ui.label("No blocked units.").classes(
+                            "text-sm text-gray-500 py-4 text-center w-full"
+                        )
+                    return
+                with container:
+                    for unit_id in blocked_ids:
+                        unit = self._target_language.get_by_id(unit_id)
+                        name = unit.name() if unit else unit_id
+                        definition = self._deck.translated_unit(unit_id)
+                        with ui.row().classes(
+                            "w-full justify-between items-center p-2 rounded bg-gray-50 dark:bg-zinc-700"
+                        ):
+                            with ui.column().classes("gap-0"):
+                                ui.label(name).classes(
+                                    "font-semibold readable-text text-sm"
+                                )
+                                if definition:
+                                    ui.label(definition).classes(
+                                        "text-xs text-gray-500 dark:text-gray-400"
+                                    )
+
+                            def make_unblock_handler(uid: str):
+                                def unblock():
+                                    self._deck.unblock_unit(uid)
+                                    threading.Thread(
+                                        target=self._deck.save,
+                                        args=(self._deck_filename,),
+                                        daemon=True,
+                                    ).start()
+                                    refresh_list()
+                                    if not self._on_back:
+                                        self._show_front()
+
+                                return unblock
+
+                            ui.button(
+                                icon="close", on_click=make_unblock_handler(unit_id)
+                            ).props("flat round dense size=sm color=negative").tooltip(
+                                "Unblock unit"
+                            )
+
+            refresh_list()
+            dialog.open()
 
     def _show_front(self) -> None:
         self._on_back = False
@@ -181,10 +244,14 @@ class RatingWebApp:
             waiting = stats["waiting"]
             known = stats["known"]
             mature = stats["mature"]
-            with ui.row().classes("w-full justify-end gap-2 mb-2"):
+            blocked_count = len(self._deck.blocked_units())
+            with ui.row().classes("w-full justify-end items-center gap-2 mb-2"):
                 ui.badge(f"To Do: {waiting}", color="grey").props("outline")
                 ui.badge(f"Known: {known}", color="grey").props("outline")
                 ui.badge(f"Mature: {mature}", color="grey").props("outline")
+                ui.button(
+                    f"Blocked: {blocked_count}", on_click=self._show_blocked_dialog
+                ).props("outline dense size=sm color=grey")
 
             ui.button("Flip", on_click=self._show_back).classes("w-full h-12 text-lg")
 
@@ -220,7 +287,45 @@ class RatingWebApp:
                 "w-full text-center text-sm text-gray-800 dark:text-gray-300 h-6 mt-2"
             )
             all_buttons: list[tuple[str, ui.button]] = []
+            active_unit_id: str | None = None
+            updating_block_switch = False
 
+            def on_block_toggle(e):
+                nonlocal updating_block_switch
+                if updating_block_switch or active_unit_id is None:
+                    return
+                if e.value:
+                    self._deck.block_unit(active_unit_id)
+                else:
+                    self._deck.unblock_unit(active_unit_id)
+                threading.Thread(
+                    target=self._deck.save, args=(self._deck_filename,), daemon=True
+                ).start()
+
+            block_switch: ui.switch | None = None
+
+            def update_block_switch(unit_id: str | None):
+                nonlocal active_unit_id, updating_block_switch
+                active_unit_id = unit_id
+                if block_switch is None:
+                    return
+                if unit_id is None:
+                    block_switch.visible = False
+                    return
+                block_switch.visible = True
+                unit = self._target_language.get_by_id(unit_id)
+                name = unit.name() if unit else unit_id
+                updating_block_switch = True
+                try:
+                    block_switch.text = f"Block '{name}'"
+                    block_switch.value = self._deck.is_blocked(unit_id)
+                finally:
+                    updating_block_switch = False
+
+            def on_word_selected(unit_id: str):
+                update_block_switch(unit_id)
+
+            units_on_card: list[str] = []
             with row_container:
                 for tag in self._card.split_into_parts():
                     if not tag.unit_id:
@@ -228,12 +333,14 @@ class RatingWebApp:
                             "self-center text-lg p-2 readable-text"
                         )
                     else:
+                        units_on_card.append(tag.unit_id)
                         with ui.column().classes("items-center gap-0"):
                             btn = self._create_color_cycling_button(
                                 tag.occurance,
                                 tag.unit_id,
                                 definition_label,
                                 all_buttons,
+                                on_word_selected,
                             )
                             all_buttons.append((tag.unit_id, btn))
                             u = self._target_language.get_by_id(tag.unit_id)
@@ -242,7 +349,7 @@ class RatingWebApp:
 
             # 4. Controls
             ui.separator().classes("my-4")
-            with ui.row().classes("w-full justify-between"):
+            with ui.row().classes("w-full justify-between items-center"):
 
                 def make_all_green():
                     for unit, btn in all_buttons:
@@ -252,9 +359,24 @@ class RatingWebApp:
                 ui.button("All Success", on_click=make_all_green).props(
                     "outline color=positive"
                 )
-                with ui.row().classes("items-center gap-2"):
-                    report_switch = ui.switch()
-                    ui.label("Report Error").classes("gray-text")
+                with ui.row().classes("items-center gap-4"):
+                    block_switch = (
+                        ui.switch(on_change=on_block_toggle)
+                        .props("dense size=sm")
+                        .classes("text-xs text-gray-500 dark:text-gray-400")
+                    )
+                    with ui.row().classes("items-center gap-1"):
+                        report_switch = ui.switch().props("dense size=sm")
+                        ui.label("Report Error").classes(
+                            "text-xs text-gray-500 dark:text-gray-400"
+                        )
+
+            if units_on_card:
+                first_unit_id = units_on_card[0]
+                definition_label.text = self._deck.translated_unit(first_unit_id)
+                update_block_switch(first_unit_id)
+            elif block_switch is not None:
+                block_switch.visible = False
 
             ui.button(
                 "Next", on_click=lambda: self._finalize(report_switch.value)
