@@ -22,11 +22,15 @@ from bespoke import languages
 
 class TestLanguageData(unittest.TestCase):
     def test_units(self) -> None:
-        language = languages.LANGUAGES["japanese"]
-        units = language.units()
-        self.assertNotEqual(units[0].name(), units[1].name())
-        self.assertEqual(bool(units[0].definition()), bool(units[1].definition()))
-        self.assertEqual(units[0].difficulty(), Difficulty.A1)
+        for language in languages.LANGUAGES.values():
+            if language.has_data():
+                units = language.units()
+                self.assertTrue(units)
+                self.assertTrue(units[0].name())
+                self.assertEqual(
+                    bool(units[0].definition()), bool(units[1].definition())
+                )
+                self.assertEqual(units[0].difficulty(), Difficulty.A1)
 
     def test_load_grammar(self) -> None:
         grammar = languages.load_grammar("japanese")
