@@ -258,6 +258,7 @@ class Deck:
         for unit_id in card.unit_ids():
             if unit_id in self._blocked_units_set:
                 score -= BLOCKED_UNIT_PENALTY
+                continue
             state = self._rating_states.get(unit_id, default_state)
             if not state.is_touched():
                 score -= UNTOUCHED_PENALTY
@@ -271,7 +272,7 @@ class Deck:
             if unit_difficulty == self._difficulty:
                 score += DIFFICULTY_MATCH_BONUS
             elif unit_difficulty > self._difficulty:
-                score += DIFFICULTY_PENALTY
+                score -= DIFFICULTY_PENALTY
         return score
 
     def draw(self, current_time: float | None = None) -> tuple[Mode, Card]:
