@@ -302,22 +302,28 @@ class RatingWebApp:
                     target=self._deck.save, args=(self._deck_filename,), daemon=True
                 ).start()
 
+            block_container: ui.row | None = None
             block_switch: ui.switch | None = None
+            block_label: ui.label | None = None
 
             def update_block_switch(unit_id: str | None):
                 nonlocal active_unit_id, updating_block_switch
                 active_unit_id = unit_id
-                if block_switch is None:
+                if (
+                    block_container is None
+                    or block_switch is None
+                    or block_label is None
+                ):
                     return
                 if unit_id is None:
-                    block_switch.visible = False
+                    block_container.visible = False
                     return
-                block_switch.visible = True
+                block_container.visible = True
                 unit = self._target_language.get_by_id(unit_id)
                 name = unit.name() if unit else unit_id
                 updating_block_switch = True
                 try:
-                    block_switch.text = f"Block '{name}'"
+                    block_label.text = f"Block '{name}'"
                     block_switch.value = self._deck.is_blocked(unit_id)
                 finally:
                     updating_block_switch = False
@@ -360,12 +366,18 @@ class RatingWebApp:
                     "outline color=positive"
                 )
                 with ui.row().classes("items-center gap-4"):
-                    block_switch = (
-                        ui.switch(on_change=on_block_toggle)
-                        .props("dense size=sm")
-                        .classes("text-xs text-gray-500 dark:text-gray-400")
-                    )
-                    with ui.row().classes("items-center gap-1"):
+                    with ui.row().classes(
+                        "items-center gap-1 w-36 overflow-hidden flex-nowrap"
+                    ) as block_container:
+                        block_switch = (
+                            ui.switch(on_change=on_block_toggle)
+                            .props("dense size=sm")
+                            .classes("shrink-0")
+                        )
+                        block_label = ui.label("").classes(
+                            "text-xs text-gray-500 dark:text-gray-400 truncate min-w-0"
+                        )
+                    with ui.row().classes("items-center gap-1 flex-nowrap"):
                         report_switch = ui.switch().props("dense size=sm")
                         ui.label("Report Error").classes(
                             "text-xs text-gray-500 dark:text-gray-400"
@@ -375,8 +387,8 @@ class RatingWebApp:
                 first_unit_id = units_on_card[0]
                 definition_label.text = self._deck.translated_unit(first_unit_id)
                 update_block_switch(first_unit_id)
-            elif block_switch is not None:
-                block_switch.visible = False
+            elif block_container is not None:
+                block_container.visible = False
 
             ui.button(
                 "Next", on_click=lambda: self._finalize(report_switch.value)
