@@ -29,28 +29,29 @@ from datetime import datetime
 import json
 import math
 from pathlib import Path
-import pydantic
 import random
 import threading
 from typing import Self
 
+import pydantic
+
 from bespoke.card import Card
 from bespoke.card import CardIndex
-from bespoke.languages import Difficulty
 from bespoke.languages import Language
 from bespoke.languages import LANGUAGES
-from bespoke.urgency import Mode
 from bespoke.unit import DictionaryUnit
+from bespoke.unit import Difficulty
 from bespoke.unit import Unit
-
+from bespoke.urgency import Mode
 from bespoke.urgency import Rating
 from bespoke.urgency import RatingState
 
 TRANSLATIONS_FILE_PATTERN = "translations_{target}_{native}.csv"
-TOUCH_TOLERANCE_FACTOR = 1.0
-TOUCH_TOLERANCE_BUFFER = 10.0
-INTRODUCTION_THRESHOLD = 10.0
-INTRODUCE_OUT_OF_ORDER = False
+SOON_URGENT_INTERVAL = 10.0 * 60
+IMMEDIATE_URGENCY = 0.5
+SOON_URGENT_THRESHOLD = 10
+MIN_DRAW_PROBABILITY = 0.05
+MIN_DRAW_PROBABILITY_SELECTED = 0.2
 # Card scoring constants
 REPORT_PENALTY = 1000000.0
 CARD_USAGE_FACTOR = 1000.0
@@ -86,7 +87,6 @@ class Deck:
         self._blocked_units_set: set[str] = set()
         self._difficulty = Difficulty.A1
         self._modes = list(Mode)
-        self._assume_known: Difficulty | None = None
 
         self._lock = threading.Lock()
         self._translations: dict[str, str] = {}
@@ -138,92 +138,108 @@ class Deck:
     def _choose_task(self, current_time: float) -> tuple[Mode, str]:
         default_state = RatingState([])
 
-        # First loop over units until first unintroduced
+        # Choose an urgent unit to learn
         max_urgency = -1e5
         max_mode = None
         max_unit_id = None
-        introduction_index = 0
-        introduction_mode = None
-        introduction_unit_id = None
-        introduction_is_touched = False
-        for i, unit in enumerate(self._units_with_cards):
-            if unit.id() in self._blocked_units_set:
-                continue
-            state = self._rating_states.get(unit.id(), default_state)
-            is_skipped = (
-                self._assume_known is not None
-                and unit.difficulty() <= self._assume_known
-            )
-            for mode in self._modes:
-                urgency = state.urgency(mode, current_time)
-                if urgency > max_urgency:
-                    max_urgency = urgency
-                    max_mode = mode
-                    max_unit_id = unit.id()
-                if not is_skipped and urgency >= 0.0 and not state.is_introduced(mode):
-                    introduction_index = i
-                    introduction_mode = mode
-                    introduction_unit_id = unit.id()
-                    introduction_is_touched = state.is_touched()
-                    break
-            if introduction_mode is not None:
+        soon_urgent = 0
+        soon_time = current_time + SOON_URGENT_INTERVAL
+        available_difficulties = []
+        for unit in self._units_with_cards:
+            if unit.difficulty() > self._difficulty:
+                # Assumes units are sorted by difficulty
                 break
-        if max_mode is None or max_unit_id is None:
-            raise ValueError("No units found")
-
-        if max_urgency > 0.0:
-            # Case 1: Urgent unit earlier than all new units
-            return max_mode, max_unit_id
-        if introduction_mode is None or introduction_unit_id is None:
-            # Case 2: No new units need to be introduced right now
-            print("Nothing needs to be learned right now")
-            return max_mode, max_unit_id
-
-        # Second loop over units after first unintroduced
-        tolerance = introduction_index * TOUCH_TOLERANCE_FACTOR + TOUCH_TOLERANCE_BUFFER
-        tolerance = max(int(tolerance), 1)
-        tolerance_index = introduction_index + tolerance
-        total_pressure = 0.0
-        max_pressure = 0.0
-        max_pressure_mode = None
-        max_pressure_unit_id = None
-        for i, unit in enumerate(
-            self._units_with_cards[introduction_index:tolerance_index]
-        ):
             if unit.id() in self._blocked_units_set:
                 continue
-            if not self._card_index.size(unit):
+            state = self._rating_states.get(unit.id(), default_state)
+            for mode in self._modes:
+                if not state.is_introduced(mode):
+                    if unit.difficulty() not in available_difficulties:
+                        available_difficulties.append(unit.difficulty())
+                    continue
+                if state.urgency(mode, soon_time) > 0.0:
+                    soon_urgent += 1
+                    # Assumes monotonically increasing urgency
+                    urgency = state.urgency(mode, current_time)
+                    if urgency > max_urgency:
+                        max_urgency = urgency
+                        max_mode = mode
+                        max_unit_id = unit.id()
+        if max_urgency > IMMEDIATE_URGENCY or soon_urgent >= SOON_URGENT_THRESHOLD:
+            assert max_mode is not None
+            assert max_unit_id is not None
+            return max_mode, max_unit_id
+
+        # If nothing needs to be introduced, new difficulty unlocked
+        if not available_difficulties:
+            self._difficulty = self._difficulty.saturating_increase()
+            if self._difficulty not in available_difficulties:
+                available_difficulties.append(self._difficulty)
+
+        # Randomly choose a difficulty for introduction
+        first_greens = {d: 0 for d in available_difficulties}
+        first_reds = {d: 0 for d in available_difficulties}
+        for unit in self._units_with_cards:
+            if unit.difficulty() > self._difficulty:
+                # Assumes units are sorted by difficulty
+                break
+            if unit.id() in self._blocked_units_set:
+                continue
+            if unit.difficulty() not in available_difficulties:
                 continue
             state = self._rating_states.get(unit.id(), default_state)
-            index_factor = 1.0 - i / tolerance
-            assert 0.0 <= index_factor <= 1.0
-            for mode in self._modes:
-                urgency = state.urgency(mode, current_time)
-                if urgency > 0.0:
-                    pressure = urgency * index_factor
-                    total_pressure += pressure
-                    if pressure > max_pressure:
-                        max_pressure = pressure
-                        max_pressure_mode = mode
-                        max_pressure_unit_id = unit.id()
-                elif (
-                    INTRODUCE_OUT_OF_ORDER
-                    and not introduction_is_touched
-                    and state.is_touched()
-                    and not state.is_introduced(mode)
-                ):
-                    introduction_mode = mode
-                    introduction_unit_id = unit.id()
-                    introduction_is_touched = True
+            match state.first_score():
+                case 1 | 2:
+                    first_reds[unit.difficulty()] += 1
+                case 3:
+                    first_greens[unit.difficulty()] += 1
+        probabilities = {}
+        for difficulty in available_difficulties:
+            greens = first_greens[difficulty]
+            reds = first_reds[difficulty]
+            if greens + reds == 0:
+                ratio = 0.0
+            else:
+                ratio = greens / (greens + reds)
+            if difficulty == self._difficulty:
+                min_probability = MIN_DRAW_PROBABILITY_SELECTED
+            else:
+                min_probability = MIN_DRAW_PROBABILITY
+            probabilities[difficulty] = 1.0 - ratio + ratio * min_probability
+        keys = list(probabilities.keys())
+        weights = list(probabilities.values())
+        chosen = random.choices(keys, weights=weights, k=1)[0]
 
-        if total_pressure > INTRODUCTION_THRESHOLD:
-            # Case 3: Prioritze learning over introduction
-            assert max_pressure_mode is not None
-            assert max_pressure_unit_id is not None
-            return max_pressure_mode, max_pressure_unit_id
-        else:
-            # Case 4: Prioritze introduction over learning
-            return introduction_mode, introduction_unit_id
+        # Select the first half-introduced unit, or the first fresh one
+        chosen_mode = None
+        chosen_unit_id = None
+        for unit in self._units_with_cards:
+            # Assumes units are sorted by difficulty, falls back to harder unit
+            if unit.difficulty() < chosen:
+                continue
+            if unit.id() in self._blocked_units_set:
+                continue
+            state = self._rating_states.get(unit.id(), default_state)
+            first_missing_mode = None
+            has_introduced_mode = False
+            for mode in self._modes:
+                if state.is_introduced(mode):
+                    has_introduced_mode = True
+                if state.can_be_introduced(mode, current_time):
+                    first_missing_mode = mode
+                    if chosen_unit_id is None:
+                        chosen_mode = mode
+                        chosen_unit_id = unit.id()
+            if has_introduced_mode and first_missing_mode is not None:
+                return first_missing_mode, unit.id()
+        if chosen_mode is not None:
+            assert chosen_unit_id is not None
+            return chosen_mode, chosen_unit_id
+
+        if max_mode is not None:
+            assert max_unit_id is not None
+            return max_mode, max_unit_id
+        return random.choice(self._modes), random.choice(self._units_with_cards).id()
 
     def _score_card(
         self,
@@ -270,7 +286,6 @@ class Deck:
             print(f"No cards found for unit '{unit_id}', showing random card.")
             self.rate(unit, mode, 0)
             unit = random.choice(self._units_with_cards)
-            unit = random.choice(available_units)
             # Limit number of scored cards to improve worst case performance
             cards = self._card_index.cards(unit, limit=1000)
         scored_cards = [
@@ -323,30 +338,19 @@ class Deck:
                     if state.is_mature(mode):
                         self._mature_unit_modes += 1
 
-    def set_assume_known(self, difficulty: Difficulty | None) -> None:
-        with self._lock:
-            self._assume_known = difficulty
-
     def stats(self, current_time: float | None = None) -> dict[str, int]:
         if current_time is None:
             current_time = datetime.now().timestamp()
         waiting = 0
         for unit in self._units_with_cards:
-            if unit.id() in self._blocked_units_set:
-                continue
+            if unit.difficulty() > self._difficulty:
+                # Assumes units are sorted by difficulty
+                break
             state = self._rating_states.get(unit.id())
-            is_skipped = (
-                self._assume_known is not None
-                and unit.difficulty() <= self._assume_known
-            )
             if state is None:
-                if not is_skipped:
-                    break
                 continue
             if state.is_waiting(self._modes, current_time):
                 waiting += 1
-            if not is_skipped and state.can_be_introduced(self._modes, current_time):
-                break
         return {
             "waiting": waiting,
             "known": self._known_unit_modes // len(self._modes),
@@ -370,8 +374,6 @@ class Deck:
                 "modes": [str(m) for m in self._modes],
                 "blocked_units": list(self._blocked_units),
             }
-            if self._assume_known is not None:
-                data["assume_known"] = str(self._assume_known)
 
         with open(filename, "w", encoding="utf-8") as f:
             json.dump(data, f)
@@ -400,7 +402,4 @@ class Deck:
         deck.set_modes([Mode(m) for m in data["modes"]])
         deck._blocked_units = list(data.get("blocked_units", []))
         deck._blocked_units_set = set(deck._blocked_units)
-        assume_known = data.get("assume_known")
-        if assume_known is not None:
-            deck._assume_known = Difficulty(assume_known)
         return deck

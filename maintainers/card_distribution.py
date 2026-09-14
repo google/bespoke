@@ -19,11 +19,11 @@ import asyncio
 
 from bespoke import Card
 from bespoke import CardIndex
+from bespoke import Deck
 from bespoke import Difficulty
 from bespoke import Language
-from bespoke import Unit
 from bespoke import languages
-from bespoke import Deck
+from bespoke import Unit
 from bespoke.unit import DictionaryUnit
 
 

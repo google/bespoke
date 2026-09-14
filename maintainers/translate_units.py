@@ -20,10 +20,10 @@ import csv
 from pathlib import Path
 
 from bespoke import DictionaryUnit
-from bespoke import Unit
-from bespoke import WordUnit
 from bespoke import languages
 from bespoke import llm
+from bespoke import Unit
+from bespoke import WordUnit
 
 
 MAX_RETRIES = 5

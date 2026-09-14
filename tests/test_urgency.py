@@ -126,15 +126,18 @@ class TestRatingState(unittest.TestCase):
 
     def test_can_be_introduced(self) -> None:
         state = RatingState([])
-        self.assertTrue(state.can_be_introduced(Mode, DAY * 0))
+        self.assertTrue(state.can_be_introduced(Mode.LISTEN, DAY * 0))
         state.add(Rating(mode=Mode.LISTEN, time=DAY * 0, score=0))
-        self.assertFalse(state.can_be_introduced(Mode, DAY * 0 + 1))
-        self.assertTrue(state.can_be_introduced(Mode, DAY * 2))
+        self.assertFalse(state.can_be_introduced(Mode.LISTEN, DAY * 0 + 1))
+        self.assertFalse(state.can_be_introduced(Mode.SPEAK, DAY * 0 + 1))
+        self.assertTrue(state.can_be_introduced(Mode.LISTEN, DAY * 2))
+        self.assertTrue(state.can_be_introduced(Mode.SPEAK, DAY * 2))
         state.add(Rating(mode=Mode.LISTEN, time=DAY * 2, score=3))
-        self.assertTrue(state.can_be_introduced(Mode, DAY * 3))
+        self.assertFalse(state.can_be_introduced(Mode.LISTEN, DAY * 3))
+        self.assertTrue(state.can_be_introduced(Mode.SPEAK, DAY * 3))
         state.add(Rating(mode=Mode.SPEAK, time=DAY * 3, score=3))
-        self.assertTrue(state.can_be_introduced(Mode, DAY * 4))
-        self.assertFalse(state.can_be_introduced([Mode.LISTEN, Mode.SPEAK], DAY * 4))
+        self.assertFalse(state.can_be_introduced(Mode.LISTEN, DAY * 4))
+        self.assertFalse(state.can_be_introduced(Mode.SPEAK, DAY * 4))
 
     def test_stats(self) -> None:
         state = RatingState([])
@@ -148,6 +151,14 @@ class TestRatingState(unittest.TestCase):
         self.assertTrue(state.is_mature(Mode.READ))
         self.assertFalse(state.is_known(Mode.WRITE))
         self.assertFalse(state.is_mature(Mode.WRITE))
+
+    def test_first_score(self) -> None:
+        state = RatingState([])
+        self.assertEqual(state.first_score(), 0)
+        state.add(Rating(mode=Mode.LISTEN, time=DAY * 0, score=3))
+        self.assertEqual(state.first_score(), 3)
+        state.add(Rating(mode=Mode.LISTEN, time=DAY * 1, score=1))
+        self.assertEqual(state.first_score(), 3)
 
 
 if __name__ == "__main__":

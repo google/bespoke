@@ -18,8 +18,8 @@ import unittest
 
 from bespoke import Deck
 from bespoke import Difficulty
-from bespoke import Mode
 from bespoke import languages
+from bespoke import Mode
 from tests import fakes
 
 DAY = 24 * 60 * 60
@@ -51,16 +51,6 @@ class TestDeck(unittest.TestCase):
         _mode, card = deck.draw()
         unit_a1_1 = a1_units[1]
         self.assertEqual(card.unit_ids(), [unit_a1_1.id()])
-
-    def test_assume_known(self) -> None:
-        target = languages.LANGUAGES["japanese"]
-        native = languages.LANGUAGES["english"]
-        index = fakes.FakeCardIndex(target, native)
-        deck = Deck(target, native, index)  # type: ignore
-        deck.set_assume_known(Difficulty.A2)
-        _mode, card = deck.draw()
-        unit = [u for u in target.units() if u.difficulty() == Difficulty.B1][0]
-        self.assertEqual(card.sentence, unit.name())
 
     def test_introduce_first_card(self) -> None:
         target = languages.LANGUAGES["japanese"]
@@ -117,6 +107,7 @@ class TestDeck(unittest.TestCase):
         native = languages.LANGUAGES["english"]
         index = fakes.FakeCardIndex(target, native)
         deck = Deck(target, native, index)  # type: ignore
+        deck.set_difficulty(Difficulty.A1)
 
         units = target.units()[:3]
         _unit1, unit2, unit3 = units
@@ -210,6 +201,50 @@ class TestDeck(unittest.TestCase):
             self.assertTrue(loaded_deck.is_blocked(unit1.id()))
             self.assertTrue(loaded_deck.is_blocked(unit2.id()))
             self.assertEqual(loaded_deck.blocked_units(), [unit2.id(), unit1.id()])
+
+    def test_auto_increase_difficulty(self) -> None:
+        target = fakes.fake_language()
+        native = fakes.fake_language()
+        index = fakes.FakeCardIndex(target, native)
+        deck = Deck(target, native, index)  # type: ignore
+        deck.set_modes([Mode.LISTEN, Mode.SPEAK])
+        deck.set_difficulty(Difficulty.A1)
+        a1_units = [u for u in target.units() if u.difficulty() == Difficulty.A1]
+        for unit in a1_units:
+            deck.rate(unit, Mode.LISTEN, 3, current_time=DAY * 0)
+            deck.rate(unit, Mode.SPEAK, 3, current_time=DAY * 2)
+        _mode, card = deck.draw(current_time=DAY * 3)
+        self.assertEqual(deck._difficulty, Difficulty.A2)
+        drawn_unit = target.get_by_id(card.unit_tags[0].unit_id)
+        self.assertIsNotNone(drawn_unit)
+        assert drawn_unit is not None
+        self.assertEqual(drawn_unit.difficulty(), Difficulty.A2)
+
+    def test_prioritize_partially_introduced_unit(self) -> None:
+        target = languages.LANGUAGES["japanese"]
+        native = languages.LANGUAGES["english"]
+        index = fakes.FakeCardIndex(target, native)
+        deck = Deck(target, native, index)  # type: ignore
+        deck.set_modes([Mode.LISTEN, Mode.SPEAK])
+        unit1, _unit2 = target.units()[:2]
+        deck.rate(unit1, Mode.LISTEN, 3, current_time=0)
+        mode, card = deck.draw(current_time=DAY * 2)
+        self.assertEqual(mode, Mode.SPEAK)
+        self.assertEqual(card.unit_tags[0].unit_id, unit1.id())
+
+    def test_draw_immediate_urgency(self) -> None:
+        target = languages.LANGUAGES["japanese"]
+        native = languages.LANGUAGES["english"]
+        index = fakes.FakeCardIndex(target, native)
+        deck = Deck(target, native, index)  # type: ignore
+        deck.set_modes([Mode.LISTEN, Mode.SPEAK])
+        unit1, _unit2 = target.units()[:2]
+        deck.rate(unit1, Mode.LISTEN, 3, current_time=DAY * 0)
+        deck.rate(unit1, Mode.SPEAK, 3, current_time=DAY * 2)
+        deck.rate(unit1, Mode.LISTEN, 1, current_time=DAY * 10)
+        mode, card = deck.draw(current_time=DAY * 10 + 600)
+        self.assertEqual(mode, Mode.LISTEN)
+        self.assertEqual(card.unit_tags[0].unit_id, unit1.id())
 
 
 if __name__ == "__main__":

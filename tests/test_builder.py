@@ -14,8 +14,8 @@
 
 import unittest
 
-from bespoke import Difficulty
 from bespoke import builder
+from bespoke import Difficulty
 from bespoke import languages
 from tests import fakes
 

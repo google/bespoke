@@ -21,11 +21,12 @@ Change the implementation of these functions while keeping their signature.
 import abc
 import os
 import random
+import typing
 
 import numpy as np
 import pydantic
 import tenacity
-import typing
+
 from bespoke.languages import Language
 from bespoke.unit import DictionaryUnit
 from bespoke.unit import Difficulty

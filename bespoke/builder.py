@@ -23,8 +23,8 @@ from bespoke.card import CardIndex
 from bespoke.languages import Difficulty
 from bespoke.languages import Language
 from bespoke import llm
-from bespoke.unit import Unit
 from bespoke import tagger
+from bespoke.unit import Unit
 
 
 class UnitProducer:

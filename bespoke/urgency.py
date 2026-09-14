@@ -23,6 +23,7 @@ from collections.abc import Iterable
 from datetime import datetime
 from enum import StrEnum
 import math
+
 import pydantic
 
 MINUTE = 60.0
@@ -75,6 +76,7 @@ class RatingState:
         self._green_streak: dict[Mode, float] = {}
         self._block_end = -1e5
         self._is_touched = False
+        self._first_score = 0
         for rating in ratings:
             self.add(rating)
 
@@ -83,6 +85,8 @@ class RatingState:
             print("Warning: Rejecting rating out of order")
             return
         self._ratings.append(rating)
+        if self._first_score == 0:
+            self._first_score = rating.score
         match rating.score:
             case 0:
                 base_block_interval = BLOCK_INTERVAL
@@ -147,6 +151,9 @@ class RatingState:
         # tanh centered around target day
         return math.tanh(deviation)
 
+    def first_score(self) -> int:
+        return self._first_score
+
     def is_touched(self) -> bool:
         return self._is_touched
 
@@ -157,10 +164,10 @@ class RatingState:
         projected_time = current_time + WAITING_PROJECTION
         return any(self.urgency(mode, projected_time) > 0.0 for mode in modes)
 
-    def can_be_introduced(self, modes: Iterable[Mode], current_time: float) -> bool:
+    def can_be_introduced(self, mode: Mode, current_time: float) -> bool:
         if current_time < self._block_end:
             return False
-        return any(not self.is_introduced(mode) for mode in modes)
+        return not self.is_introduced(mode)
 
     def is_known(self, mode: Mode) -> bool:
         return self._green_streak.get(mode, 0.0) > KNOWN_AGE

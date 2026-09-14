@@ -29,14 +29,15 @@ The csv is a table with name, definition and difficulty.
 """
 
 import csv
-
 from pathlib import Path
-import pydantic
 from typing import Self
+
+import pydantic
+
 from bespoke.unit import DictionaryUnit
+from bespoke.unit import Difficulty
 from bespoke.unit import Unit
 from bespoke.unit import WordUnit
-from bespoke.unit import Difficulty
 
 DATA_DIR = Path("languages")
 

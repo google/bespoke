@@ -17,6 +17,8 @@
 from abc import ABC
 from abc import abstractmethod
 from enum import StrEnum
+from typing import Self
+
 import pydantic
 
 
@@ -27,6 +29,12 @@ class Difficulty(StrEnum):
     B2 = "B2"
     C1 = "C1"
     C2 = "C2"
+
+    def saturating_increase(self) -> Self:
+        levels = list(self.__class__)
+        index = levels.index(self)
+        index = min(index + 1, len(levels) - 1)
+        return levels[index]
 
 
 class Unit(ABC):

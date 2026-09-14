@@ -26,12 +26,12 @@ from nicegui import events
 from nicegui import ui
 
 from bespoke import CardIndex
+from bespoke import database
 from bespoke import Deck
 from bespoke import Difficulty
-from bespoke import Mode
 from bespoke import Language
 from bespoke import languages
-from bespoke import database
+from bespoke import Mode
 
 
 COLOR_MAP = {
@@ -481,12 +481,6 @@ def open_deck() -> tuple[Deck, str, Path | None]:
     parser.add_argument(
         "--use_write_mode", action="store_true", help="Enable write mode"
     )
-    parser.add_argument(
-        "--assume_known",
-        type=str,
-        choices=list(difficulties),
-        help="Words of this level (inclusive) are assumed known until failed.",
-    )
     args = parser.parse_args()
 
     target = target_choices[args.target]
@@ -525,7 +519,6 @@ def open_deck() -> tuple[Deck, str, Path | None]:
 
     deck.set_difficulty(difficulty)
     deck.set_modes(modes)
-    deck.set_assume_known(args.assume_known)
 
     return deck, deck_filename, active_db_path
 

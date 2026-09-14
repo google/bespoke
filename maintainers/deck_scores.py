@@ -41,8 +41,6 @@ def show_cards(deck: Deck) -> None:
     )
     modes = [str(m) for m in deck._modes]
     print(f"Selected difficulty {deck._difficulty} and modes {modes}")
-    if deck._assume_known is not None:
-        print(f"Assumes knowledge of {deck._assume_known} vocabulary")
     stats = deck.stats()
     print(f"Waiting: {stats['waiting']}")
     print(f"  Known: {stats['known']}")

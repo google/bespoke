@@ -14,17 +14,18 @@
 
 """Class that represent flash cards."""
 
-import aiofiles  # type: ignore
 import asyncio
 from collections.abc import Iterable
 import hashlib
 import json
-import numpy as np
 import os
 from pathlib import Path
-import pydantic
 import random
 from typing import Self
+
+import aiofiles  # type: ignore
+import numpy as np
+import pydantic
 
 from bespoke import database
 from bespoke.languages import Language

@@ -13,14 +13,15 @@
 # limitations under the License.
 
 import unittest
-from bespoke import Difficulty
+
 from bespoke import DictionaryUnit
+from bespoke import Difficulty
+from bespoke import languages
+from bespoke import tagger
 from bespoke import Unit
 from bespoke import UnitTag
 from bespoke import UnitTags
 from bespoke import WordUnit
-from bespoke import languages
-from bespoke import tagger
 from tests import fakes
 
 

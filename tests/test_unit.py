@@ -16,7 +16,6 @@ import unittest
 
 from bespoke import DictionaryUnit
 from bespoke import Difficulty
-
 from bespoke import WordUnit
 
 
@@ -40,6 +39,14 @@ class TestUnit(unittest.TestCase):
         self.assertEqual(unit.definition(), "test_def")
         self.assertEqual(unit.difficulty(), Difficulty.A1)
         self.assertEqual(str(unit), "test_name - test_def")
+
+    def test_saturating_increase(self) -> None:
+        self.assertEqual(Difficulty.A1.saturating_increase(), Difficulty.A2)
+        self.assertEqual(Difficulty.A2.saturating_increase(), Difficulty.B1)
+        self.assertEqual(Difficulty.B1.saturating_increase(), Difficulty.B2)
+        self.assertEqual(Difficulty.B2.saturating_increase(), Difficulty.C1)
+        self.assertEqual(Difficulty.C1.saturating_increase(), Difficulty.C2)
+        self.assertEqual(Difficulty.C2.saturating_increase(), Difficulty.C2)
 
 
 if __name__ == "__main__":
