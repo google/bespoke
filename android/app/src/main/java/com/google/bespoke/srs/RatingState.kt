@@ -32,6 +32,7 @@ class RatingState(initialRatings: List<Rating> = emptyList()) {
     private val _greenStreak = mutableMapOf<Mode, Double>()
     private var _blockEnd: Double = -1e5
     private var _isTouched: Boolean = false
+    private var _firstScore: Int = 0
 
     init {
         for (rating in initialRatings) {
@@ -45,6 +46,9 @@ class RatingState(initialRatings: List<Rating> = emptyList()) {
             return
         }
         _ratings.add(rating)
+        if (_firstScore == 0) {
+            _firstScore = rating.score
+        }
         val mode = rating.modeEnum
         val baseBlockInterval: Double = when (rating.score) {
             0 -> BLOCK_INTERVAL
@@ -96,6 +100,8 @@ class RatingState(initialRatings: List<Rating> = emptyList()) {
 
     fun ratings(): List<Rating> = _ratings.toList()
 
+    fun firstScore(): Int = _firstScore
+
     fun urgency(mode: Mode, currentTime: Double): Double {
         if (currentTime < _blockEnd) {
             // Blocked
@@ -116,6 +122,11 @@ class RatingState(initialRatings: List<Rating> = emptyList()) {
     fun isWaiting(modes: Iterable<Mode>, currentTime: Double): Boolean {
         val projectedTime = currentTime + WAITING_PROJECTION
         return modes.any { urgency(it, projectedTime) > 0.0 }
+    }
+
+    fun canBeIntroduced(mode: Mode, currentTime: Double): Boolean {
+        if (currentTime < _blockEnd) return false
+        return !isIntroduced(mode)
     }
 
     fun canBeIntroduced(modes: Iterable<Mode>, currentTime: Double): Boolean {

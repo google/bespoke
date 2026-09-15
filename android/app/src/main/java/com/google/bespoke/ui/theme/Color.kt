@@ -7,6 +7,7 @@ val QuasarInfo = Color(0xFF2196F3)      // Rating 0: Blue
 val QuasarPositive = Color(0xFF4CAF50)  // Rating 3: Green
 val QuasarNegative = Color(0xFFF44336)  // Rating 1: Red
 val QuasarWarning = Color(0xFFFF9800)   // Rating 2: Yellow / Orange
+val MutedRed = Color(0xFFE57373)        // Soft muted red for unblock / dismiss actions
 
 // Backgrounds
 val BgLight = Color(0xFFF9FAFB)         // gray-50

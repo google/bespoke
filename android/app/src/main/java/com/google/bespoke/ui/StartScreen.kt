@@ -50,7 +50,7 @@ import java.io.File
 @Composable
 fun StartScreen(
     availableDecks: List<DeckInfo>,
-    onStartDeck: (deckInfo: DeckInfo, difficulty: Difficulty, modes: List<Mode>, assumeKnown: Difficulty?) -> Unit,
+    onStartDeck: (deckInfo: DeckInfo, difficulty: Difficulty, modes: List<Mode>) -> Unit,
     isDarkMode: Boolean = false,
     onToggleDarkMode: ((Boolean) -> Unit)? = null,
     onImportDeck: (suspend (Uri) -> ImportResult)? = null,
@@ -91,10 +91,6 @@ fun StartScreen(
         mutableStateOf(currentDeck?.savedModes?.contains(Mode.WRITE) ?: false)
     }
 
-    var selectedAssumeKnown by remember {
-        mutableStateOf<Difficulty?>(currentDeck?.savedAssumeKnown)
-    }
-
     // Automatically synchronize mode and difficulty when selected deck changes
     LaunchedEffect(currentDeck) {
         currentDeck?.let { deck ->
@@ -103,13 +99,11 @@ fun StartScreen(
             speakMode = deck.savedModes?.contains(Mode.SPEAK) ?: true
             readMode = deck.savedModes?.contains(Mode.READ) ?: false
             writeMode = deck.savedModes?.contains(Mode.WRITE) ?: false
-            selectedAssumeKnown = deck.savedAssumeKnown
             ThemePreferences.setLastSelectedDeckId(context, deck.id)
         }
     }
 
     var deckDropdownExpanded by remember { mutableStateOf(false) }
-    var assumeDropdownExpanded by remember { mutableStateOf(false) }
     var isImporting by remember { mutableStateOf(false) }
     var importStatusMessage by remember { mutableStateOf<String?>(null) }
 
@@ -425,7 +419,7 @@ fun StartScreen(
                     verticalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
                     Text(
-                        text = "Target Difficulty",
+                        text = "Level",
                         fontSize = 15.sp,
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.onSurface
@@ -528,69 +522,7 @@ fun StartScreen(
                 }
             }
 
-            // 4. Assume Known Card
-            Card(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .testTag("AssumeKnownCard"),
-                colors = CardDefaults.cardColors(containerColor = cardBg),
-                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-            ) {
-                Column(
-                    modifier = Modifier.padding(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    Text(
-                        text = "Assume Known",
-                        fontSize = 15.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
-
-                    ExposedDropdownMenuBox(
-                        expanded = assumeDropdownExpanded,
-                        onExpandedChange = { assumeDropdownExpanded = !assumeDropdownExpanded },
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        OutlinedTextField(
-                            value = selectedAssumeKnown?.let { "Up to ${it.value}" } ?: "None",
-                            onValueChange = {},
-                            readOnly = true,
-                            label = { Text("Word Level") },
-                            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = assumeDropdownExpanded) },
-                            modifier = Modifier
-                                .menuAnchor()
-                                .fillMaxWidth()
-                                .testTag("AssumeKnownTextField")
-                        )
-                        ExposedDropdownMenu(
-                            expanded = assumeDropdownExpanded,
-                            onDismissRequest = { assumeDropdownExpanded = false }
-                        ) {
-                            DropdownMenuItem(
-                                text = { Text("None") },
-                                onClick = {
-                                    selectedAssumeKnown = null
-                                    assumeDropdownExpanded = false
-                                },
-                                modifier = Modifier.testTag("AssumeKnownOption_None")
-                            )
-                            Difficulty.entries.filter { it != Difficulty.C2 }.forEach { diff ->
-                                DropdownMenuItem(
-                                    text = { Text("Up to ${diff.value}") },
-                                    onClick = {
-                                        selectedAssumeKnown = diff
-                                        assumeDropdownExpanded = false
-                                    },
-                                    modifier = Modifier.testTag("AssumeKnownOption_${diff.value}")
-                                )
-                            }
-                        }
-                    }
-                }
-            }
-
-            // 5. Start Learning Button
+            // 4. Start Learning Button
             val activeModes = buildList {
                 if (listenMode) add(Mode.LISTEN)
                 if (speakMode) add(Mode.SPEAK)
@@ -602,7 +534,7 @@ fun StartScreen(
             Button(
                 onClick = {
                     if (currentDeck != null && canStart && !isLoading) {
-                        onStartDeck(currentDeck, selectedDifficulty, activeModes, selectedAssumeKnown)
+                        onStartDeck(currentDeck, selectedDifficulty, activeModes)
                     }
                 },
                 enabled = canStart && !isLoading,

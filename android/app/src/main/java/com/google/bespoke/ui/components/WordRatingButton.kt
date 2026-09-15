@@ -1,9 +1,10 @@
 package com.google.bespoke.ui.components
 
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -36,12 +37,14 @@ fun getNextRating(currentScore: Int): Int {
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun WordRatingButton(
     word: String,
     subCaption: String,
     ratingScore: Int,
     onClick: () -> Unit,
+    onLongClick: (() -> Unit)? = null,
     modifier: Modifier = Modifier,
     testTag: String = "WordButton_$word"
 ) {
@@ -54,28 +57,30 @@ fun WordRatingButton(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
-        Button(
-            onClick = onClick,
+        Surface(
             modifier = Modifier
                 .testTag(testTag)
-                .height(44.dp),
+                .height(44.dp)
+                .combinedClickable(
+                    onClick = onClick,
+                    onLongClick = onLongClick
+                ),
             shape = RoundedCornerShape(8.dp),
-            colors = ButtonDefaults.buttonColors(
-                containerColor = buttonBgColor,
-                contentColor = Color.White
-            ),
-            elevation = ButtonDefaults.buttonElevation(
-                defaultElevation = 3.dp,
-                pressedElevation = 6.dp
-            ),
-            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)
+            color = buttonBgColor,
+            shadowElevation = 3.dp
         ) {
-            Text(
-                text = word,
-                fontSize = 16.sp,
-                fontWeight = FontWeight.SemiBold,
-                textAlign = TextAlign.Center
-            )
+            Box(
+                contentAlignment = Alignment.Center,
+                modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
+            ) {
+                Text(
+                    text = word,
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    textAlign = TextAlign.Center,
+                    color = Color.White
+                )
+            }
         }
 
         if (subCaption.isNotEmpty()) {

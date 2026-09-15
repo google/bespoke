@@ -496,10 +496,10 @@ class EngineStressTest {
         // Score card:
         // u_a1 (A1 < B1): no diff bonus
         // u_b1 (B1 == B1): +0.1 match bonus
-        // u_c1 (C1 > B1): +0.1 difficulty penalty
-        // Score = 0.1 + 0.1 = 0.2
+        // u_c1 (C1 > B1): -0.1 difficulty penalty
+        // Score = 0.1 - 0.1 = 0.0
         val score = deck.scoreCard(card, Mode.LISTEN, 100.0)
-        assertEquals(0.2, score, 1e-3)
+        assertEquals(0.0, score, 1e-3)
     }
 
     @Test
@@ -528,7 +528,8 @@ class EngineStressTest {
             unitLookup = units.associateBy { it.id() }
         )
         deck.setDifficulty(Difficulty.C1)
-        deck.setAssumeKnown(Difficulty.B1)
+        deck.blockUnit("unit_0")
+        deck.blockUnit("unit_5")
 
         // Add 500 ratings across units
         var t = 10_000.0
@@ -548,6 +549,10 @@ class EngineStressTest {
             deck.logUsage(card.id, isReported = (i % 10 == 0), currentTime = t)
         }
 
+        // Introduce units[2] and then fail it to create an immediate urgent unit
+        deck.rate(units[2], Mode.LISTEN, 3, currentTime = t + 100.0)
+        deck.rate(units[2], Mode.LISTEN, 1, currentTime = t + 300.0)
+
         val json = deck.saveJson()
         assertNotNull(json)
         assertTrue(json.length > 1000)
@@ -564,20 +569,21 @@ class EngineStressTest {
         restoredDeck.loadJson(json)
 
         assertEquals(deck.getDifficulty(), restoredDeck.getDifficulty())
-        assertEquals(deck.getAssumeKnown(), restoredDeck.getAssumeKnown())
+        assertEquals(deck.blockedUnits(), restoredDeck.blockedUnits())
         assertEquals(deck.getRatingStates().size, restoredDeck.getRatingStates().size)
         assertEquals(deck.getCardUsages().size, restoredDeck.getCardUsages().size)
 
-        // Compare stats
-        val stats1 = deck.stats(t + 1000.0)
-        val stats2 = restoredDeck.stats(t + 1000.0)
+        // Compare stats and draw result after red block interval expires
+        val queryTime = t + 300.0 + RatingState.RED_BLOCK_INTERVAL + 10.0
+        val stats1 = deck.stats(queryTime)
+        val stats2 = restoredDeck.stats(queryTime)
         assertEquals(stats1.waiting, stats2.waiting)
         assertEquals(stats1.known, stats2.known)
         assertEquals(stats1.mature, stats2.mature)
 
         // Compare draw result
-        val (m1, c1) = deck.draw(t + 1000.0)
-        val (m2, c2) = restoredDeck.draw(t + 1000.0)
+        val (m1, c1) = deck.draw(queryTime)
+        val (m2, c2) = restoredDeck.draw(queryTime)
         assertEquals(m1, m2)
         assertEquals(c1.id, c2.id)
     }

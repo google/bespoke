@@ -18,14 +18,16 @@ class DeckEngine(
     val cardProvider: ((unitId: String, limit: Int) -> List<Card>)? = null
 ) {
     companion object {
-        const val TOUCH_TOLERANCE_FACTOR = 1.0
-        const val TOUCH_TOLERANCE_BUFFER = 10.0
-        const val INTRODUCTION_THRESHOLD = 10.0
-        const val INTRODUCE_OUT_OF_ORDER = false
+        const val SOON_URGENT_INTERVAL = 10.0 * 60.0
+        const val IMMEDIATE_URGENCY = 0.5
+        const val SOON_URGENT_THRESHOLD = 10
+        const val MIN_DRAW_PROBABILITY = 0.05
+        const val MIN_DRAW_PROBABILITY_SELECTED = 0.2
 
         const val REPORT_PENALTY = 1000000.0
         const val CARD_USAGE_FACTOR = 1000.0
         const val CARD_USAGE_DECAY = 0.1
+        const val BLOCKED_UNIT_PENALTY = 500.0
         const val UNTOUCHED_PENALTY = 200.0
         const val UNINTRODUCED_PENALTY = 100.0
         const val URGENCY_BONUS = 10.0
@@ -36,9 +38,10 @@ class DeckEngine(
     private val lock = Any()
     private val ratingStates = mutableMapOf<String, RatingState>()
     private val cardIdUses = mutableMapOf<String, MutableList<CardUsage>>()
+    private val blockedUnits = mutableListOf<String>()
+    private val blockedUnitsSet = mutableSetOf<String>()
     private var difficulty = Difficulty.A1
     private var modes = listOf(Mode.LISTEN, Mode.SPEAK)
-    private var assumeKnown: Difficulty? = null
     private var knownUnitModes = 0
     private var matureUnitModes = 0
 
@@ -51,85 +54,176 @@ class DeckEngine(
         return ""
     }
 
+    fun blockUnit(unitId: String) {
+        synchronized(lock) {
+            blockedUnits.remove(unitId)
+            blockedUnits.add(unitId)
+            blockedUnitsSet.add(unitId)
+        }
+    }
+
+    fun unblockUnit(unitId: String) {
+        synchronized(lock) {
+            blockedUnits.remove(unitId)
+            blockedUnitsSet.remove(unitId)
+        }
+    }
+
+    fun isBlocked(unitId: String): Boolean {
+        synchronized(lock) {
+            return blockedUnitsSet.contains(unitId)
+        }
+    }
+
+    fun blockedUnits(): List<String> {
+        synchronized(lock) {
+            return blockedUnits.reversed()
+        }
+    }
+
     fun chooseTask(currentTime: Double): Pair<Mode, String> {
+        if (unitsWithCards.isEmpty()) {
+            throw IllegalStateException("No units found")
+        }
         val defaultState = RatingState()
 
+        // Choose an urgent unit to learn
         var maxUrgency = -1e5
         var maxMode: Mode? = null
         var maxUnitId: String? = null
-        var introductionIndex = 0
-        var introductionMode: Mode? = null
-        var introductionUnitId: String? = null
-        var introductionIsTouched = false
+        var soonUrgent = 0
+        val soonTime = currentTime + SOON_URGENT_INTERVAL
+        val availableDifficulties = mutableListOf<Difficulty>()
 
-        for ((i, unit) in unitsWithCards.withIndex()) {
-            val state = ratingStates[unit.id()] ?: defaultState
-            val isSkipped = assumeKnown != null && unit.difficulty().ordinal <= assumeKnown!!.ordinal
-            for (mode in modes) {
-                val urgency = state.urgency(mode, currentTime)
-                if (urgency > maxUrgency) {
-                    maxUrgency = urgency
-                    maxMode = mode
-                    maxUnitId = unit.id()
-                }
-                if (!isSkipped && urgency >= 0.0 && !state.isIntroduced(mode)) {
-                    introductionIndex = i
-                    introductionMode = mode
-                    introductionUnitId = unit.id()
-                    introductionIsTouched = state.isTouched()
-                    break
-                }
+        for (unit in unitsWithCards) {
+            if (unit.difficulty().ordinal > difficulty.ordinal) {
+                // Assumes units are sorted by difficulty
+                break
             }
-            if (introductionMode != null) break
-        }
-
-        if (maxMode == null || maxUnitId == null) {
-            throw IllegalStateException("No units found")
-        }
-
-        if (maxUrgency > 0.0) {
-            return Pair(maxMode, maxUnitId)
-        }
-        if (introductionMode == null || introductionUnitId == null) {
-            return Pair(maxMode, maxUnitId)
-        }
-
-        val tolerance = max((introductionIndex * TOUCH_TOLERANCE_FACTOR + TOUCH_TOLERANCE_BUFFER).toInt(), 1)
-        val toleranceIndex = minOf(introductionIndex + tolerance, unitsWithCards.size)
-        var totalPressure = 0.0
-        var maxPressure = 0.0
-        var maxPressureMode: Mode? = null
-        var maxPressureUnitId: String? = null
-
-        for (j in 0 until toleranceIndex) {
-            val unit = unitsWithCards[j]
+            if (blockedUnitsSet.contains(unit.id())) {
+                continue
+            }
             val state = ratingStates[unit.id()] ?: defaultState
             for (mode in modes) {
-                val urgency = state.urgency(mode, currentTime)
-                val pressure = max(urgency, 0.0)
-                if (pressure > maxPressure) {
-                    maxPressure = pressure
-                    maxPressureMode = mode
-                    maxPressureUnitId = unit.id()
+                if (!state.isIntroduced(mode)) {
+                    if (!availableDifficulties.contains(unit.difficulty())) {
+                        availableDifficulties.add(unit.difficulty())
+                    }
+                    continue
                 }
-                totalPressure += pressure
-            }
-        }
-
-        if (totalPressure > INTRODUCTION_THRESHOLD) {
-            if (INTRODUCE_OUT_OF_ORDER && !introductionIsTouched) {
-                for (j in 0 until toleranceIndex) {
-                    val unit = unitsWithCards[j]
-                    val state = ratingStates[unit.id()] ?: defaultState
-                    if (!state.isIntroduced(introductionMode) && state.isTouched()) {
-                        return Pair(introductionMode, unit.id())
+                if (state.urgency(mode, soonTime) > 0.0) {
+                    soonUrgent++
+                    val urgency = state.urgency(mode, currentTime)
+                    if (urgency > maxUrgency) {
+                        maxUrgency = urgency
+                        maxMode = mode
+                        maxUnitId = unit.id()
                     }
                 }
             }
-            return Pair(maxPressureMode ?: maxMode, maxPressureUnitId ?: maxUnitId)
-        } else {
-            return Pair(introductionMode, introductionUnitId)
         }
+
+        if (maxUrgency > IMMEDIATE_URGENCY || soonUrgent >= SOON_URGENT_THRESHOLD) {
+            if (maxMode != null && maxUnitId != null) {
+                return Pair(maxMode, maxUnitId)
+            }
+        }
+
+        // If nothing needs to be introduced, new difficulty unlocked
+        if (availableDifficulties.isEmpty()) {
+            difficulty = difficulty.saturatingIncrease()
+            if (!availableDifficulties.contains(difficulty)) {
+                availableDifficulties.add(difficulty)
+            }
+        }
+
+        // Randomly choose a difficulty for introduction
+        val firstGreens = mutableMapOf<Difficulty, Int>()
+        val firstReds = mutableMapOf<Difficulty, Int>()
+        for (d in availableDifficulties) {
+            firstGreens[d] = 0
+            firstReds[d] = 0
+        }
+
+        for (unit in unitsWithCards) {
+            if (unit.difficulty().ordinal > difficulty.ordinal) {
+                break
+            }
+            if (blockedUnitsSet.contains(unit.id())) {
+                continue
+            }
+            if (!availableDifficulties.contains(unit.difficulty())) {
+                continue
+            }
+            val state = ratingStates[unit.id()] ?: defaultState
+            when (state.firstScore()) {
+                1, 2 -> firstReds[unit.difficulty()] = (firstReds[unit.difficulty()] ?: 0) + 1
+                3 -> firstGreens[unit.difficulty()] = (firstGreens[unit.difficulty()] ?: 0) + 1
+            }
+        }
+
+        val probabilities = mutableMapOf<Difficulty, Double>()
+        for (d in availableDifficulties) {
+            val greens = firstGreens[d] ?: 0
+            val reds = firstReds[d] ?: 0
+            val ratio = if (greens + reds == 0) 0.0 else greens.toDouble() / (greens + reds)
+            val minProb = if (d == difficulty) MIN_DRAW_PROBABILITY_SELECTED else MIN_DRAW_PROBABILITY
+            probabilities[d] = 1.0 - ratio + ratio * minProb
+        }
+
+        val keys = probabilities.keys.toList()
+        val weights = probabilities.values.toList()
+        val totalWeight = weights.sum()
+        val randomVal = Math.random() * totalWeight
+        var cumulative = 0.0
+        var chosen = keys.first()
+        for (idx in keys.indices) {
+            cumulative += weights[idx]
+            if (randomVal <= cumulative) {
+                chosen = keys[idx]
+                break
+            }
+        }
+
+        // Select the first half-introduced unit, or the first fresh one
+        var chosenMode: Mode? = null
+        var chosenUnitId: String? = null
+        for (unit in unitsWithCards) {
+            if (unit.difficulty().ordinal < chosen.ordinal) {
+                continue
+            }
+            if (blockedUnitsSet.contains(unit.id())) {
+                continue
+            }
+            val state = ratingStates[unit.id()] ?: defaultState
+            var firstMissingMode: Mode? = null
+            var hasIntroducedMode = false
+            for (mode in modes) {
+                if (state.isIntroduced(mode)) {
+                    hasIntroducedMode = true
+                }
+                if (state.canBeIntroduced(mode, currentTime)) {
+                    firstMissingMode = mode
+                    if (chosenUnitId == null) {
+                        chosenMode = mode
+                        chosenUnitId = unit.id()
+                    }
+                }
+            }
+            if (hasIntroducedMode && firstMissingMode != null) {
+                return Pair(firstMissingMode, unit.id())
+            }
+        }
+
+        if (chosenMode != null && chosenUnitId != null) {
+            return Pair(chosenMode, chosenUnitId)
+        }
+
+        if (maxMode != null && maxUnitId != null) {
+            return Pair(maxMode, maxUnitId)
+        }
+
+        return Pair(modes.random(), unitsWithCards.random().id())
     }
 
     fun scoreCard(card: Card, mode: Mode, currentTime: Double): Double {
@@ -140,13 +234,17 @@ class DeckEngine(
             if (usage.is_reported) {
                 score -= REPORT_PENALTY
             }
-            val days = (currentTime - usage.time) / (60.0 * 60.0 * 24.0)
+            val days = (currentTime - usage.time) / 60.0 / 60.0 / 24.0
             if (days >= 0.0) {
                 score -= CARD_USAGE_FACTOR * exp(-CARD_USAGE_DECAY * days)
             }
         }
 
         for (unitId in card.unitIds()) {
+            if (blockedUnitsSet.contains(unitId)) {
+                score -= BLOCKED_UNIT_PENALTY
+                continue
+            }
             val state = ratingStates[unitId] ?: defaultState
             if (!state.isTouched()) {
                 score -= UNTOUCHED_PENALTY
@@ -162,7 +260,7 @@ class DeckEngine(
             if (unitDiff == difficulty) {
                 score += DIFFICULTY_MATCH_BONUS
             } else if (unitDiff.ordinal > difficulty.ordinal) {
-                score += DIFFICULTY_PENALTY
+                score -= DIFFICULTY_PENALTY
             }
         }
         return score
@@ -249,26 +347,15 @@ class DeckEngine(
 
     fun getModes(): List<Mode> = modes
 
-    fun setAssumeKnown(d: Difficulty?) {
-        synchronized(lock) { assumeKnown = d }
-    }
-
-    fun getAssumeKnown(): Difficulty? = assumeKnown
-
     fun stats(currentTime: Double = System.currentTimeMillis() / 1000.0): DeckStats {
         var waiting = 0
         for (unit in unitsWithCards) {
-            val state = ratingStates[unit.id()]
-            val isSkipped = assumeKnown != null && unit.difficulty().ordinal <= assumeKnown!!.ordinal
-            if (state == null) {
-                if (!isSkipped) break
-                continue
+            if (unit.difficulty().ordinal > difficulty.ordinal) {
+                break
             }
+            val state = ratingStates[unit.id()] ?: continue
             if (state.isWaiting(modes, currentTime)) {
                 waiting++
-            }
-            if (!isSkipped && state.canBeIntroduced(modes, currentTime)) {
-                break
             }
         }
         return DeckStats(
@@ -294,11 +381,9 @@ class DeckEngine(
                 "ratings" to ratingsMap,
                 "card_id_uses" to cardIdUses,
                 "difficulty" to difficulty.value,
-                "modes" to modes.map { it.value }
+                "modes" to modes.map { it.value },
+                "blocked_units" to blockedUnits
             )
-            assumeKnown?.let {
-                data["assume_known"] = it.value
-            }
             return GsonBuilder().setPrettyPrinting().create().toJson(data)
         }
     }
@@ -363,11 +448,15 @@ class DeckEngine(
                 modes = modesList
             }
 
-            val assumeElem = root.get("assume_known")
-            assumeKnown = if (assumeElem != null && !assumeElem.isJsonNull) {
-                Difficulty.fromValue(assumeElem.asString)
-            } else {
-                null
+            blockedUnits.clear()
+            blockedUnitsSet.clear()
+            val blockedElem = root.get("blocked_units")
+            if (blockedElem != null && blockedElem.isJsonArray) {
+                for (elem in blockedElem.asJsonArray) {
+                    val unitId = elem.asString
+                    blockedUnits.add(unitId)
+                    blockedUnitsSet.add(unitId)
+                }
             }
 
             // Recompute stats

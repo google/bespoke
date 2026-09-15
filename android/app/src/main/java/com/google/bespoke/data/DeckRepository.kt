@@ -268,7 +268,6 @@ object DeckRepository {
             val progressFile = getProgressFile(context, target)
             var savedDiff: Difficulty? = null
             var savedModes: List<Mode>? = null
-            var savedAssume: Difficulty? = null
 
             if (progressFile.exists()) {
                 try {
@@ -281,9 +280,6 @@ object DeckRepository {
                         savedModes = root.getAsJsonArray("modes").mapNotNull {
                             Mode.fromValue(it.asString)
                         }
-                    }
-                    if (root.has("assume_known") && !root.get("assume_known").isJsonNull) {
-                        savedAssume = Difficulty.fromValue(root.get("assume_known").asString)
                     }
                 } catch (_: Exception) {}
             }
@@ -307,8 +303,7 @@ object DeckRepository {
                 vocabCount = vocabCount,
                 savedStats = null,
                 savedDifficulty = savedDiff,
-                savedModes = savedModes,
-                savedAssumeKnown = savedAssume
+                savedModes = savedModes
             )
         } catch (e: Exception) {
             Log.e(TAG, "Failed inspecting deck file: ${file.name}", e)
@@ -320,15 +315,13 @@ object DeckRepository {
         context: Context,
         deckInfo: DeckInfo,
         difficulty: Difficulty,
-        modes: List<Mode>,
-        assumeKnown: Difficulty?
+        modes: List<Mode>
     ): Pair<DatasetReader, DeckEngine> {
         val file = deckInfo.file ?: (deckInfo.assetName?.let { copyAssetIfNewer(context, it) } ?: throw IllegalArgumentException("Deck file not found"))
         val (reader, deck) = loadDeckFromDb(file)
         loadProgress(context, deck)
         deck.setDifficulty(difficulty)
         deck.setModes(modes)
-        deck.setAssumeKnown(assumeKnown)
         return Pair(reader, deck)
     }
 

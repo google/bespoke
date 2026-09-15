@@ -21,6 +21,12 @@ enum class Difficulty(val value: String) {
     @SerializedName("C2")
     C2("C2");
 
+    fun saturatingIncrease(): Difficulty {
+        val all = entries
+        val idx = minOf(ordinal + 1, all.size - 1)
+        return all[idx]
+    }
+
     companion object {
         fun fromValue(v: String): Difficulty =
             entries.firstOrNull { it.value.equals(v, ignoreCase = true) } ?: A1

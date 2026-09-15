@@ -124,10 +124,75 @@ class DeckEngineTest {
     }
 
     @Test
-    fun testAssumeKnown() {
-        deck.setAssumeKnown(Difficulty.A2)
-        val (_, card) = deck.draw()
-        assertEquals("unit_b1_0", card.sentence)
+    fun testBlockAndUnblockUnit() {
+        val unit1 = units[0]
+        val unit2 = units[1]
+        val unit3 = units[2]
+        assertFalse(deck.isBlocked(unit1.id()))
+        assertEquals(emptyList<String>(), deck.blockedUnits())
+
+        deck.blockUnit(unit1.id())
+        deck.blockUnit(unit2.id())
+        deck.blockUnit(unit3.id())
+        assertTrue(deck.isBlocked(unit1.id()))
+        assertTrue(deck.isBlocked(unit2.id()))
+        assertTrue(deck.isBlocked(unit3.id()))
+        // Reverse chronological order
+        assertEquals(listOf(unit3.id(), unit2.id(), unit1.id()), deck.blockedUnits())
+
+        deck.unblockUnit(unit2.id())
+        assertFalse(deck.isBlocked(unit2.id()))
+        assertEquals(listOf(unit3.id(), unit1.id()), deck.blockedUnits())
+
+        deck.blockUnit(unit1.id())
+        assertEquals(listOf(unit1.id(), unit3.id()), deck.blockedUnits())
+    }
+
+    @Test
+    fun testDrawSkipsBlockedUnit() {
+        val firstUnit = units[0]
+        val secondUnit = units[1]
+        deck.blockUnit(firstUnit.id())
+        val (_, card) = deck.draw(currentTime = 1.0)
+        assertEquals(secondUnit.id(), card.unit_tags[0].unit_id)
+    }
+
+    @Test
+    fun testAutoIncreaseDifficulty() {
+        deck.setModes(listOf(Mode.LISTEN, Mode.SPEAK))
+        deck.setDifficulty(Difficulty.A1)
+        val a1Units = units.filter { it.difficulty() == Difficulty.A1 }
+        for (unit in a1Units) {
+            deck.rate(unit, Mode.LISTEN, 3, currentTime = DAY * 0)
+            deck.rate(unit, Mode.SPEAK, 3, currentTime = DAY * 2)
+        }
+        val (_, card) = deck.draw(currentTime = DAY * 3)
+        assertEquals(Difficulty.A2, deck.getDifficulty())
+        val drawnUnit = units.firstOrNull { it.id() == card.unit_tags[0].unit_id }
+        assertNotNull(drawnUnit)
+        assertEquals(Difficulty.A2, drawnUnit?.difficulty())
+    }
+
+    @Test
+    fun testPrioritizePartiallyIntroducedUnit() {
+        deck.setModes(listOf(Mode.LISTEN, Mode.SPEAK))
+        val unit1 = units[0]
+        deck.rate(unit1, Mode.LISTEN, 3, currentTime = 0.0)
+        val (mode, card) = deck.draw(currentTime = DAY * 2)
+        assertEquals(Mode.SPEAK, mode)
+        assertEquals(unit1.id(), card.unit_tags[0].unit_id)
+    }
+
+    @Test
+    fun testDrawImmediateUrgency() {
+        deck.setModes(listOf(Mode.LISTEN, Mode.SPEAK))
+        val unit1 = units[0]
+        deck.rate(unit1, Mode.LISTEN, 3, currentTime = DAY * 0)
+        deck.rate(unit1, Mode.SPEAK, 3, currentTime = DAY * 2)
+        deck.rate(unit1, Mode.LISTEN, 1, currentTime = DAY * 10)
+        val (mode, card) = deck.draw(currentTime = DAY * 10 + 600)
+        assertEquals(Mode.LISTEN, mode)
+        assertEquals(unit1.id(), card.unit_tags[0].unit_id)
     }
 
     @Test
@@ -239,6 +304,12 @@ class DeckEngineTest {
         val initialScore = deck.scoreCard(card, Mode.LISTEN, currentTime = 100.0)
         assertEquals(-199.9, initialScore, 1e-3)
 
+        // Blocked unit penalty: -500.0
+        deck.blockUnit(units[0].id())
+        val blockedScore = deck.scoreCard(card, Mode.LISTEN, currentTime = 100.0)
+        assertEquals(-500.0, blockedScore, 1e-3)
+        deck.unblockUnit(units[0].id())
+
         // Add reported usage: -1000000.0
         deck.logUsage(card.id, isReported = true, currentTime = 100.0)
         val reportedScore = deck.scoreCard(card, Mode.LISTEN, currentTime = 100.0)
@@ -251,12 +322,13 @@ class DeckEngineTest {
         deck.rate(unit, Mode.LISTEN, 3, currentTime = 100.0)
         deck.logUsage("card_0", isReported = false, currentTime = 100.0)
         deck.setDifficulty(Difficulty.B2)
-        deck.setAssumeKnown(Difficulty.A2)
+        deck.blockUnit("unit_a1_1")
 
         val json = deck.saveJson()
         assertTrue(json.contains("test_lang"))
         assertTrue(json.contains("unit_a1_0"))
         assertTrue(json.contains("B2"))
+        assertTrue(json.contains("unit_a1_1"))
 
         val newDeck = DeckEngine(
             targetLanguageCode = "test_lang",
@@ -268,8 +340,40 @@ class DeckEngineTest {
         )
         newDeck.loadJson(json)
         assertEquals(Difficulty.B2, newDeck.getDifficulty())
-        assertEquals(Difficulty.A2, newDeck.getAssumeKnown())
+        assertTrue(newDeck.isBlocked("unit_a1_1"))
         assertEquals(1, newDeck.getRatingStates().size)
         assertEquals(1, newDeck.getCardUsages().size)
+    }
+
+    @Test
+    fun testLoadJsonWithoutBlockedUnits() {
+        val jsonWithoutBlocked = """
+            {
+                "target_language": "test_lang",
+                "native_language": "english",
+                "ratings": {},
+                "card_id_uses": {},
+                "difficulty": "B1",
+                "modes": ["listen", "speak"]
+            }
+        """.trimIndent()
+
+        val newDeck = DeckEngine(
+            targetLanguageCode = "test_lang",
+            nativeLanguageCode = "english",
+            unitsWithCards = units,
+            cardsByUnitId = cardsByUnitId,
+            translations = emptyMap(),
+            unitLookup = units.associateBy { it.id() }
+        )
+        newDeck.blockUnit("unit_a1_0")
+        assertEquals(1, newDeck.blockedUnits().size)
+
+        // Loading JSON without blocked_units should cleanly reset blocked units to empty
+        newDeck.loadJson(jsonWithoutBlocked)
+        assertTrue(newDeck.blockedUnits().isEmpty())
+        assertFalse(newDeck.isBlocked("unit_a1_0"))
+        assertEquals(Difficulty.B1, newDeck.getDifficulty())
+        assertEquals(listOf(Mode.LISTEN, Mode.SPEAK), newDeck.getModes())
     }
 }

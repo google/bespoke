@@ -98,8 +98,8 @@ class NavigationFlowComposeTest {
                 } else {
                     StartScreen(
                         availableDecks = listOf(deckInfo),
-                        onStartDeck = { info, diff, modes, assume ->
-                            val (r, e) = DeckRepository.prepareDeck(context, info, diff, modes, assume)
+                        onStartDeck = { info, diff, modes ->
+                            val (r, e) = DeckRepository.prepareDeck(context, info, diff, modes)
                             datasetReader = r
                             engine = e
                             activeSessionInfo = info

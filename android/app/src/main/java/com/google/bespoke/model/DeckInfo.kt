@@ -14,6 +14,5 @@ data class DeckInfo(
     val vocabCount: Int = 0,
     val savedStats: DeckStats? = null,
     val savedDifficulty: Difficulty? = null,
-    val savedModes: List<Mode>? = null,
-    val savedAssumeKnown: Difficulty? = null
+    val savedModes: List<Mode>? = null
 )

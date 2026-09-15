@@ -236,8 +236,10 @@ class LearningScreenComposeTest {
         assertEquals(3, ratings["大学生"])
         assertEquals(3, ratings["学生 - student"])
 
-        // Toggle Report Error switch
-        composeTestRule.onNodeWithTag("ReportErrorSwitch").performScrollTo().performClick()
+        // Toggle Block Card switch
+        composeTestRule.onNodeWithText("Block:").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Card").assertIsDisplayed()
+        composeTestRule.onNodeWithTag("BlockCardSwitch").performScrollTo().performClick()
 
         // Click Next button
         composeTestRule.onNodeWithTag("NextButton").performScrollTo().performClick()
@@ -276,5 +278,81 @@ class LearningScreenComposeTest {
         // 5. Verifies next card is loaded on front view and progress was saved
         composeTestRule.onNodeWithTag("FrontCardView").assertIsDisplayed()
         assertTrue(progressSaved)
+    }
+
+    @Test
+    fun testBlockUnitSwitchAndDialog() {
+        var progressSaved = false
+
+        composeTestRule.setContent {
+            BespokeTheme {
+                LearningScreen(
+                    deckEngine = deck,
+                    datasetReader = reader,
+                    audioPlayer = fakeAudioPlayer,
+                    onSaveProgress = { progressSaved = true }
+                )
+            }
+        }
+
+        // 1. Flip to back
+        composeTestRule.onNodeWithTag("FlipButton").performScrollTo().performClick()
+        composeTestRule.onNodeWithTag("BackCardView").assertIsDisplayed()
+
+        // 2. Verify Block Unit switch is present and toggle it
+        composeTestRule.onNodeWithTag("BlockUnitSwitch").performScrollTo().assertIsDisplayed()
+        composeTestRule.onNodeWithTag("BlockUnitSwitch").performClick()
+        assertTrue(deck.blockedUnits().isNotEmpty())
+        assertTrue(progressSaved)
+
+        // 3. Click Next to go to front view
+        composeTestRule.onNodeWithTag("NextButton").performScrollTo().performClick()
+        composeTestRule.onNodeWithTag("FrontCardView").assertIsDisplayed()
+
+        // 4. Click Blocked badge in DeckStatsRow
+        composeTestRule.onNodeWithTag("BadgeBlocked").performScrollTo().performClick()
+        composeTestRule.onNodeWithTag("BlockedUnitsDialog").assertIsDisplayed()
+
+        // 5. Unblock unit from dialog
+        val blockedId = deck.blockedUnits().first()
+        composeTestRule.onNodeWithTag("UnblockButton_$blockedId").performClick()
+        assertEquals(0, deck.blockedUnits().size)
+
+        // 6. Close dialog
+        composeTestRule.onNodeWithTag("CloseBlockedDialogButton").performClick()
+        composeTestRule.onNodeWithTag("FrontCardView").assertIsDisplayed()
+    }
+
+    @Test
+    fun testBlockedUnitsDialogScrollableWithManyItems() {
+        val manyBlocked = (1..20).map { i ->
+            com.google.bespoke.ui.components.BlockedUnitDisplay(
+                unitId = "unit_$i",
+                name = "Unit Name $i",
+                definition = "Definition for unit $i"
+            )
+        }
+        var unblockedId: String? = null
+
+        composeTestRule.setContent {
+            BespokeTheme {
+                com.google.bespoke.ui.components.BlockedUnitsDialog(
+                    blockedUnits = manyBlocked,
+                    onDismiss = {},
+                    onUnblockUnit = { unblockedId = it }
+                )
+            }
+        }
+
+        // Verify dialog is displayed
+        composeTestRule.onNodeWithTag("BlockedUnitsDialog").assertIsDisplayed()
+
+        // Verify first item is displayed
+        composeTestRule.onNodeWithTag("BlockedUnitItem_unit_1").assertIsDisplayed()
+
+        // Scroll to item 20 and click unblock
+        composeTestRule.onNodeWithTag("BlockedUnitsList").performScrollToIndex(19)
+        composeTestRule.onNodeWithTag("UnblockButton_unit_20").assertIsDisplayed().performClick()
+        assertEquals("unit_20", unblockedId)
     }
 }

@@ -206,7 +206,7 @@ class MainActivity : ComponentActivity() {
                             }
                             result
                         },
-                        onStartDeck = { deckInfo, difficulty, modes, assumeKnown ->
+                        onStartDeck = { deckInfo, difficulty, modes ->
                             if (!isStartingSession) {
                                 isStartingSession = true
                                 audioPlayer?.preWarm()
@@ -222,8 +222,7 @@ class MainActivity : ComponentActivity() {
                                                 this@MainActivity,
                                                 deckInfo,
                                                 difficulty,
-                                                modes,
-                                                assumeKnown
+                                                modes
                                             )
                                         }
                                         activeSession = ActiveLearningSession(reader, engine, deckInfo)

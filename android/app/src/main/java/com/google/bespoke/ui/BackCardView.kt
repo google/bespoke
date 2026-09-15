@@ -7,11 +7,13 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.google.bespoke.model.Card
@@ -34,21 +36,30 @@ fun BackCardView(
     onPlayAudio: (filename: String) -> Unit,
     isPlaying: Boolean = false,
     currentlyPlayingFile: String? = null,
+    isUnitBlocked: (unitId: String) -> Boolean = { false },
+    onToggleBlock: ((unitId: String, isBlocked: Boolean) -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
     val isDark = isDarkTheme()
     val subTextColor = if (isDark) TextGrayDark else TextGrayLight
     val readableTextColor = if (isDark) TextReadableDark else TextReadableLight
 
-    var isErrorReported by remember(card.id) { mutableStateOf(false) }
-    var selectedDefinition by remember(card.id) { mutableStateOf("") }
+    val initialUnitId = card.unitIds().firstOrNull()
+    var activeUnitId by remember(card.id) { mutableStateOf(initialUnitId) }
+    var isCardBlocked by remember(card.id) { mutableStateOf(false) }
+    var selectedDefinition by remember(card.id) {
+        val initialDef = if (initialUnitId != null) {
+            translations[initialUnitId] ?: unitLookup[initialUnitId]?.definition() ?: initialUnitId
+        } else ""
+        mutableStateOf(initialDef)
+    }
 
     Column(
         modifier = modifier
             .fillMaxWidth()
             .testTag("BackCardView"),
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(14.dp)
+        verticalArrangement = Arrangement.spacedBy(10.dp)
     ) {
         // 1. Playback Section (Horizontal neutral buttons: Play, Slow, Native)
         AudioPlayerCard(
@@ -129,6 +140,7 @@ fun BackCardView(
                         subCaption = unitName,
                         ratingScore = currentRating,
                         onClick = {
+                            activeUnitId = tag.unit_id
                             val nextScore = when (currentRating) {
                                 0 -> 3
                                 3 -> 1
@@ -141,6 +153,15 @@ fun BackCardView(
                                 ?: unit?.definition()
                                 ?: tag.unit_id
                             selectedDefinition = definition
+                        },
+                        onLongClick = {
+                            activeUnitId = tag.unit_id
+                            val definition = translations[tag.unit_id]
+                                ?: unit?.definition()
+                                ?: tag.unit_id
+                            selectedDefinition = definition
+                            val currentlyBlocked = isUnitBlocked(tag.unit_id)
+                            onToggleBlock?.invoke(tag.unit_id, !currentlyBlocked)
                         },
                         modifier = Modifier.padding(horizontal = 2.dp)
                     )
@@ -157,17 +178,17 @@ fun BackCardView(
             minLines = 1,
             modifier = Modifier
                 .fillMaxWidth()
-                .heightIn(min = 24.dp)
-                .padding(vertical = 4.dp)
                 .testTag("DefinitionLabel")
         )
 
-        HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
+        HorizontalDivider()
 
-        // 4. Controls: All Success & Report Error
+        // 4. Controls: All Success, Block: Card switch, and Unit switch
         Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
+            modifier = Modifier
+                .fillMaxWidth()
+                .testTag("ControlsRow"),
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             OutlinedButton(
@@ -175,34 +196,90 @@ fun BackCardView(
                 border = BorderStroke(1.dp, QuasarPositive),
                 colors = ButtonDefaults.outlinedButtonColors(contentColor = QuasarPositive),
                 shape = RoundedCornerShape(8.dp),
+                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 6.dp),
                 modifier = Modifier.testTag("AllSuccessButton")
             ) {
-                Text("All Success", fontWeight = FontWeight.SemiBold)
+                Text("All Success", fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
             }
 
+            // Shared "Block:" label
+            Text(
+                text = "Block:",
+                fontSize = 11.sp,
+                fontWeight = FontWeight.SemiBold,
+                color = subTextColor,
+                modifier = Modifier.testTag("BlockSectionLabel")
+            )
+
+            // Middle: Card switch (Naturally wraps content without hardcoded width constraints)
             Row(
+                modifier = Modifier
+                    .wrapContentWidth()
+                    .testTag("BlockCardContainer"),
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                horizontalArrangement = Arrangement.spacedBy(4.dp)
             ) {
                 Switch(
-                    checked = isErrorReported,
-                    onCheckedChange = { isErrorReported = it },
-                    modifier = Modifier.testTag("ReportErrorSwitch")
+                    checked = isCardBlocked,
+                    onCheckedChange = { isCardBlocked = it },
+                    modifier = Modifier
+                        .testTag("BlockCardSwitch")
+                        .testTag("ReportErrorSwitch")
+                        .scale(0.75f)
                 )
                 Text(
-                    text = "Report Error",
-                    fontSize = 14.sp,
-                    color = subTextColor
+                    text = "Card",
+                    fontSize = 12.sp,
+                    color = subTextColor,
+                    maxLines = 1,
+                    softWrap = false,
+                    modifier = Modifier.testTag("BlockCardLabel")
                 )
+            }
+
+            // Right: Unit switch (Takes remaining space and truncates gracefully if too long)
+            if (activeUnitId != null) {
+                val unit = unitLookup[activeUnitId]
+                val unitName = unit?.name() ?: activeUnitId!!
+                val isBlocked = isUnitBlocked(activeUnitId!!)
+                Row(
+                    modifier = Modifier
+                        .weight(1f)
+                        .testTag("BlockUnitContainer"),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    Switch(
+                        checked = isBlocked,
+                        onCheckedChange = { checked ->
+                            onToggleBlock?.invoke(activeUnitId!!, checked)
+                        },
+                        modifier = Modifier
+                            .testTag("BlockUnitSwitch")
+                            .scale(0.75f)
+                    )
+                    Text(
+                        text = "'$unitName'",
+                        fontSize = 12.sp,
+                        color = subTextColor,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier
+                            .weight(1f, fill = false)
+                            .testTag("BlockUnitLabel")
+                    )
+                }
+            } else {
+                Spacer(modifier = Modifier.weight(1f))
             }
         }
 
         // 5. Next Button
         Button(
-            onClick = { onNext(isErrorReported) },
+            onClick = { onNext(isCardBlocked) },
             modifier = Modifier
                 .fillMaxWidth()
-                .height(48.dp)
+                .height(46.dp)
                 .testTag("NextButton"),
             shape = RoundedCornerShape(8.dp),
             colors = ButtonDefaults.buttonColors(
@@ -212,7 +289,7 @@ fun BackCardView(
         ) {
             Text(
                 text = "Next",
-                fontSize = 18.sp,
+                fontSize = 17.sp,
                 fontWeight = FontWeight.Bold
             )
         }

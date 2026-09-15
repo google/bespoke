@@ -17,6 +17,7 @@ import com.google.bespoke.audio.ExoAudioPlayer
 import com.google.bespoke.data.DatasetReader
 import com.google.bespoke.model.*
 import com.google.bespoke.srs.DeckEngine
+import com.google.bespoke.ui.components.*
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -79,8 +80,31 @@ fun LearningScreen(
     var isOnBack by remember { mutableStateOf(false) }
     var stats by remember { mutableStateOf(DeckStats(0, 0, 0)) }
     val ratings = remember { mutableStateMapOf<String, Int>() }
+    var showBlockedDialog by remember { mutableStateOf(false) }
+    var blockedUnitsRevision by remember { mutableIntStateOf(0) }
+    val blockedUnitIds = remember(blockedUnitsRevision) { deckEngine.blockedUnits() }
 
     val coroutineScope = rememberCoroutineScope()
+
+    if (showBlockedDialog) {
+        val blockedList = blockedUnitIds.map { unitId ->
+            val unit = deckEngine.unitLookup[unitId]
+            BlockedUnitDisplay(
+                unitId = unitId,
+                name = unit?.name() ?: unitId,
+                definition = deckEngine.translatedUnit(unitId)
+            )
+        }
+        BlockedUnitsDialog(
+            blockedUnits = blockedList,
+            onDismiss = { showBlockedDialog = false },
+            onUnblockUnit = { uid ->
+                deckEngine.unblockUnit(uid)
+                onSaveProgress?.invoke()
+                blockedUnitsRevision++
+            }
+        )
+    }
 
     fun playAudioFile(filename: String) {
         if (filename.isEmpty()) return
@@ -233,7 +257,9 @@ fun LearningScreen(
                             onFlip = { flipCard() },
                             onPlayAudio = { playAudioFile(it) },
                             isPlaying = isPlaying,
-                            currentlyPlayingFile = currentlyPlayingFile
+                            currentlyPlayingFile = currentlyPlayingFile,
+                            blockedCount = blockedUnitIds.size,
+                            onBlockedClick = { showBlockedDialog = true }
                         )
                     } else {
                         BackCardView(
@@ -255,7 +281,17 @@ fun LearningScreen(
                             },
                             onPlayAudio = { playAudioFile(it) },
                             isPlaying = isPlaying,
-                            currentlyPlayingFile = currentlyPlayingFile
+                            currentlyPlayingFile = currentlyPlayingFile,
+                            isUnitBlocked = { deckEngine.isBlocked(it) },
+                            onToggleBlock = { uid, block ->
+                                if (block) {
+                                    deckEngine.blockUnit(uid)
+                                } else {
+                                    deckEngine.unblockUnit(uid)
+                                }
+                                onSaveProgress?.invoke()
+                                blockedUnitsRevision++
+                            }
                         )
                     }
                 } else {

@@ -37,17 +37,15 @@ class StartScreenComposeTest {
         var startedDeck: DeckInfo? = null
         var startedDifficulty: Difficulty? = null
         var startedModes: List<Mode>? = null
-        var startedAssumeKnown: Difficulty? = null
 
         composeTestRule.setContent {
             BespokeTheme {
                 StartScreen(
                     availableDecks = listOf(sampleDeck),
-                    onStartDeck = { deck, diff, modes, assume ->
+                    onStartDeck = { deck, diff, modes ->
                         startedDeck = deck
                         startedDifficulty = diff
                         startedModes = modes
-                        startedAssumeKnown = assume
                     }
                 )
             }
@@ -61,6 +59,7 @@ class StartScreenComposeTest {
 
         // 2. Verify Difficulty Card and select A2
         composeTestRule.onNodeWithTag("DifficultyCard").performScrollTo().assertIsDisplayed()
+        composeTestRule.onNodeWithText("Level").assertIsDisplayed()
         composeTestRule.onNodeWithTag("DifficultyChip_A2").performScrollTo().performClick()
 
         // 3. Verify Mode chips and toggle Read & Write modes
@@ -80,7 +79,6 @@ class StartScreenComposeTest {
         assertTrue(startedModes!!.contains(Mode.SPEAK))
         assertTrue(startedModes!!.contains(Mode.READ))
         assertTrue(startedModes!!.contains(Mode.WRITE))
-        assertNull(startedAssumeKnown)
     }
 
     @Test
@@ -110,7 +108,7 @@ class StartScreenComposeTest {
             BespokeTheme {
                 StartScreen(
                     availableDecks = listOf(deck1, deck2),
-                    onStartDeck = { deck, _, _, _ ->
+                    onStartDeck = { deck, _, _ ->
                         startedDeck = deck
                     }
                 )

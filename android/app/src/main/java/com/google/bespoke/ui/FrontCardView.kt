@@ -29,6 +29,8 @@ fun FrontCardView(
     onPlayAudio: (filename: String) -> Unit,
     isPlaying: Boolean = false,
     currentlyPlayingFile: String? = null,
+    blockedCount: Int = 0,
+    onBlockedClick: (() -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
     val isDark = isDarkTheme()
@@ -114,7 +116,11 @@ fun FrontCardView(
 
         HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
 
-        DeckStatsRow(stats = stats)
+        DeckStatsRow(
+            stats = stats,
+            blockedCount = blockedCount,
+            onBlockedClick = onBlockedClick
+        )
 
         Button(
             onClick = onFlip,

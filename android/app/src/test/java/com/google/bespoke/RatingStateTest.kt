@@ -165,4 +165,26 @@ class RatingStateTest {
         assertFalse(state.isKnown(Mode.WRITE))
         assertFalse(state.isMature(Mode.WRITE))
     }
+
+    @Test
+    fun testFirstScore() {
+        val state = RatingState()
+        assertEquals(0, state.firstScore())
+        state.add(Rating(mode = "listen", time = DAY * 1, score = 3))
+        assertEquals(3, state.firstScore())
+        state.add(Rating(mode = "listen", time = DAY * 2, score = 1))
+        assertEquals(3, state.firstScore())
+    }
+
+    @Test
+    fun testCanBeIntroducedSingleMode() {
+        val state = RatingState()
+        assertTrue(state.canBeIntroduced(Mode.LISTEN, DAY * 0))
+        state.add(Rating(mode = "listen", time = DAY * 0, score = 0))
+        assertFalse(state.canBeIntroduced(Mode.LISTEN, DAY * 0 + 1))
+        assertTrue(state.canBeIntroduced(Mode.LISTEN, DAY * 2))
+        state.add(Rating(mode = "listen", time = DAY * 2, score = 3))
+        assertFalse(state.canBeIntroduced(Mode.LISTEN, DAY * 3))
+        assertTrue(state.canBeIntroduced(Mode.SPEAK, DAY * 3))
+    }
 }
