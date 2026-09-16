@@ -19,77 +19,17 @@ languages, with the following advantages:
 
 Bespoke is experimental, and we are still learning how to learn better.
 
-## Overview
+## Card creation
 
-The project consists of 2 parts:
+To start learning, you need a dataset of cards, and an app to learn with them.
 
-- The LLM calls to generate the collection of learning cards.
-- A simple frontend that selects and shows cards to the user.
-
-## How to create cards
-
-The commands below run Bespoke with
-[uv](https://docs.astral.sh/uv/getting-started/installation/).
-You can also use a different package manager that can read pyproject.toml.
-
-You may skip the rest of this section if you find your languages in
-[Existing datasets](#existing-datasets).
-
-You need FFmpeg installed and an API key.
-Depending on what keys you export, the model will be chosen.
-You can use:
-
-- `GEMINI_API_KEY`
-- `OPENROUTER_API_KEY` and `ELEVENLABS_API_KEY` (text and speech)
-- `OPENAI_API_KEY`
-
-Example run commands:
-
-```
-apt-get install ffmpeg
-export GEMINI_API_KEY=your_key_here
-uv run create.py --target="Japanese" --native="English"
-```
-
-You can also use other models, see [llm.py](bespoke/llm.py).
-The quality of generated cards varies between providers and models.
-
-## How to start learning
-
-First, you need to either create or import cards for your language.
-From here on, you won't need FFmpeg or your API key anymore.
-Run this command and a tab should open in your web browser:
-
-```
-uv run learn.py --target="Japanese" --native="English" --difficulty=A1 --use_read_mode
-```
-
-After learning your first card, you can keep learning with a simple
-`uv run learn.py`, or use the full command to choose languages, difficulty and
-modes.
-
-Due to browser restrictions, the first card will not autoplay sound.
-All cards after the first will work as expected.
-
-## Supported languages
-
-You can find instructions in [languages.py](bespoke/languages.py) to add
-languages, both as a target for learning and your native language.
-
-For the target parameter above, try:
-
-- "German"
-- "Japanese"
-- "Simplified Chinese"
-- "Traditional Chinese"
-
-## Existing datasets
+### Existing datasets
 
 This collection grows as more cards are generated.
 
 You can download any of the existing datasets automatically using, e.g.:
 
-```
+```sh
 uv run download.py --target="Traditional Chinese" --native="German"
 ```
 
@@ -97,13 +37,13 @@ uv run download.py --target="Traditional Chinese" --native="German"
 | :------------ | :------------- |
 | German → Traditional Chinese | [bespoke-cards-german-tradchinese](https://www.kaggle.com/datasets/google/bespoke-cards-german-tradchinese) |
 | English → German | [bespoke-cards-english-german](https://www.kaggle.com/datasets/google/bespoke-cards-english-german) |
-| Simplified Chinese → German | [bespoke-cards-german-simpchinese](https://www.kaggle.com/datasets/google/bespoke-cards-simpchinese-german) |
+| Simplified Chinese → German | [bespoke-cards-simpchinese-german](https://www.kaggle.com/datasets/google/bespoke-cards-simpchinese-german) |
 
 Alternatively, if you prefer to download manually, you can obtain the `.zip`
 file directly from the links in the table above. Download the dataset into the
 `cards/` directory and extract it:
 
-```
+```sh
 cd cards/
 unzip dataset_filename.zip
 ```
@@ -111,16 +51,57 @@ unzip dataset_filename.zip
 Ensure the `cards/` directory contains `index_trad_chinese_german.json` and
 `trad_chinese_german/`.
 
-## Backups
+Note: We are currently transitioning to a new dataset format that can be used
+with the Android app. The above zip files are exclusively for the Python code.
+
+### Generate your own dataset
+
+If you don't find a dataset that fits your needs, follow the
+[manual for our LLM pipeline](docs/generation.md) to generate your own dataset.
+
+## Learning
+
+Once you have a dataset ready, you can use one of our apps to select and show
+cards for learning. There are two options:
+
+- A Python frontend that opens a browser tab.
+- An Android app.
+
+### Python frontend
+
+You can use [uv](https://docs.astral.sh/uv/getting-started/installation/)
+to run the Python code, for example:
+
+```sh
+uv run learn.py --target="Japanese" --native="English" --difficulty=A1 --use_read_mode
+```
+
+Due to browser restrictions, the first card will not autoplay sound.
+All cards after the first will work as expected.
+
+### Android app
+
+An Android app with the same features as the Python code is under development.
+To build it, see the [developer manual](docs/maintainers.md).
+You can upload a .db file into the app to start learning.
+
+Note: If you upload a dataset into the app, it will make a copy.
+You can save space by deleting the downloaded dataset afterwards.
+
+### Backups
 
 Bespoke does not store or synchronize your data. After cards are generated, it
 runs fully offline. This also means that you are responsible for not losing your
-progress. You may want to regularly copy and save the file `deck_LANGUAGE.json`
+progress. You may want to regularly copy and save the file `deck_<language>.json`
 to a secure location of your choice. To learn on a new device, simply copy the
 file over.
 
-At the time, learning on two devices is therefore discouraged. You would need to
-copy the progress file back and forth.
+The Android app regularly exports the progress into your phone storage.
+You can upload these files on the starting screen of the app on a new phone to
+continue learning.
+
+Currently, learning on two devices simultaneously is discouraged.
+You would need to copy the progress file back and forth.
 
 ## Disclaimer
 

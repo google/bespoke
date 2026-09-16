@@ -56,12 +56,7 @@ def main():
     target_name = target.code_name.replace("_", "")
     native_name = native.code_name.replace("_", "")
 
-    if native_name == "german" and target_name == "simpchinese":
-        # Temporary exception for misnamed Simplified Chinese dataset.
-        dataset = "bespoke-cards-simpchinese-german"
-    else:
-        dataset = f"bespoke-cards-{native_name}-{target_name}"
-
+    dataset = f"bespoke-cards-{native_name}-{target_name}"
     dataset_slug = f"google/{dataset}"
 
     print(f"Downloading dataset {dataset_slug} from Kaggle...")

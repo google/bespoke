@@ -28,14 +28,14 @@ learning modes (Listen, Speak, Read, and Write):
 
 To run the Android unit and Compose tests:
 
-```bash
+```sh
 cd android
 ./gradlew testDebugUnitTest
 ```
 
 Or to run all test tasks:
 
-```bash
+```sh
 cd android
 ./gradlew test
 ```
