@@ -15,7 +15,9 @@ class DeckEngine(
     val cardsByUnitId: Map<String, List<Card>> = emptyMap(),
     val translations: Map<String, String> = emptyMap(),
     val unitLookup: Map<String, UnitItem> = emptyMap(),
-    val cardProvider: ((unitId: String, limit: Int) -> List<Card>)? = null
+    val cardProvider: ((unitId: String, limit: Int) -> List<Card>)? = null,
+    val unitProvider: ((unitId: String) -> UnitItem?)? = null,
+    val translationProvider: ((unitId: String) -> String?)? = null
 ) {
     companion object {
         const val SOON_URGENT_INTERVAL = 10.0 * 60.0
@@ -45,9 +47,14 @@ class DeckEngine(
     private var knownUnitModes = 0
     private var matureUnitModes = 0
 
+    fun getUnit(unitId: String): UnitItem? {
+        return unitLookup[unitId] ?: unitProvider?.invoke(unitId) ?: unitsWithCards.firstOrNull { it.id() == unitId }
+    }
+
     fun translatedUnit(unitId: String): String {
         translations[unitId]?.let { if (it.isNotEmpty()) return it }
-        val unit = unitLookup[unitId]
+        translationProvider?.invoke(unitId)?.let { if (it.isNotEmpty()) return it }
+        val unit = getUnit(unitId)
         if (unit is DictionaryUnit && unit.definition().isNotEmpty()) {
             return unit.definition()
         }
@@ -255,7 +262,7 @@ class DeckEngine(
             if (urgency > 0.0) {
                 score += URGENCY_BONUS * max(urgency, 0.1)
             }
-            val unit = unitLookup[unitId] ?: unitsWithCards.firstOrNull { it.id() == unitId }
+            val unit = getUnit(unitId)
             val unitDiff = unit?.difficulty() ?: Difficulty.A1
             if (unitDiff == difficulty) {
                 score += DIFFICULTY_MATCH_BONUS
@@ -278,7 +285,7 @@ class DeckEngine(
         val (mode, unitId) = chooseTask(currentTime)
         val candidateCards = getCardsForUnit(unitId, 1000)
         val cardsToScore = if (candidateCards.isEmpty()) {
-            rate(unitLookup[unitId] ?: WordUnit(unitId, Difficulty.A1), mode, 0, currentTime)
+            rate(getUnit(unitId) ?: WordUnit(unitId, Difficulty.A1), mode, 0, currentTime)
             val randomUnit = unitsWithCards.randomOrNull()
             if (randomUnit != null) {
                 getCardsForUnit(randomUnit.id(), 1000)

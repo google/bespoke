@@ -124,4 +124,29 @@ class StartScreenComposeTest {
         assertNotNull(startedDeck)
         assertEquals("deck2.db", startedDeck!!.id)
     }
+
+    @Test
+    fun testLogsButtonAndDiagnosticsDialog() {
+        composeTestRule.setContent {
+            BespokeTheme {
+                StartScreen(
+                    availableDecks = emptyList(),
+                    onStartDeck = { _, _, _ -> }
+                )
+            }
+        }
+
+        // Click the Info (Logs) button
+        composeTestRule.onNodeWithTag("LogsButton").performClick()
+
+        // Verify Dialog is displayed with diagnostics header
+        composeTestRule.onNodeWithText("Diagnostics & Crash Logs").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Clear").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Copy").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Close").assertIsDisplayed()
+
+        // Click Close
+        composeTestRule.onNodeWithText("Close").performClick()
+        composeTestRule.onNodeWithText("Diagnostics & Crash Logs").assertDoesNotExist()
+    }
 }

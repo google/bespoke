@@ -18,6 +18,7 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.google.bespoke.audio.ExoAudioPlayer
+import com.google.bespoke.data.CrashLogger
 import com.google.bespoke.data.DatasetReader
 import com.google.bespoke.data.DeckRepository
 import com.google.bespoke.data.ImportResult
@@ -47,20 +48,7 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        val defaultHandler = Thread.getDefaultUncaughtExceptionHandler()
-        Thread.setDefaultUncaughtExceptionHandler { thread, throwable ->
-            try {
-                val trace = android.util.Log.getStackTraceString(throwable)
-                val crashContent = "CRASH on thread ${thread.name}:\n$trace"
-                val crashFileInternal = File(filesDir, "crash.log")
-                crashFileInternal.writeText(crashContent, Charsets.UTF_8)
-                getExternalFilesDir(null)?.let { extDir ->
-                    File(extDir, "crash.log").writeText(crashContent, Charsets.UTF_8)
-                }
-                android.util.Log.e("BespokeCrash", "Uncaught exception", throwable)
-            } catch (_: Exception) {}
-            defaultHandler?.uncaughtException(thread, throwable)
-        }
+        CrashLogger.install(this)
 
         val player = ExoAudioPlayer(this)
         audioPlayer = player
@@ -72,14 +60,7 @@ class MainActivity : ComponentActivity() {
             }
 
             var crashReportText by remember {
-                val internal = File(filesDir, "crash.log")
-                val ext = getExternalFilesDir(null)?.let { File(it, "crash.log") }
-                val content = when {
-                    internal.exists() -> internal.readText(Charsets.UTF_8)
-                    ext?.exists() == true -> ext.readText(Charsets.UTF_8)
-                    else -> null
-                }
-                mutableStateOf(content)
+                mutableStateOf<String?>(CrashLogger.getRawCrashLog(this@MainActivity))
             }
             var isStartingSession by remember { mutableStateOf(false) }
             val coroutineScope = rememberCoroutineScope()
@@ -105,10 +86,6 @@ class MainActivity : ComponentActivity() {
                 if (crashReportText != null) {
                     AlertDialog(
                         onDismissRequest = {
-                            try {
-                                File(filesDir, "crash.log").delete()
-                                getExternalFilesDir(null)?.let { File(it, "crash.log").delete() }
-                            } catch (_: Exception) {}
                             crashReportText = null
                         },
                         title = { Text("App Crash Report") },
@@ -139,16 +116,22 @@ class MainActivity : ComponentActivity() {
                             }
                         },
                         dismissButton = {
-                            TextButton(
-                                onClick = {
-                                    try {
-                                        File(filesDir, "crash.log").delete()
-                                        getExternalFilesDir(null)?.let { File(it, "crash.log").delete() }
-                                    } catch (_: Exception) {}
-                                    crashReportText = null
+                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                TextButton(
+                                    onClick = {
+                                        CrashLogger.clearLogs(this@MainActivity)
+                                        crashReportText = null
+                                    }
+                                ) {
+                                    Text("Clear")
                                 }
-                            ) {
-                                Text("Dismiss")
+                                TextButton(
+                                    onClick = {
+                                        crashReportText = null
+                                    }
+                                ) {
+                                    Text("Dismiss")
+                                }
                             }
                         }
                     )
@@ -179,11 +162,8 @@ class MainActivity : ComponentActivity() {
                                 } catch (e: Throwable) {
                                     val trace = android.util.Log.getStackTraceString(e)
                                     val errorMsg = "Failed on back navigation:\n$trace"
+                                    CrashLogger.logError(this@MainActivity, "MainActivity", "Failed on back navigation", e)
                                     crashReportText = errorMsg
-                                    try {
-                                        File(filesDir, "crash.log").writeText(errorMsg, Charsets.UTF_8)
-                                        getExternalFilesDir(null)?.let { File(it, "crash.log").writeText(errorMsg, Charsets.UTF_8) }
-                                    } catch (_: Exception) {}
                                 } finally {
                                     activeSession = null
                                 }
@@ -229,11 +209,8 @@ class MainActivity : ComponentActivity() {
                                     } catch (e: Throwable) {
                                         val trace = android.util.Log.getStackTraceString(e)
                                         val errorMsg = "Failed to open deck:\n$trace"
+                                        CrashLogger.logError(this@MainActivity, "MainActivity", "Failed to open deck", e)
                                         crashReportText = errorMsg
-                                        try {
-                                            File(filesDir, "crash.log").writeText(errorMsg, Charsets.UTF_8)
-                                            getExternalFilesDir(null)?.let { File(it, "crash.log").writeText(errorMsg, Charsets.UTF_8) }
-                                        } catch (_: Exception) {}
                                     } finally {
                                         isStartingSession = false
                                     }

@@ -35,6 +35,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.google.bespoke.R
+import com.google.bespoke.data.CrashLogger
 import com.google.bespoke.data.ImportResult
 import com.google.bespoke.data.ThemePreferences
 import com.google.bespoke.model.DeckInfo
@@ -145,15 +146,8 @@ fun StartScreen(
     var showLogsDialog by remember { mutableStateOf(false) }
 
     if (showLogsDialog) {
-        val internal = File(context.filesDir, "crash.log")
-        val ext = context.getExternalFilesDir(null)?.let { File(it, "crash.log") }
-        var logContent by remember {
-            val content = when {
-                internal.exists() -> internal.readText(Charsets.UTF_8)
-                ext?.exists() == true -> ext.readText(Charsets.UTF_8)
-                else -> "No crash logs recorded. System is operating normally."
-            }
-            mutableStateOf(content)
+        var logContent by remember(showLogsDialog) {
+            mutableStateOf(CrashLogger.getDiagnosticsAndLogs(context))
         }
 
         AlertDialog(
@@ -189,11 +183,8 @@ fun StartScreen(
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     TextButton(
                         onClick = {
-                            try {
-                                internal.delete()
-                                ext?.delete()
-                                logContent = "Logs cleared."
-                            } catch (_: Exception) {}
+                            CrashLogger.clearLogs(context)
+                            logContent = CrashLogger.getDiagnosticsAndLogs(context)
                         }
                     ) {
                         Text("Clear")

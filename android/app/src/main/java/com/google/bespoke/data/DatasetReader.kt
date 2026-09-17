@@ -25,6 +25,8 @@ class DatasetReader(private val dbFile: File) : Closeable {
     }
     private val gson = Gson()
     private val cardCache = LruCache<String, Card>(256)
+    private val unitCache = LruCache<String, UnitItem>(1024)
+    private val translationCache = LruCache<String, String>(1024)
 
     fun getMetadata(): Map<String, String> {
         val meta = mutableMapOf<String, String>()
@@ -39,6 +41,28 @@ class DatasetReader(private val dbFile: File) : Closeable {
             }
         } catch (_: Exception) {}
         return meta
+    }
+
+    fun getCardCount(): Int {
+        if (!db.isOpen) return 0
+        try {
+            val cursor = db.rawQuery("SELECT count(*) FROM cards", null)
+            cursor.use {
+                if (it.moveToFirst()) return it.getInt(0)
+            }
+        } catch (_: Exception) {}
+        return 0
+    }
+
+    fun getVocabCount(): Int {
+        if (!db.isOpen) return 0
+        try {
+            val cursor = db.rawQuery("SELECT count(*) FROM vocabulary", null)
+            cursor.use {
+                if (it.moveToFirst()) return it.getInt(0)
+            }
+        } catch (_: Exception) {}
+        return 0
     }
 
     fun getCard(cardId: String): Card? {
@@ -107,6 +131,102 @@ class DatasetReader(private val dbFile: File) : Closeable {
             }
         } catch (_: Exception) {}
         return units
+    }
+
+    fun getActiveUnits(): List<UnitItem> {
+        val list = mutableListOf<UnitItem>()
+        if (!db.isOpen) return list
+        try {
+            val query = """
+                SELECT v.id, v.name, v.definition, v.difficulty
+                FROM vocabulary v
+                WHERE v.id IN (SELECT DISTINCT unit_id FROM card_index)
+                ORDER BY CASE v.difficulty
+                    WHEN 'A1' THEN 1
+                    WHEN 'A2' THEN 2
+                    WHEN 'B1' THEN 3
+                    WHEN 'B2' THEN 4
+                    WHEN 'C1' THEN 5
+                    WHEN 'C2' THEN 6
+                    ELSE 7
+                END ASC, v.rowid ASC
+            """.trimIndent()
+            val cursor = db.rawQuery(query, null)
+            cursor.use {
+                while (it.moveToNext()) {
+                    val name = it.getString(1)
+                    val def = if (it.isNull(2)) "" else it.getString(2)
+                    val diff = Difficulty.fromValue(it.getString(3))
+                    val item = if (def.isNotEmpty()) DictionaryUnit(name, def, diff) else WordUnit(name, diff)
+                    list.add(item)
+                    unitCache.put(item.id(), item)
+                }
+            }
+        } catch (_: Exception) {}
+        if (list.isEmpty()) {
+            val vocab = getVocabulary()
+            val activeIds = getUnitsWithCards()
+            return vocab.filter { activeIds.contains(it.id()) }
+        }
+        return list
+    }
+
+    fun getActiveTranslations(): Map<String, String> {
+        val map = mutableMapOf<String, String>()
+        if (!db.isOpen) return map
+        try {
+            val query = """
+                SELECT t.unit_id, t.translation FROM translations t
+                WHERE t.unit_id IN (SELECT DISTINCT unit_id FROM card_index)
+            """.trimIndent()
+            val cursor = db.rawQuery(query, null)
+            cursor.use {
+                while (it.moveToNext()) {
+                    val uid = it.getString(0)
+                    val trans = it.getString(1)
+                    map[uid] = trans
+                    translationCache.put(uid, trans)
+                }
+            }
+        } catch (_: Exception) {}
+        return map
+    }
+
+    fun getUnit(unitId: String): UnitItem? {
+        val cached = unitCache.get(unitId)
+        if (cached != null) return cached
+        if (!db.isOpen) return null
+        try {
+            val cursor = db.rawQuery("SELECT name, definition, difficulty FROM vocabulary WHERE id = ?", arrayOf(unitId))
+            cursor.use {
+                if (it.moveToFirst()) {
+                    val name = it.getString(0)
+                    val def = if (it.isNull(1)) "" else it.getString(1)
+                    val diff = Difficulty.fromValue(it.getString(2))
+                    val item = if (def.isNotEmpty()) DictionaryUnit(name, def, diff) else WordUnit(name, diff)
+                    unitCache.put(unitId, item)
+                    return item
+                }
+            }
+        } catch (_: Exception) {}
+        return null
+    }
+
+    fun getTranslation(unitId: String): String? {
+        val cached = translationCache.get(unitId)
+        if (cached != null) return cached
+        if (!db.isOpen) return null
+        try {
+            val cursor = db.rawQuery("SELECT translation FROM translations WHERE unit_id = ?", arrayOf(unitId))
+            cursor.use {
+                if (it.moveToFirst()) {
+                    val trans = it.getString(0)
+                    translationCache.put(unitId, trans)
+                    return trans
+                }
+            }
+        } catch (_: Exception) {}
+        return null
     }
 
     fun getAudioBlob(filename: String): ByteArray? {
@@ -194,11 +314,9 @@ class DatasetReader(private val dbFile: File) : Closeable {
         val meta = getMetadata()
         val targetLang = meta["target_language"] ?: meta["target"] ?: "target"
         val nativeLang = meta["native_language"] ?: meta["native"] ?: "native"
-        val vocab = getVocabulary()
-        val activeUnitIds = getUnitsWithCards()
-        val unitsWithCards = vocab.filter { activeUnitIds.contains(it.id()) }
-        val unitLookup = vocab.associateBy { it.id() }
-        val translations = getTranslations()
+        val unitsWithCards = getActiveUnits()
+        val unitLookup = unitsWithCards.associateBy { it.id() }
+        val translations = getActiveTranslations()
 
         return DeckEngine(
             targetLanguageCode = targetLang,
@@ -207,7 +325,9 @@ class DatasetReader(private val dbFile: File) : Closeable {
             cardsByUnitId = emptyMap(),
             translations = translations,
             unitLookup = unitLookup,
-            cardProvider = { unitId, limit -> getCardsForUnit(unitId, limit) }
+            cardProvider = { unitId, limit -> getCardsForUnit(unitId, limit) },
+            unitProvider = { unitId -> getUnit(unitId) },
+            translationProvider = { unitId -> getTranslation(unitId) }
         )
     }
 
