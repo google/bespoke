@@ -241,7 +241,7 @@ class E2EPipelineStressTest {
 
             // 2. Create DeckEngine and run simulated learning session
             val deck = reader.createDeckEngine()
-            deck.setModes(listOf(Mode.LISTEN, Mode.SPEAK))
+            deck.setModes(listOf(Mode.LISTEN))
 
             // Initial draw at t=1000.0: should draw c_jp_1 on LISTEN
             val t0 = 1000.0

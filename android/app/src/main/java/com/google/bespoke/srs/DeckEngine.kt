@@ -203,22 +203,15 @@ class DeckEngine(
                 continue
             }
             val state = ratingStates[unit.id()] ?: defaultState
-            var firstMissingMode: Mode? = null
-            var hasIntroducedMode = false
-            for (mode in modes) {
-                if (state.isIntroduced(mode)) {
-                    hasIntroducedMode = true
-                }
-                if (state.canBeIntroduced(mode, currentTime)) {
-                    firstMissingMode = mode
-                    if (chosenUnitId == null) {
-                        chosenMode = mode
-                        chosenUnitId = unit.id()
-                    }
-                }
+            val candidateModes = modes.filter { state.canBeIntroduced(it, currentTime) }
+            val hasIntroducedMode = modes.any { state.isIntroduced(it) }
+
+            if (hasIntroducedMode && candidateModes.isNotEmpty()) {
+                return Pair(candidateModes.random(), unit.id())
             }
-            if (hasIntroducedMode && firstMissingMode != null) {
-                return Pair(firstMissingMode, unit.id())
+            if (candidateModes.isNotEmpty() && chosenUnitId == null) {
+                chosenMode = candidateModes.random()
+                chosenUnitId = unit.id()
             }
         }
 

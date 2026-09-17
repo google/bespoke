@@ -15,8 +15,8 @@
 """Deck class that presents cards and tracks ratings.
 
 Card choice notes:
-- The modes for a new card are introduced in the order they were passed in.
-- Cards you know on the first attempt have special treatment, they get paused.
+- The selected modes for a new card are introduced in random order.
+- Cards you know on the first attempt start with a long interval.
 - Different mode, any score, is treated as blue.
 - Blue (0): Makes a following green act like a blue for some time.
 - Yellow (2): Treated like red
@@ -220,18 +220,17 @@ class Deck:
             if unit.id() in self._blocked_units_set:
                 continue
             state = self._rating_states.get(unit.id(), default_state)
-            first_missing_mode = None
-            has_introduced_mode = False
-            for mode in self._modes:
-                if state.is_introduced(mode):
-                    has_introduced_mode = True
-                if state.can_be_introduced(mode, current_time):
-                    first_missing_mode = mode
-                    if chosen_unit_id is None:
-                        chosen_mode = mode
-                        chosen_unit_id = unit.id()
-            if has_introduced_mode and first_missing_mode is not None:
-                return first_missing_mode, unit.id()
+            candidate_modes = [
+                mode
+                for mode in self._modes
+                if state.can_be_introduced(mode, current_time)
+            ]
+            has_introduced_mode = any(state.is_introduced(mode) for mode in self._modes)
+            if has_introduced_mode and candidate_modes:
+                return random.choice(candidate_modes), unit.id()
+            if candidate_modes and chosen_unit_id is None:
+                chosen_mode = random.choice(candidate_modes)
+                chosen_unit_id = unit.id()
         if chosen_mode is not None:
             assert chosen_unit_id is not None
             return chosen_mode, chosen_unit_id

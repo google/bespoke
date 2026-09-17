@@ -34,7 +34,7 @@ class TestDeck(unittest.TestCase):
         deck.set_modes([Mode.LISTEN, Mode.SPEAK])
         mode, card = deck.draw()
         unit = [u for u in target.units() if u.difficulty() == Difficulty.A1][0]
-        self.assertEqual(mode, Mode.LISTEN)
+        self.assertIn(mode, [Mode.LISTEN, Mode.SPEAK])
         self.assertEqual(card.sentence, unit.name())
 
     def test_rate(self) -> None:

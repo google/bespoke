@@ -109,7 +109,7 @@ class DeckEngineTest {
     fun testDraw() {
         deck.setModes(listOf(Mode.LISTEN, Mode.SPEAK))
         val (mode, card) = deck.draw()
-        assertEquals(Mode.LISTEN, mode)
+        assertTrue(mode == Mode.LISTEN || mode == Mode.SPEAK)
         assertEquals("unit_a1_0", card.sentence)
     }
 

@@ -582,9 +582,8 @@ class EngineStressTest {
         assertEquals(stats1.mature, stats2.mature)
 
         // Compare draw result
-        val (m1, c1) = deck.draw(queryTime)
-        val (m2, c2) = restoredDeck.draw(queryTime)
-        assertEquals(m1, m2)
+        val (_, c1) = deck.draw(queryTime)
+        val (_, c2) = restoredDeck.draw(queryTime)
         assertEquals(c1.id, c2.id)
     }
 }
