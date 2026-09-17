@@ -130,7 +130,9 @@ class DeckEngine(
             }
         }
 
-        if (maxUrgency > IMMEDIATE_URGENCY || soonUrgent >= SOON_URGENT_THRESHOLD) {
+        if (maxUrgency > IMMEDIATE_URGENCY || (
+		soonUrgent >= SOON_URGENT_THRESHOLD && maxUrgency > 0.0
+	)) {
             if (maxMode != null && maxUnitId != null) {
                 return Pair(maxMode, maxUnitId)
             }

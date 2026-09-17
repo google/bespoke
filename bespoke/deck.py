@@ -165,7 +165,9 @@ class Deck:
                         max_urgency = urgency
                         max_mode = mode
                         max_unit_id = unit.id()
-        if max_urgency > IMMEDIATE_URGENCY or soon_urgent >= SOON_URGENT_THRESHOLD:
+        if max_urgency > IMMEDIATE_URGENCY or (
+            soon_urgent >= SOON_URGENT_THRESHOLD and max_urgency > 0.0
+        ):
             assert max_mode is not None
             assert max_unit_id is not None
             return max_mode, max_unit_id
