@@ -30,10 +30,10 @@ fun LearningScreen(
     deckEngine: DeckEngine,
     datasetReader: DatasetReader,
     audioPlayer: AudioPlayer,
+    modifier: Modifier = Modifier,
     onSaveProgress: (() -> Unit)? = null,
     onNavigateBack: (() -> Unit)? = null,
-    deckTitle: String? = null,
-    modifier: Modifier = Modifier
+    @Suppress("UNUSED_PARAMETER") deckTitle: String? = null
 ) {
     var activeAudioJob by remember { mutableStateOf<Job?>(null) }
     var isPlaying by remember { mutableStateOf(false) }

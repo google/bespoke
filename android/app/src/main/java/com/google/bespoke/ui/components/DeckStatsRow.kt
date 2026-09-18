@@ -26,9 +26,9 @@ import com.google.bespoke.ui.theme.*
 @Composable
 fun DeckStatsRow(
     stats: DeckStats,
+    modifier: Modifier = Modifier,
     blockedCount: Int = 0,
-    onBlockedClick: (() -> Unit)? = null,
-    modifier: Modifier = Modifier
+    onBlockedClick: (() -> Unit)? = null
 ) {
     Row(
         modifier = modifier

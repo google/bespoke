@@ -26,7 +26,7 @@ import com.google.bespoke.ui.theme.*
 @Composable
 fun BackCardView(
     card: Card,
-    mode: Mode,
+    @Suppress("UNUSED_PARAMETER") mode: Mode,
     unitLookup: Map<String, UnitItem>,
     translations: Map<String, String>,
     ratings: Map<String, Int>,
@@ -34,11 +34,11 @@ fun BackCardView(
     onAllSuccess: () -> Unit,
     onNext: (isReported: Boolean) -> Unit,
     onPlayAudio: (filename: String) -> Unit,
+    modifier: Modifier = Modifier,
     isPlaying: Boolean = false,
     currentlyPlayingFile: String? = null,
     isUnitBlocked: (unitId: String) -> Boolean = { false },
-    onToggleBlock: ((unitId: String, isBlocked: Boolean) -> Unit)? = null,
-    modifier: Modifier = Modifier
+    onToggleBlock: ((unitId: String, isBlocked: Boolean) -> Unit)? = null
 ) {
     val isDark = isDarkTheme()
     val subTextColor = if (isDark) TextGrayDark else TextGrayLight

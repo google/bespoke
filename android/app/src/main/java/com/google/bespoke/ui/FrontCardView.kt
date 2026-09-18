@@ -27,11 +27,11 @@ fun FrontCardView(
     stats: DeckStats,
     onFlip: () -> Unit,
     onPlayAudio: (filename: String) -> Unit,
+    modifier: Modifier = Modifier,
     isPlaying: Boolean = false,
     currentlyPlayingFile: String? = null,
     blockedCount: Int = 0,
-    onBlockedClick: (() -> Unit)? = null,
-    modifier: Modifier = Modifier
+    onBlockedClick: (() -> Unit)? = null
 ) {
     val isDark = isDarkTheme()
     val promptColor = if (isDark) TextGrayDark else TextGrayLight

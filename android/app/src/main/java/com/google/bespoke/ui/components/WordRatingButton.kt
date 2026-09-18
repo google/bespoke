@@ -44,8 +44,8 @@ fun WordRatingButton(
     subCaption: String,
     ratingScore: Int,
     onClick: () -> Unit,
-    onLongClick: (() -> Unit)? = null,
     modifier: Modifier = Modifier,
+    onLongClick: (() -> Unit)? = null,
     testTag: String = "WordButton_$word"
 ) {
     val isDark = isDarkTheme()

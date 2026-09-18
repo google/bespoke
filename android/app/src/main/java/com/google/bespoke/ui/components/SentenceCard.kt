@@ -24,8 +24,8 @@ import com.google.bespoke.ui.theme.isDarkTheme
 @Composable
 fun SentenceCard(
     text: String,
-    large: Boolean = true,
     modifier: Modifier = Modifier,
+    large: Boolean = true,
     testTag: String = if (large) "LargeSentence" else "SmallSentence"
 ) {
     val isDark = isDarkTheme()

@@ -114,6 +114,22 @@ esac
 
 CLASSPATH=$APP_HOME/gradle/wrapper/gradle-wrapper.jar
 
+# Auto-discover Java 21/17 if JAVA_HOME is not set or points to a non-existent directory
+if [ -z "$JAVA_HOME" ] || [ ! -d "$JAVA_HOME" ]; then
+    for candidate in \
+        "/usr/lib/jvm/java-21-openjdk-amd64" \
+        "/usr/lib/jvm/java-21-openjdk" \
+        "/usr/lib/jvm/java-21" \
+        "/usr/lib/jvm/java-17-openjdk-amd64" \
+        "/usr/lib/jvm/java-17-openjdk" \
+        "/usr/lib/jvm/java-17"
+    do
+        if [ -d "$candidate" ] && [ -x "$candidate/bin/java" ]; then
+            export JAVA_HOME="$candidate"
+            break
+        fi
+    done
+fi
 
 # Determine the Java command to use to start the JVM.
 if [ -n "$JAVA_HOME" ] ; then

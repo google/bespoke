@@ -59,11 +59,23 @@ android {
     }
 
     testOptions {
-
         unitTests {
             isIncludeAndroidResources = true
             isReturnDefaultValues = true
         }
+    }
+
+    lint {
+        abortOnError = true
+        checkReleaseBuilds = false
+        disable += listOf(
+            "GradleDependency",
+            "IconLauncherShape",
+            "ObsoleteSdkInt",
+            "DataExtractionRules",
+            "IconLocation",
+            "MonochromeLauncherIcon"
+        )
     }
 }
 

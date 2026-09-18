@@ -52,11 +52,11 @@ import java.io.File
 fun StartScreen(
     availableDecks: List<DeckInfo>,
     onStartDeck: (deckInfo: DeckInfo, difficulty: Difficulty, modes: List<Mode>) -> Unit,
+    modifier: Modifier = Modifier,
     isDarkMode: Boolean = false,
     onToggleDarkMode: ((Boolean) -> Unit)? = null,
     onImportDeck: (suspend (Uri) -> ImportResult)? = null,
-    isLoading: Boolean = false,
-    modifier: Modifier = Modifier
+    isLoading: Boolean = false
 ) {
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
