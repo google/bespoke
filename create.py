@@ -20,12 +20,8 @@ import shutil
 import sys
 import warnings
 
-from bespoke import CardIndex
-from bespoke import DeckBuilder
-from bespoke import languages
-from bespoke import llm
+from bespoke import CardIndex, DeckBuilder, languages, llm
 from bespoke.unit import Difficulty
-
 
 warnings.filterwarnings("ignore", message=".*is not a valid FinishReason.*")
 

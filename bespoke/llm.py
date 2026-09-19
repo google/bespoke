@@ -28,12 +28,7 @@ import pydantic
 import tenacity
 
 from bespoke.languages import Language
-from bespoke.unit import DictionaryUnit
-from bespoke.unit import Difficulty
-from bespoke.unit import Unit
-from bespoke.unit import UnitTag
-from bespoke.unit import UnitTags
-
+from bespoke.unit import DictionaryUnit, Difficulty, Unit, UnitTag, UnitTags
 
 DIFFICULTY_EXPLANATIONS = {
     Difficulty.A1: "Beginner, understands and uses simple phrases and sentences.",
@@ -438,7 +433,7 @@ class LlmClient(abc.ABC):
 class GeminiLlmClient(LlmClient):
     TEXT_MODEL = "gemini-3.5-flash-lite"
     SPEAK_MODEL = "gemini-3.1-flash-tts-preview"
-    VOICES = [
+    VOICES: typing.ClassVar[list[str]] = [
         "Aoede",
         "Achernar",
         "Achird",
@@ -664,7 +659,7 @@ class GeminiLlmClient(LlmClient):
 class OpenRouterElevenLabsLlmClient(LlmClient):
     TEXT_MODEL = "openrouter/google/gemma-2-9b-it"
     ELEVENLABS_MODEL = "eleven_multilingual_v2"
-    ELEVENLABS_VOICES = [
+    ELEVENLABS_VOICES: typing.ClassVar[list[str]] = [
         "21m00Tcm4TlvDq8ikWAM",  # Rachel
         "AZnzlk1XvdvUeBnXmlld",  # Domi
         "EXAVITQu4vr4xnSDxMaL",  # Bella
@@ -837,7 +832,14 @@ class OpenRouterElevenLabsLlmClient(LlmClient):
 class OpenAiLlmClient(LlmClient):
     TEXT_MODEL = "gpt-4o-mini"
     SPEAK_MODEL = "tts-1"
-    VOICES = ["alloy", "echo", "fable", "onyx", "nova", "shimmer"]
+    VOICES: typing.ClassVar[list[str]] = [
+        "alloy",
+        "echo",
+        "fable",
+        "onyx",
+        "nova",
+        "shimmer",
+    ]
 
     def __init__(self, api_key: str):
         self._api_key = api_key

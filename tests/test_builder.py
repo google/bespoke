@@ -14,9 +14,7 @@
 
 import unittest
 
-from bespoke import builder
-from bespoke import Difficulty
-from bespoke import languages
+from bespoke import Difficulty, builder, languages
 from tests import fakes
 
 
@@ -39,9 +37,7 @@ class TestUnitProducer(unittest.TestCase):
         for u in vocabulary[:-count]:
             unit_producer.register(u, True)
         units, difficulty = unit_producer.draw(count)
-        self.assertEqual(
-            set(u.id() for u in units), set(u.id() for u in vocabulary[-count:])
-        )
+        self.assertEqual({u.id() for u in units}, {u.id() for u in vocabulary[-count:]})
         self.assertEqual(difficulty, Difficulty.A1)
 
     def test_register_all_done(self) -> None:
@@ -68,7 +64,7 @@ class TestSentenceProducer(unittest.IsolatedAsyncioTestCase):
             num_existing_cards=0,
         )
         self.assertFalse(sentence_producer.done())
-        sentences, units, grammar = await sentence_producer.create()
+        sentences, _units, grammar = await sentence_producer.create()
         self.assertEqual(len(sentences), cards_per_call)
         self.assertTrue(grammar)
         self.assertFalse(sentence_producer.done())
@@ -85,8 +81,8 @@ class TestSentenceProducer(unittest.IsolatedAsyncioTestCase):
             cards_per_call=cards_per_call,
             num_existing_cards=0,
         )
-        sentences1, units1, grammar1 = await sentence_producer.create()
-        sentences2, units2, grammar2 = await sentence_producer.create()
+        sentences1, _units1, grammar1 = await sentence_producer.create()
+        sentences2, _units2, grammar2 = await sentence_producer.create()
         self.assertNotEqual(sentences1[0], sentences2[0])
         self.assertNotEqual(grammar1, grammar2)
 

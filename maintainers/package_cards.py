@@ -16,10 +16,8 @@
 
 import argparse
 
+from bespoke import database, languages
 from bespoke.card import CARDS_DIR
-from bespoke import database
-from bespoke import languages
-
 
 CREATE_TABLES_SQL = database.CREATE_TABLES_SQL
 DatasetDB = database.DatasetDB

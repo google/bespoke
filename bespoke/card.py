@@ -15,24 +15,21 @@
 """Class that represent flash cards."""
 
 import asyncio
-from collections.abc import Iterable
 import hashlib
 import json
 import os
-from pathlib import Path
 import random
+from collections.abc import Iterable
+from pathlib import Path
 from typing import Self
 
 import aiofiles  # type: ignore
 import numpy as np
 import pydantic
 
-from bespoke import database
+from bespoke import database, llm
 from bespoke.languages import Language
-from bespoke import llm
-from bespoke.unit import Unit
-from bespoke.unit import UnitTag
-from bespoke.unit import UnitTags
+from bespoke.unit import Unit, UnitTag, UnitTags
 
 CARDS_DIR = Path("cards")
 
@@ -51,7 +48,7 @@ class Card(pydantic.BaseModel):
     model_config = pydantic.ConfigDict(frozen=True)
 
     def unit_ids(self) -> list[str]:
-        return list(set(t.unit_id for t in self.unit_tags if t.unit_id))
+        return list({t.unit_id for t in self.unit_tags if t.unit_id})
 
     @pydantic.model_validator(mode="after")
     def _verify_tags_sorted(self) -> "Card":
@@ -194,7 +191,7 @@ async def _write_ogg(audio: np.ndarray, filename: str, bitrate="16k") -> None:
         stdout=asyncio.subprocess.PIPE,
         stderr=asyncio.subprocess.PIPE,
     )
-    stdout, stderr = await process.communicate(input=audio.tobytes())
+    _stdout, stderr = await process.communicate(input=audio.tobytes())
     if process.returncode != 0:
         print(f"Error writing {filename}: {stderr.decode()}")
 
@@ -233,7 +230,7 @@ async def _read_cards(directory: Path) -> list[Card]:
 def _print_or_write_list(items: Iterable[str], name: str) -> None:
     if not items:
         return
-    items_list = sorted(list(items))
+    items_list = sorted(items)
     count = len(items_list)
     if count <= 100:
         print(name)
@@ -276,7 +273,7 @@ class CardIndex:
             if obj._index:
                 use_def = " - " in next(iter(obj._index.keys()))
                 target_language.initialize(use_definition=use_def)
-        except Exception:
+        except (FileNotFoundError, json.JSONDecodeError, OSError):
             print(f"Unable to open {obj._index_path}, creating empty CardIndex.")
         return obj
 
@@ -415,7 +412,7 @@ class CardIndex:
             if path:
                 try:
                     Path(path).unlink()
-                except Exception as e:
+                except OSError as e:
                     print(f"Error deleting audio {path}: {e}")
         if card.native_audio_filename:
             try:
@@ -427,21 +424,20 @@ class CardIndex:
                 )
                 if not shared:
                     Path(card.native_audio_filename).unlink()
-            except Exception as e:
+            except OSError as e:
                 print(f"Error deleting native audio {card.native_audio_filename}: {e}")
 
         card_json_path = self._card_directory / f"{card_id}.json"
         try:
             card_json_path.unlink()
-        except Exception as e:
+        except OSError as e:
             print(f"Error deleting card JSON {card_json_path}: {e}")
 
         for unit_id in card.unit_ids():
-            if unit_id in self._index:
-                if card_id in self._index[unit_id]:
-                    self._index[unit_id].remove(card_id)
-                    if not self._index[unit_id]:
-                        del self._index[unit_id]
+            if unit_id in self._index and card_id in self._index[unit_id]:
+                self._index[unit_id].remove(card_id)
+                if not self._index[unit_id]:
+                    del self._index[unit_id]
 
     def _add(self, card: Card) -> None:
         for unit in card.unit_ids():
@@ -456,8 +452,10 @@ class CardIndex:
         llm_client: llm.LlmClient,
         sentence: str,
         unit_tags: UnitTags,
-        notes: list[str] = [],
+        notes: list[str] | None = None,
     ) -> Card | None:
+        if notes is None:
+            notes = []
         id = hashlib.sha256(sentence.encode("utf-8")).hexdigest()
         native_sentence = await llm_client.translate(sentence, self._native_language)
         phonetic = await llm_client.to_phonetic(sentence, self._target_language)

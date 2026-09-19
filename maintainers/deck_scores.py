@@ -17,8 +17,7 @@
 import argparse
 import datetime
 
-from bespoke import Deck
-from bespoke import languages
+from bespoke import Deck, languages
 from bespoke.urgency import RatingState
 
 
@@ -29,15 +28,13 @@ def show_ratings(deck: Deck, unit_id: str) -> None:
         print("Ratings:")
         for rating in state.ratings():
             print(str(rating))
-    print("")
+    print()
 
 
 def show_cards(deck: Deck) -> None:
     print(
-        (
-            f"Deck from {deck._target_language.writing_system} "
-            f"to {deck._native_language.writing_system}"
-        )
+        f"Deck from {deck._target_language.writing_system} "
+        f"to {deck._native_language.writing_system}"
     )
     modes = [str(m) for m in deck._modes]
     print(f"Selected difficulty {deck._difficulty} and modes {modes}")
@@ -45,9 +42,9 @@ def show_cards(deck: Deck) -> None:
     print(f"Waiting: {stats['waiting']}")
     print(f"  Known: {stats['known']}")
     print(f" Mature: {stats['mature']}")
-    print("")
+    print()
 
-    current_time = datetime.datetime.now().timestamp()
+    current_time = datetime.datetime.now(datetime.UTC).timestamp()
     mode, unit_id = deck._choose_task(current_time)
     unit_index = None
     for i, u in enumerate(deck._target_language.units()):
@@ -61,7 +58,7 @@ def show_cards(deck: Deck) -> None:
     print(f"   Is waiting: {state.is_waiting(deck._modes, current_time)}")
     print(f"      Urgency: {state.urgency(mode, current_time)}")
     print(f"         Mode: {mode}")
-    print("")
+    print()
 
     unit = deck._target_language.get_by_id(unit_id)
     cards = []
@@ -78,7 +75,7 @@ def show_cards(deck: Deck) -> None:
             reported = " (reported)"
         else:
             reported = ""
-        print((f"Score {score:.1f} - {len(card_usages)}x{reported} for {str(card)}"))
+        print(f"Score {score:.1f} - {len(card_usages)}x{reported} for {card!s}")
 
 
 def main():

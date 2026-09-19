@@ -18,14 +18,17 @@ import argparse
 import asyncio
 import hashlib
 
-from bespoke import CardIndex
-from bespoke import Language
-from bespoke import languages
+import aiofiles  # type: ignore
+
+from bespoke import CardIndex, Language, languages
 
 
 async def filter_index(target: Language, native: Language, input_file: str) -> None:
-    with open(input_file, "r", encoding="utf-8") as f:
-        sentences_to_filter = {line.strip() for line in f if line.strip()}
+    async with aiofiles.open(input_file, "r", encoding="utf-8") as f:
+        content = await f.read()
+        sentences_to_filter = {
+            line.strip() for line in content.splitlines() if line.strip()
+        }
 
     card_index = CardIndex.load(target, native)
     all_cards = await card_index.all_cards()

@@ -17,11 +17,8 @@
 import asyncio
 import unicodedata
 
-from bespoke import languages
-from bespoke import llm
-from bespoke.unit import Unit
-from bespoke.unit import UnitTag
-from bespoke.unit import UnitTags
+from bespoke import languages, llm
+from bespoke.unit import Unit, UnitTag, UnitTags
 
 PUNCTUATION_TO_PRUNE = ("。", "、", "？", "！", ".", ",", "!", "?", ";", ":")
 
@@ -201,7 +198,7 @@ def find_grammar_word_matches(sentence: str) -> list[str]:
 
 def is_punctuation_or_space(char: str) -> bool:
     cat = unicodedata.category(char)
-    return cat.startswith("P") or cat.startswith("Z")
+    return cat.startswith(("P", "Z"))
 
 
 def is_more_than_punctuation(text: str) -> bool:

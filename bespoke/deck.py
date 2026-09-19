@@ -25,26 +25,20 @@ Card choice notes:
 """
 
 import csv
-from datetime import datetime
 import json
 import math
-from pathlib import Path
 import random
 import threading
+from datetime import UTC, datetime
+from pathlib import Path
 from typing import Self
 
 import pydantic
 
-from bespoke.card import Card
-from bespoke.card import CardIndex
-from bespoke.languages import Language
-from bespoke.languages import LANGUAGES
-from bespoke.unit import DictionaryUnit
-from bespoke.unit import Difficulty
-from bespoke.unit import Unit
-from bespoke.urgency import Mode
-from bespoke.urgency import Rating
-from bespoke.urgency import RatingState
+from bespoke.card import Card, CardIndex
+from bespoke.languages import LANGUAGES, Language
+from bespoke.unit import DictionaryUnit, Difficulty, Unit
+from bespoke.urgency import Mode, Rating, RatingState
 
 TRANSLATIONS_FILE_PATTERN = "translations_{target}_{native}.csv"
 SOON_URGENT_INTERVAL = 10.0 * 60
@@ -278,7 +272,7 @@ class Deck:
 
     def draw(self, current_time: float | None = None) -> tuple[Mode, Card]:
         if current_time is None:
-            current_time = datetime.now().timestamp()
+            current_time = datetime.now(UTC).timestamp()
         mode, unit_id = self._choose_task(current_time)
         unit = self._target_language.get_by_id(unit_id)
         if unit is None:
@@ -300,7 +294,7 @@ class Deck:
         self, unit: Unit, mode: Mode, score: int, current_time: float | None = None
     ) -> None:
         if current_time is None:
-            current_time = datetime.now().timestamp()
+            current_time = datetime.now(UTC).timestamp()
         with self._lock:
             rating = Rating(mode=mode, time=current_time, score=score)
             rating_state = self._rating_states.get(unit.id(), RatingState([]))
@@ -317,7 +311,7 @@ class Deck:
         self, card_id: str, is_reported: bool = False, current_time: float | None = None
     ) -> None:
         if current_time is None:
-            current_time = datetime.now().timestamp()
+            current_time = datetime.now(UTC).timestamp()
         with self._lock:
             usages = self._card_id_uses.get(card_id, [])
             usage = CardUsage(time=current_time, is_reported=is_reported)
@@ -342,7 +336,7 @@ class Deck:
 
     def stats(self, current_time: float | None = None) -> dict[str, int]:
         if current_time is None:
-            current_time = datetime.now().timestamp()
+            current_time = datetime.now(UTC).timestamp()
         waiting = 0
         for unit in self._units_with_cards:
             if unit.difficulty() > self._difficulty:
@@ -365,11 +359,11 @@ class Deck:
                 "target_language": self._target_language.code_name,
                 "native_language": self._native_language.code_name,
                 "ratings": {
-                    key: list(rating.model_dump() for rating in state.ratings())
+                    key: [rating.model_dump() for rating in state.ratings()]
                     for key, state in self._rating_states.items()
                 },
                 "card_id_uses": {
-                    key: list(usage.model_dump() for usage in usages)
+                    key: [usage.model_dump() for usage in usages]
                     for key, usages in self._card_id_uses.items()
                 },
                 "difficulty": str(self._difficulty),
@@ -394,11 +388,11 @@ class Deck:
             card_index = CardIndex.load(target_language, native_language)
         deck = cls(target_language, native_language, card_index)
         for unit_id, ratings_data in data["ratings"].items():
-            ratings = list(Rating.model_validate(r) for r in ratings_data)
+            ratings = [Rating.model_validate(r) for r in ratings_data]
             rating_state = RatingState(ratings)
             deck._rating_states[unit_id] = rating_state
         for card_id, usage_data in data["card_id_uses"].items():
-            usages = list(CardUsage.model_validate(u) for u in usage_data)
+            usages = [CardUsage.model_validate(u) for u in usage_data]
             deck._card_id_uses[card_id] = usages
         deck._difficulty = Difficulty(data["difficulty"])
         deck.set_modes([Mode(m) for m in data["modes"]])

@@ -15,8 +15,7 @@
 import unittest
 
 from bespoke import Mode
-from bespoke.urgency import Rating
-from bespoke.urgency import RatingState
+from bespoke.urgency import Rating, RatingState
 
 DAY = 24 * 60 * 60
 

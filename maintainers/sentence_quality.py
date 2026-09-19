@@ -17,12 +17,7 @@
 import argparse
 import asyncio
 
-from bespoke import Difficulty
-from bespoke import Language
-from bespoke import builder
-from bespoke import languages
-from bespoke import llm
-from bespoke import tagger
+from bespoke import Difficulty, Language, builder, languages, llm, tagger
 
 
 async def tag_and_format(

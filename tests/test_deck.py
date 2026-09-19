@@ -12,14 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from pathlib import Path
 import tempfile
 import unittest
+from pathlib import Path
 
-from bespoke import Deck
-from bespoke import Difficulty
-from bespoke import languages
-from bespoke import Mode
+from bespoke import Deck, Difficulty, Mode, languages
 from tests import fakes
 
 DAY = 24 * 60 * 60
@@ -33,7 +30,7 @@ class TestDeck(unittest.TestCase):
         deck = Deck(target, native, index)  # type: ignore
         deck.set_modes([Mode.LISTEN, Mode.SPEAK])
         mode, card = deck.draw()
-        unit = [u for u in target.units() if u.difficulty() == Difficulty.A1][0]
+        unit = next(u for u in target.units() if u.difficulty() == Difficulty.A1)
         self.assertIn(mode, [Mode.LISTEN, Mode.SPEAK])
         self.assertEqual(card.sentence, unit.name())
 

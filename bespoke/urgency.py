@@ -19,10 +19,10 @@ We decided against it for simplicity.
 It shouldn't appear, and is treated as No / Red / 1 if it does.
 """
 
-from collections.abc import Iterable
-from datetime import datetime
-from enum import StrEnum
 import math
+from collections.abc import Iterable
+from datetime import UTC, datetime
+from enum import StrEnum
 
 import pydantic
 
@@ -61,8 +61,8 @@ class Rating(pydantic.BaseModel):
     model_config = pydantic.ConfigDict(frozen=True)
 
     def __str__(self) -> str:
-        iso_time = datetime.fromtimestamp(self.time).isoformat()
-        return f"{iso_time}: {str(self.mode)} -> {self.score}"
+        iso_time = datetime.fromtimestamp(self.time, tz=UTC).isoformat()
+        return f"{iso_time}: {self.mode!s} -> {self.score}"
 
 
 class RatingState:

@@ -34,10 +34,7 @@ from typing import Self
 
 import pydantic
 
-from bespoke.unit import DictionaryUnit
-from bespoke.unit import Difficulty
-from bespoke.unit import Unit
-from bespoke.unit import WordUnit
+from bespoke.unit import DictionaryUnit, Difficulty, Unit, WordUnit
 
 DATA_DIR = Path("languages")
 

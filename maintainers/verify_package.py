@@ -15,11 +15,11 @@
 """Tool to verify the integrity and completeness of a packaged dataset."""
 
 import argparse
-from pathlib import Path
+import sqlite3
 import sys
+from pathlib import Path
 
 from bespoke import database
-
 
 EXPECTED_TABLES = database.EXPECTED_TABLES
 load_metadata_from_db = database.load_metadata_from_db
@@ -53,7 +53,7 @@ def main():
         print(f"Cards count     : {meta.get('card_count', 'N/A')}")
         print(f"Audio count     : {meta.get('audio_count', 'N/A')}")
         print(f"Vocabulary count: {meta.get('vocabulary_count', 'N/A')}")
-    except Exception as e:
+    except (sqlite3.Error, OSError) as e:
         print(f"Warning: could not read metadata: {e}")
 
     valid = database.verify_dataset_db(db_path)

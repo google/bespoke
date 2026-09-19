@@ -14,19 +14,15 @@
 
 import csv
 import json
-from pathlib import Path
 import sqlite3
 import tempfile
 import unittest
+from pathlib import Path
 
-from bespoke.card import Card
 from bespoke import database
-from bespoke.languages import Difficulty
-from bespoke.languages import Language
-from bespoke.languages import LANGUAGES
-from bespoke.unit import DictionaryUnit
-from bespoke.unit import UnitTag
-from bespoke.unit import WordUnit
+from bespoke.card import Card
+from bespoke.languages import LANGUAGES, Difficulty, Language
+from bespoke.unit import DictionaryUnit, UnitTag, WordUnit
 
 
 class TestDatabase(unittest.TestCase):

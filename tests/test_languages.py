@@ -14,10 +14,7 @@
 
 import unittest
 
-from bespoke import DictionaryUnit
-from bespoke import Difficulty
-from bespoke import Language
-from bespoke import languages
+from bespoke import DictionaryUnit, Difficulty, Language, languages
 
 
 class TestLanguageData(unittest.TestCase):

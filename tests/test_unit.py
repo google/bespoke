@@ -14,9 +14,7 @@
 
 import unittest
 
-from bespoke import DictionaryUnit
-from bespoke import Difficulty
-from bespoke import WordUnit
+from bespoke import DictionaryUnit, Difficulty, WordUnit
 
 
 class TestUnit(unittest.TestCase):

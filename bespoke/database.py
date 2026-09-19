@@ -17,17 +17,17 @@
 from __future__ import annotations
 
 import csv
-from datetime import datetime
-from datetime import timezone
 import json
 import logging
-from pathlib import Path
 import sqlite3
-from typing import Any
+import types
+from datetime import UTC, datetime
+from pathlib import Path
+from typing import Self
 
-from bespoke import card
-from bespoke import languages
-from bespoke import unit
+import pydantic
+
+from bespoke import card, languages, unit
 
 CARDS_DIR: Path = Path("cards")
 logger = logging.getLogger(__name__)
@@ -196,7 +196,7 @@ def load_cards_from_db(
             for cid, json_data in cursor.fetchall():
                 try:
                     c = card.Card.model_validate_json(json_data)
-                except Exception:
+                except (pydantic.ValidationError, ValueError):
                     old_c = card.OldCard.model_validate_json(json_data)
                     c = old_c.to_card()
                 result[cid] = c
@@ -218,7 +218,7 @@ def load_all_cards_from_db(db_path: Path | str) -> list[card.Card]:
         for _, json_data in cursor.fetchall():
             try:
                 c = card.Card.model_validate_json(json_data)
-            except Exception:
+            except (pydantic.ValidationError, ValueError):
                 old_c = card.OldCard.model_validate_json(json_data)
                 c = old_c.to_card()
             cards.append(c)
@@ -337,11 +337,16 @@ def export_dataset_to_db(
                 content = f.read()
                 try:
                     c = card.Card.model_validate_json(content)
-                except Exception:
+                except (pydantic.ValidationError, ValueError):
                     old_c = card.OldCard.model_validate_json(content)
                     c = old_c.to_card()
                 cards.append(c)
-        except Exception as e:
+        except (
+            OSError,
+            pydantic.ValidationError,
+            ValueError,
+            json.JSONDecodeError,
+        ) as e:
             logger.warning("Failed to parse card at %s: %s", card_path, e)
 
     # 2. Discover audio files
@@ -435,7 +440,7 @@ def export_dataset_to_db(
             conn.executescript(CREATE_TABLES_SQL)
 
             # Metadata
-            now_iso = datetime.now(timezone.utc).isoformat()
+            now_iso = datetime.now(UTC).isoformat()
             metadata = {
                 "target_language": target_code,
                 "native_language": native_code,
@@ -597,7 +602,7 @@ def verify_dataset_db(db_path: Path | str) -> bool:
 
     try:
         conn = sqlite3.connect(f"file:{db_path.resolve()}?mode=ro", uri=True)
-    except Exception as e:
+    except (sqlite3.Error, OSError) as e:
         logger.error("Failed to connect to SQLite DB: %s", e)
         return False
 
@@ -657,7 +662,7 @@ def verify_dataset_db(db_path: Path | str) -> bool:
                 c_id,
                 sentence,
                 native_sentence,
-                phonetic,
+                _phonetic,
                 audio_fn,
                 slow_audio_fn,
                 native_audio_fn,
@@ -674,11 +679,11 @@ def verify_dataset_db(db_path: Path | str) -> bool:
 
             try:
                 c = card.Card.model_validate_json(full_json)
-            except Exception as e:
+            except (pydantic.ValidationError, ValueError) as e:
                 try:
                     old_c = card.OldCard.model_validate_json(full_json)
                     c = old_c.to_card()
-                except Exception as e2:
+                except (pydantic.ValidationError, ValueError) as e2:
                     logger.error("Invalid card JSON for %s: %s / %s", c_id, e, e2)
                     return False
 
@@ -687,7 +692,7 @@ def verify_dataset_db(db_path: Path | str) -> bool:
                 if not isinstance(parsed_tags, list):
                     logger.error("unit_tags_json is not a list for %s", c_id)
                     return False
-            except Exception as e:
+            except json.JSONDecodeError as e:
                 logger.error("Invalid unit_tags_json for %s: %s", c_id, e)
                 return False
 
@@ -696,7 +701,7 @@ def verify_dataset_db(db_path: Path | str) -> bool:
                 if not isinstance(parsed_notes, list):
                     logger.error("notes_json is not a list for %s", c_id)
                     return False
-            except Exception as e:
+            except json.JSONDecodeError as e:
                 logger.error("Invalid notes_json for %s: %s", c_id, e)
                 return False
 
@@ -763,7 +768,7 @@ def verify_dataset_db(db_path: Path | str) -> bool:
                     return False
 
         return True
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001
         logger.error("verify_dataset_db encountered exception: %s", e)
         return False
     finally:
@@ -777,11 +782,16 @@ class DatasetDB:
         self.db_path = Path(db_path)
         self._conn: sqlite3.Connection | None = None
 
-    def __enter__(self) -> "DatasetDB":
+    def __enter__(self) -> Self:
         self._conn = sqlite3.connect(f"file:{self.db_path.resolve()}?mode=ro", uri=True)
         return self
 
-    def __exit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
+    def __exit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc_val: BaseException | None,
+        exc_tb: types.TracebackType | None,
+    ) -> None:
         if self._conn:
             self._conn.close()
             self._conn = None
@@ -819,7 +829,7 @@ class DatasetDB:
         for (card_json,) in cursor.fetchall():
             try:
                 cards.append(card.Card.model_validate_json(card_json))
-            except Exception:
+            except (pydantic.ValidationError, ValueError):
                 old_card = card.OldCard.model_validate_json(card_json)
                 cards.append(old_card.to_card())
         return cards

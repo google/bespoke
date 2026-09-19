@@ -14,14 +14,16 @@
 
 import unittest
 
-from bespoke import DictionaryUnit
-from bespoke import Difficulty
-from bespoke import languages
-from bespoke import tagger
-from bespoke import Unit
-from bespoke import UnitTag
-from bespoke import UnitTags
-from bespoke import WordUnit
+from bespoke import (
+    DictionaryUnit,
+    Difficulty,
+    Unit,
+    UnitTag,
+    UnitTags,
+    WordUnit,
+    languages,
+    tagger,
+)
 from tests import fakes
 
 
@@ -66,7 +68,7 @@ class TestTaggerHelpers(unittest.TestCase):
 
     def test_japanese_grammar_words_in_vocabulary(self) -> None:
         language = languages.LANGUAGES["japanese"]
-        vocab_names = set(u.name() for u in language.units())
+        vocab_names = {u.name() for u in language.units()}
         for stem in tagger.JAPANESE_GRAMMAR_WORDS.values():
             self.assertIn(stem, vocab_names)
 

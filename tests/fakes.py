@@ -16,15 +16,7 @@ import random
 
 import numpy as np
 
-from bespoke import Card
-from bespoke import Difficulty
-from bespoke import Language
-from bespoke import llm
-from bespoke import Unit
-from bespoke import UnitTag
-from bespoke import UnitTags
-from bespoke import WordUnit
-
+from bespoke import Card, Difficulty, Language, Unit, UnitTag, UnitTags, WordUnit, llm
 
 FAKE_VOCABULARY = {
     Difficulty.A1: [
@@ -78,8 +70,10 @@ def fake_language() -> Language:
 def _fake_card(
     sentence: str,
     unit_tags: UnitTags,
-    notes: list[str] = [],
+    notes: list[str] | None = None,
 ) -> Card:
+    if notes is None:
+        notes = []
     return Card(
         id=sentence,
         sentence=sentence,
@@ -132,8 +126,10 @@ class FakeCardIndex:
         llm_client: llm.LlmClient,
         sentence: str,
         unit_tags: UnitTags,
-        notes: list[str] = [],
+        notes: list[str] | None = None,
     ) -> Card | None:
+        if notes is None:
+            notes = []
         if not await llm_client.check_card(
             sentence=sentence,
             native_sentence="dummy",

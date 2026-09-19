@@ -17,13 +17,7 @@
 import argparse
 import asyncio
 
-from bespoke import Card
-from bespoke import CardIndex
-from bespoke import Deck
-from bespoke import Difficulty
-from bespoke import Language
-from bespoke import languages
-from bespoke import Unit
+from bespoke import Card, CardIndex, Deck, Difficulty, Language, Unit, languages
 from bespoke.unit import DictionaryUnit
 
 
@@ -53,8 +47,7 @@ def find_missing_units(
     if len(untagged_units) > 100:
         filename = "untagged.txt"
         with open(filename, "w", encoding="utf-8") as f:
-            for u in untagged_units:
-                f.write(f"{u}\n")
+            f.writelines(f"{u}\n" for u in untagged_units)
         print(f"More than 100 untagged units. Full list written to {filename}")
         print("Sample of 10 untagged units:")
         for u in untagged_units[:10]:

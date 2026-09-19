@@ -17,14 +17,12 @@
 import argparse
 import asyncio
 import csv
+import io
 from pathlib import Path
 
-from bespoke import DictionaryUnit
-from bespoke import languages
-from bespoke import llm
-from bespoke import Unit
-from bespoke import WordUnit
+import aiofiles  # type: ignore
 
+from bespoke import DictionaryUnit, Unit, WordUnit, languages, llm
 
 MAX_RETRIES = 5
 MAX_RESPONSE_LENGTH = 100
@@ -36,9 +34,7 @@ def validate_translation(text: str) -> bool:
         return False
     if any(char in text for char in ["[", "]", "(", ")", "*", "\n", "\r"]):
         return False
-    if len(text) > MAX_RESPONSE_LENGTH:
-        return False
-    return True
+    return len(text) <= MAX_RESPONSE_LENGTH
 
 
 async def translate_unit(
@@ -80,7 +76,7 @@ async def translate_unit(
             f"Translate only the word '{name}'."
         )
     else:
-        raise ValueError(f"Unknown unit type: {type(unit)}")
+        raise TypeError(f"Unknown unit type: {type(unit)}")
 
     prompt = (
         f"You are a lexicographer translating from {target} to {native}.\n"
@@ -109,7 +105,7 @@ async def translate_unit(
             if validate_translation(raw_translated):
                 translated = raw_translated
                 break
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001
             print(f"Error for {unit.id()}: {e}")
             await asyncio.sleep(1)
 
@@ -173,8 +169,9 @@ async def main_async():
     if output_path.exists():
         print(f"Loading existing translations from {output_path}...")
         try:
-            with open(output_path, "r", encoding="utf-8") as f:
-                reader = csv.DictReader(f)
+            async with aiofiles.open(output_path, "r", encoding="utf-8") as f:
+                content = await f.read()
+                reader = csv.DictReader(content.splitlines())
                 for row in reader:
                     uid = row.get("unit_id")
                     trans = row.get("translation", "")
@@ -184,7 +181,7 @@ async def main_async():
             print(
                 f"Loaded {len(results)} entries, {existing_count} already translated."
             )
-        except Exception as e:
+        except (OSError, csv.Error) as e:
             print(f"Warning: Failed to read existing translations: {e}")
 
     units_to_translate = [u for u in units if not results.get(u.id(), "").strip()]
@@ -216,11 +213,14 @@ async def main_async():
         print("\nTranslation run was interrupted/cancelled. Saving progress...")
     finally:
         output_path.parent.mkdir(parents=True, exist_ok=True)
-        with open(output_path, "w", encoding="utf-8", newline="") as f:
-            writer = csv.writer(f)
-            writer.writerow(["unit_id", "translation"])
-            for unit in units:
-                writer.writerow([unit.id(), results.get(unit.id(), "")])
+        buffer = io.StringIO()
+        writer = csv.writer(buffer)
+        writer.writerow(["unit_id", "translation"])
+        for unit in units:
+            writer.writerow([unit.id(), results.get(unit.id(), "")])
+
+        async with aiofiles.open(output_path, "w", encoding="utf-8", newline="") as f:
+            await f.write(buffer.getvalue())
 
         success_count = sum(1 for u in units if results.get(u.id(), "").strip())
         print(

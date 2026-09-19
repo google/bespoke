@@ -15,24 +15,16 @@
 """Simple user interface for learning."""
 
 import argparse
-from collections.abc import Callable
 import json
 import os
-from pathlib import Path
 import sys
 import threading
+from collections.abc import Callable
+from pathlib import Path
 
-from nicegui import events
-from nicegui import ui
+from nicegui import events, ui
 
-from bespoke import CardIndex
-from bespoke import database
-from bespoke import Deck
-from bespoke import Difficulty
-from bespoke import Language
-from bespoke import languages
-from bespoke import Mode
-
+from bespoke import CardIndex, Deck, Difficulty, Language, Mode, database, languages
 
 COLOR_MAP = {
     3: "positive",  # Green

@@ -15,11 +15,10 @@
 """Tool to transition old decks to new decks by updating unit IDs."""
 
 import argparse
-from pathlib import Path
 import shutil
+from pathlib import Path
 
-from bespoke import Deck
-from bespoke import languages
+from bespoke import Deck, languages
 from bespoke.unit import DictionaryUnit
 
 
@@ -55,9 +54,8 @@ def main():
     # Map each word to its first DictionaryUnit ID
     word_to_unit_id = {}
     for u in units:
-        if isinstance(u, DictionaryUnit):
-            if u.name() not in word_to_unit_id:
-                word_to_unit_id[u.name()] = u.id()
+        if isinstance(u, DictionaryUnit) and u.name() not in word_to_unit_id:
+            word_to_unit_id[u.name()] = u.id()
 
     print(f"Mapped {len(word_to_unit_id)} words to DictionaryUnit IDs.")
 

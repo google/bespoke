@@ -15,15 +15,13 @@
 """Tool to create cards for all words in a language."""
 
 import asyncio
-from collections import defaultdict
-from datetime import datetime
 import random
+from collections import defaultdict
+from datetime import UTC, datetime
 
+from bespoke import llm, tagger
 from bespoke.card import CardIndex
-from bespoke.languages import Difficulty
-from bespoke.languages import Language
-from bespoke import llm
-from bespoke import tagger
+from bespoke.languages import Difficulty, Language
 from bespoke.unit import Unit
 
 
@@ -228,7 +226,7 @@ class DeckBuilder:
         for card in all_cards:
             self._duplicates.add(card.sentence)
             sentence_producer.register_card(card.unit_ids())
-        self._start_time = datetime.now()
+        self._start_time = datetime.now(UTC)
         print(f"Initialized with {len(self._duplicates)} existing cards")
 
         semaphore = asyncio.Semaphore(self.MAX_PARALLELISM)
@@ -290,12 +288,12 @@ class DeckBuilder:
                 self._created_count += 1
                 if self._created_count % 1000 == 0 or self._created_count == 100:
                     assert self._start_time is not None
-                    elapsed = datetime.now() - self._start_time
+                    elapsed = datetime.now(UTC) - self._start_time
                     time_string = str(elapsed).split(".")[0]
                     print(f"{self._created_count:>5} cards after : {time_string}")
         except TimeoutError:
             print(f"Timeout processing sentence '{sentence}'")
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001
             print(f"Error processing sentence '{sentence}': {e}")
         finally:
             semaphore.release()

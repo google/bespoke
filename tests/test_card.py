@@ -12,19 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from pathlib import Path
 import tempfile
 import unittest
+from pathlib import Path
 from unittest import mock
 
 import pydantic
 
-from bespoke import Card
-from bespoke import CardIndex
+from bespoke import Card, CardIndex
 from bespoke.languages import LANGUAGES
-from bespoke.unit import Difficulty
-from bespoke.unit import UnitTag
-from bespoke.unit import WordUnit
+from bespoke.unit import Difficulty, UnitTag, WordUnit
 from tests.fakes import FakeLlmClient
 
 
