@@ -88,6 +88,8 @@ You can upload a .db file into the app to start learning.
 Note: If you upload a dataset into the app, it will make a copy.
 You can save space by deleting the downloaded dataset afterwards.
 
+<img alt="Android app" src="docs/android_app.png" width="540px">
+
 ### Backups
 
 Bespoke does not store or synchronize your data. After cards are generated, it
