@@ -59,7 +59,6 @@ der Arm,,A1
 der Arzt,,A1
 auch,,A1
 auf,,A1
-auf sein,,A1
 die Aufgabe,,A1
 aufhören,,A1
 aufstehen,,A1
@@ -760,7 +759,6 @@ wichtig,,A1
 wie,,A1
 wie viel,,A1
 wieder,,A1
-wieder holen,,A1
 wiederholen,,A1
 das Wiederhören,,A1
 das Wiedersehen,,A1
@@ -1411,7 +1409,6 @@ zuhören,,A2
 zuletzt,,A2
 zum Beispiel,,A2
 zumachen,,A2
-zurück-,,A2
 zurückfahren,,A2
 zurückgeben,,A2
 zurückgehen,,A2
@@ -1424,7 +1421,6 @@ zurücklaufen,,A2
 übermorgen,,A2
 übersetzen,,A2
 die Übersetzung,,A2
--weis,,B1
 -weise,,B1
 abbiegen,,B1
 die Abbildung,,B1
@@ -1432,7 +1428,6 @@ das Abenteuer,,B1
 der Abfall,,B1
 der Abfalleimer,,B1
 das Abgas,,B1
-abhangen,,B1
 abheben,,B1
 abhängen,,B1
 abhängig,,B1
@@ -1754,7 +1749,6 @@ die Doktorin,,B1
 das Dokument,,B1
 der Donner,,B1
 donnern,,B1
-doppel-,,B1
 doppelt,,B1
 die Dose,,B1
 der Dreck,,B1
@@ -1850,7 +1844,6 @@ enttäuschen,,B1
 die Enttäuschung,,B1
 entweder,,B1
 entwickeln,,B1
-die Entwickelung,,B1
 die Entwicklung,,B1
 der Erdapfel,,B1
 die Erde,,B1
@@ -2131,7 +2124,6 @@ die Herkunft,,B1
 der Hersteller,,B1
 herunterfahren,,B1
 das Herz,,B1
-hieher,,B1
 hierher,,B1
 hinter-,,B1
 hinterher,,B1
@@ -2321,7 +2313,6 @@ landen,,B1
 die Landung,,B1
 die Landwirtschaft,,B1
 die Langeweile,,B1
-die Langweile,,B1
 langweilen,,B1
 der Laster,,B1
 das Laufwerk,,B1
@@ -2607,8 +2598,7 @@ der Rasen,,B1
 rasieren,,B1
 der Rat,,B1
 der Ratschlag,,B1
-"der Raucher, das Raucher",,B1
-die Raucherin,,B1
+"der Raucher, die Raucherin",,B1
 rauf,,B1
 rauf-,,B1
 raus-,,B1
@@ -2661,7 +2651,6 @@ die Rufnummer,,B1
 die Runde,,B1
 die Rundfahrt,,B1
 runterwerfen,,B1
-rück-,,B1
 die Rückfahrt,,B1
 die Rückkehr,,B1
 rückwärts,,B1
@@ -2676,7 +2665,6 @@ der Sand,,B1
 satt,,B1
 die Sauce,,B1
 die Schachtel,,B1
-der Schade,,B1
 der Schaden,,B1
 schaden,,B1
 schalten,,B1
@@ -3247,7 +3235,6 @@ die Öffentlichkeit,,B1
 öfter,,B1
 öko-,,B1
 ökologisch,,B1
-über-,,B1
 überfahren,,B1
 überhaupt,,B1
 überholen,,B1
