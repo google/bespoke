@@ -480,6 +480,9 @@ class GeminiLlmClient(LlmClient):
             contents=[prompt],
             config=self._genai.types.GenerateContentConfig(
                 response_modalities=["TEXT"],
+                automatic_function_calling=self._genai.types.AutomaticFunctionCallingConfig(
+                    disable=True
+                ),
             ),
         )
         if response.text is None:
@@ -523,6 +526,9 @@ class GeminiLlmClient(LlmClient):
             contents=[prompt],
             config=self._genai.types.GenerateContentConfig(
                 response_modalities=["TEXT"],
+                automatic_function_calling=self._genai.types.AutomaticFunctionCallingConfig(
+                    disable=True
+                ),
             ),
         )
         if response.text is None:
@@ -539,6 +545,9 @@ class GeminiLlmClient(LlmClient):
             config=self._genai.types.GenerateContentConfig(
                 response_mime_type="application/json",
                 response_schema=SuggestedNamesSchema,
+                automatic_function_calling=self._genai.types.AutomaticFunctionCallingConfig(
+                    disable=True
+                ),
             ),
         )
         if response.parsed is None:
@@ -568,6 +577,9 @@ class GeminiLlmClient(LlmClient):
             config=self._genai.types.GenerateContentConfig(
                 response_mime_type="application/json",
                 response_schema=UnitTags,
+                automatic_function_calling=self._genai.types.AutomaticFunctionCallingConfig(
+                    disable=True
+                ),
             ),
         )
         if response.parsed is None:
@@ -598,6 +610,9 @@ class GeminiLlmClient(LlmClient):
             config=self._genai.types.GenerateContentConfig(
                 response_mime_type="application/json",
                 response_schema=CheckCardSchema,
+                automatic_function_calling=self._genai.types.AutomaticFunctionCallingConfig(
+                    disable=True
+                ),
             ),
         )
         if response.parsed is None:
@@ -636,6 +651,9 @@ class GeminiLlmClient(LlmClient):
                             voice_name=voice_name,
                         )
                     )
+                ),
+                automatic_function_calling=self._genai.types.AutomaticFunctionCallingConfig(
+                    disable=True
                 ),
             ),
         )
