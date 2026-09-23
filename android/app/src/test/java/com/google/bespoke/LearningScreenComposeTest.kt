@@ -276,6 +276,9 @@ class LearningScreenComposeTest {
         composeTestRule.onNodeWithTag("NextButton").performScrollTo().performClick()
 
         // 5. Verifies next card is loaded on front view and progress was saved
+        composeTestRule.waitUntil(5000) {
+            composeTestRule.onAllNodesWithTag("FrontCardView").fetchSemanticsNodes().isNotEmpty()
+        }
         composeTestRule.onNodeWithTag("FrontCardView").assertIsDisplayed()
         assertTrue(progressSaved)
     }
@@ -307,6 +310,9 @@ class LearningScreenComposeTest {
 
         // 3. Click Next to go to front view
         composeTestRule.onNodeWithTag("NextButton").performScrollTo().performClick()
+        composeTestRule.waitUntil(5000) {
+            composeTestRule.onAllNodesWithTag("FrontCardView").fetchSemanticsNodes().isNotEmpty()
+        }
         composeTestRule.onNodeWithTag("FrontCardView").assertIsDisplayed()
 
         // 4. Click Blocked badge in DeckStatsRow
