@@ -162,7 +162,8 @@ class OldCard(pydantic.BaseModel):
         )
 
 
-async def _write_ogg(audio: np.ndarray, filename: str, bitrate="16k") -> None:
+async def encode_audio_to_ogg(audio: np.ndarray, bitrate: str = "16k") -> bytes:
+    """Encodes raw int16 24kHz mono PCM audio array into OGG Opus bytes via ffmpeg."""
     cmd = [
         "ffmpeg",
         "-y",
@@ -183,7 +184,9 @@ async def _write_ogg(audio: np.ndarray, filename: str, bitrate="16k") -> None:
         "libopus",
         "-vbr",
         "on",
-        filename,
+        "-f",
+        "ogg",
+        "pipe:1",
     ]
     process = await asyncio.create_subprocess_exec(
         *cmd,
@@ -191,9 +194,16 @@ async def _write_ogg(audio: np.ndarray, filename: str, bitrate="16k") -> None:
         stdout=asyncio.subprocess.PIPE,
         stderr=asyncio.subprocess.PIPE,
     )
-    _stdout, stderr = await process.communicate(input=audio.tobytes())
+    stdout, stderr = await process.communicate(input=audio.tobytes())
     if process.returncode != 0:
-        print(f"Error writing {filename}: {stderr.decode()}")
+        raise RuntimeError(f"ffmpeg audio encoding failed: {stderr.decode()}")
+    return stdout
+
+
+async def _write_ogg(audio: np.ndarray, filename: str, bitrate: str = "16k") -> None:
+    data = await encode_audio_to_ogg(audio, bitrate=bitrate)
+    async with aiofiles.open(filename, "wb") as f:
+        await f.write(data)
 
 
 async def _write_audio_file(

@@ -22,6 +22,7 @@ from bespoke import (
     UnitTags,
     WordUnit,
     languages,
+    llm,
     tagger,
 )
 from tests import fakes
@@ -621,8 +622,6 @@ class TestCreateTags(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(result[4].unit_id, "いる")
 
     def test_japanese_few_shot_prompts_included(self) -> None:
-        from bespoke import llm
-
         language = fakes.fake_language()
         language.code_name = "japanese"
         language.writing_system = "Japanese (Kanji and Kana)"

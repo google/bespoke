@@ -29,7 +29,7 @@ uv run -m maintainers.package_cards --target="Japanese" --native="English"
 Validates a given `.db` file has the correct format.
 
 ```sh
-uv run -m maintainers.verify_package cards/japanese.db
+uv run -m maintainers.verify_package cards/japanese_(english).db
 ```
 
 ### 3. Card creation statistics (`maintainers/card_distribution.py`)
@@ -76,7 +76,17 @@ Removes specific sentences from the card index according to a text file list:
 uv run -m maintainers.index_filter --target="Japanese" --native="English" --sentences=bad_sentences.txt
 ```
 
-### 8. Transition Deck State (`maintainers/transition_deck.py`)
+### 8. Convert Dataset to New Native Language (`maintainers/convert_dataset.py`)
+
+Converts an existing `.db` dataset package to a new native language by
+translating vocabulary units, generating native sentence translations via LLM,
+and synthesizing native audio clips:
+
+```sh
+uv run -m maintainers.convert_dataset --target="Japanese" --from-native="English" --to-native="German"
+```
+
+### 9. Transition Deck State (`maintainers/transition_deck.py`)
 
 Only necessary if you started learning on a commit from May 2026 or earlier.
 Migrates legacy deck rating states to updated DictionaryUnit IDs:

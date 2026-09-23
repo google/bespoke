@@ -428,7 +428,7 @@ def open_latest_deck() -> tuple[Deck | None, str, Path | None]:
         data = json.load(f)
     target = languages.LANGUAGES[data["target_language"]]
     native = languages.LANGUAGES[data["native_language"]]
-    db_path = Path("cards") / f"{target.code_name}.db"
+    db_path = database.get_dataset_db_path(Path("cards"), target, native)
     active_db_path: Path | None = None
     if db_path.exists():
         active_db_path = db_path
@@ -496,7 +496,7 @@ def open_deck() -> tuple[Deck, str, Path | None]:
     if args.use_write_mode:
         modes.append(Mode.WRITE)
 
-    db_path = Path("cards") / f"{target.code_name}.db"
+    db_path = database.get_dataset_db_path(Path("cards"), target, native)
     deck_filename = f"deck_{target.code_name}.json"
     active_db_path: Path | None = None
 

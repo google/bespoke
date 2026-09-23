@@ -83,9 +83,9 @@ packaging the files into a database is necessary:
 
 ```sh
 uv run -m maintainers.package_cards --target="Japanese" --native="English"
-uv run -m maintainers.verify_package cards/japanese.db
+uv run -m maintainers.verify_package cards/japanese_(english).db
 ```
 
 The command that verifies decks can be run anytime on databases you receive to
-check integrity. The final output of this pipeline is `cards/japanese.db`.
+check integrity. The final output of this pipeline is `cards/japanese_(english).db`.
 You can upload this file into the Android app and start learning.

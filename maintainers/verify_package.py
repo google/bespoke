@@ -21,11 +21,6 @@ from pathlib import Path
 
 from bespoke import database
 
-EXPECTED_TABLES = database.EXPECTED_TABLES
-load_metadata_from_db = database.load_metadata_from_db
-resolve_language = database.resolve_language
-verify_dataset_db = database.verify_dataset_db
-
 
 def main():
     parser = argparse.ArgumentParser(

@@ -18,7 +18,6 @@ from __future__ import annotations
 
 import csv
 import json
-import logging
 import sqlite3
 import types
 from datetime import UTC, datetime
@@ -30,7 +29,6 @@ import pydantic
 from bespoke import card, languages, unit
 
 CARDS_DIR: Path = Path("cards")
-logger = logging.getLogger(__name__)
 
 CREATE_TABLES_SQL = """
 CREATE TABLE IF NOT EXISTS metadata (
@@ -96,34 +94,6 @@ EXPECTED_TABLES: dict[str, set[str]] = {
 }
 
 
-def _resolve_audio_file(
-    audio_ref: str, cards_dir: Path, card_subdir: Path
-) -> Path | None:
-    if not audio_ref:
-        return None
-    p = Path(audio_ref)
-    candidates = [
-        p,
-        cards_dir / p,
-        card_subdir / p,
-        card_subdir / p.name,
-        cards_dir / p.name,
-    ]
-    if audio_ref.startswith("cards/"):
-        stripped = audio_ref[len("cards/") :]
-        candidates.extend(
-            [
-                cards_dir / stripped,
-                card_subdir / Path(stripped).name,
-                cards_dir / Path(stripped).name,
-            ]
-        )
-    for cand in candidates:
-        if cand.is_file():
-            return cand
-    return None
-
-
 def resolve_language(
     language: str | languages.Language,
 ) -> languages.Language:
@@ -143,6 +113,17 @@ def resolve_language(
     raise ValueError(
         f"Unknown language '{language}'. Available: {list(languages.LANGUAGES.keys())}"
     )
+
+
+def get_dataset_db_path(
+    cards_dir: Path | str = CARDS_DIR,
+    target: languages.Language | str = "japanese",
+    native: languages.Language | str = "english",
+) -> Path:
+    """Returns the standardized dataset DB path: {cards_dir}/{target}_({native}).db."""
+    target_code = resolve_language(target).code_name
+    native_code = resolve_language(native).code_name
+    return Path(cards_dir) / f"{target_code}_({native_code}).db"
 
 
 def get_audio_blob(db_path: Path | str, filename: str) -> bytes | None:
@@ -297,143 +278,39 @@ def load_metadata_from_db(db_path: Path | str) -> dict[str, str]:
         conn.close()
 
 
-def export_dataset_to_db(
-    cards_dir: Path | str = CARDS_DIR,
-    target: languages.Language | str = "japanese",
-    native: languages.Language | str = "english",
-    output_db_path: Path | str | None = None,
+def write_dataset_to_db(
+    output_db_path: Path | str,
+    target: languages.Language,
+    native: languages.Language,
+    cards: list[card.Card],
+    audio_data: dict[str, bytes],
+    translations: dict[str, str],
+    vocabulary: list[unit.Unit] | dict[str, tuple[str, str, str, str]],
+    card_index: dict[str, list[str]],
 ) -> Path:
-    """Exports cards, audio, translations, vocabulary, and index to SQLite."""
-    cards_dir = Path(cards_dir)
-    target = resolve_language(target)
-    native = resolve_language(native)
-
-    target_code = target.code_name
-    native_code = native.code_name
-    card_subdir = cards_dir / f"{target_code}_{native_code}"
-
-    if output_db_path is None:
-        output_db_path = cards_dir / f"{target_code}.db"
+    """Writes dataset components to a SQLite .db file and vacuums."""
     output_db_path = Path(output_db_path)
     output_db_path.parent.mkdir(parents=True, exist_ok=True)
     if output_db_path.exists():
         output_db_path.unlink()
 
-    # 1. Discover card files
-    card_paths: list[Path] = []
-    if card_subdir.is_dir():
-        card_paths.extend(sorted(card_subdir.glob("*.json")))
-    if not card_paths and cards_dir.is_dir():
-        card_paths.extend(
-            sorted(
-                [p for p in cards_dir.glob("*.json") if not p.name.startswith("index_")]
-            )
-        )
+    target_code = target.code_name
+    native_code = native.code_name
 
-    cards: list[card.Card] = []
-    for card_path in card_paths:
-        try:
-            with open(card_path, "r", encoding="utf-8") as f:
-                content = f.read()
-                try:
-                    c = card.Card.model_validate_json(content)
-                except (pydantic.ValidationError, ValueError):
-                    old_c = card.OldCard.model_validate_json(content)
-                    c = old_c.to_card()
-                cards.append(c)
-        except (
-            OSError,
-            pydantic.ValidationError,
-            ValueError,
-            json.JSONDecodeError,
-        ) as e:
-            logger.warning("Failed to parse card at %s: %s", card_path, e)
-
-    # 2. Discover audio files
-    audio_data: dict[str, bytes] = {}
-    for c in cards:
-        for audio_ref in [
-            c.audio_filename,
-            c.slow_audio_filename,
-            c.native_audio_filename,
-        ]:
-            if audio_ref:
-                base_name = Path(audio_ref).name
-                if base_name not in audio_data:
-                    found_path = _resolve_audio_file(audio_ref, cards_dir, card_subdir)
-                    if found_path is not None:
-                        audio_data[base_name] = found_path.read_bytes()
-                    else:
-                        logger.warning(
-                            "Audio file reference '%s' for card '%s' not found on disk",
-                            audio_ref,
-                            c.id,
-                        )
-
-    if card_subdir.is_dir():
-        for ogg_path in sorted(card_subdir.glob("*.ogg")):
-            if ogg_path.name not in audio_data:
-                audio_data[ogg_path.name] = ogg_path.read_bytes()
-
-    # 3. Discover translations
-    translations: dict[str, str] = {}
-    trans_candidates = [
-        cards_dir / f"translations_{target_code}_{native_code}.csv",
-        card_subdir / "translations.csv",
-        cards_dir / "translations.csv",
-    ]
-    for trans_path in trans_candidates:
-        if trans_path.is_file():
-            with open(trans_path, "r", encoding="utf-8") as f:
-                reader = csv.DictReader(f)
-                for row in reader:
-                    if "unit_id" in row and "translation" in row:
-                        translations[row["unit_id"]] = row["translation"]
-            break
-
-    # 4. Discover vocabulary
-    vocab_entries: dict[str, tuple[str, str, str, str]] = {}
-    vocab_candidates = [
-        cards_dir / f"vocabulary_{target_code}.csv",
-        cards_dir / target_code / "vocabulary.csv",
-        cards_dir / "vocabulary.csv",
-    ]
-    for vocab_path in vocab_candidates:
-        if vocab_path.is_file():
-            with open(vocab_path, "r", encoding="utf-8") as f:
-                reader = csv.DictReader(f)
-                for row in reader:
-                    name = row.get("name", "")
-                    definition = row.get("definition", "")
-                    diff = row.get("difficulty", "A1")
-                    unit_id = f"{name} - {definition}" if definition else name
-                    vocab_entries[unit_id] = (unit_id, name, definition, diff)
-            break
-
-    if not vocab_entries:
-        for u in target.units():
+    vocab_rows: list[tuple[str, str, str, str]] = []
+    if isinstance(vocabulary, dict):
+        vocab_rows = list(vocabulary.values())
+    else:
+        for u in vocabulary:
             definition = u.definition() if isinstance(u, unit.DictionaryUnit) else ""
             diff = str(u.difficulty())
-            vocab_entries[u.id()] = (u.id(), u.name(), definition, diff)
+            vocab_rows.append((u.id(), u.name(), definition, diff))
 
-    # 5. Discover index
-    index_map: dict[str, list[str]] = {}
-    index_candidates = [
-        cards_dir / f"index_{target_code}_{native_code}.json",
-        card_subdir / "index.json",
-    ]
-    for index_path in index_candidates:
-        if index_path.is_file():
-            with open(index_path, "r", encoding="utf-8") as f:
-                index_map = json.load(f)
-            break
+    index_rows: list[tuple[str, str]] = []
+    for unit_id, card_ids in card_index.items():
+        for card_id in card_ids:
+            index_rows.append((unit_id, card_id))
 
-    if not index_map:
-        for c in cards:
-            for unit_id in c.unit_ids():
-                index_map.setdefault(unit_id, []).append(c.id)
-
-    # 6. Write to SQLite
     conn = sqlite3.connect(output_db_path)
     try:
         with conn:
@@ -450,7 +327,7 @@ def export_dataset_to_db(
                 "version": "1.0",
                 "card_count": str(len(cards)),
                 "audio_count": str(len(audio_data)),
-                "vocabulary_count": str(len(vocab_entries)),
+                "vocabulary_count": str(len(vocab_rows)),
                 "translation_count": str(len(translations)),
             }
             conn.executemany(
@@ -503,17 +380,12 @@ def export_dataset_to_db(
             )
 
             # Vocabulary
-            vocab_rows = list(vocab_entries.values())
             conn.executemany(
                 "INSERT OR REPLACE INTO vocabulary (id, name, definition, difficulty) VALUES (?, ?, ?, ?)",
                 vocab_rows,
             )
 
             # Card Index
-            index_rows = []
-            for unit_id, card_ids in index_map.items():
-                for card_id in card_ids:
-                    index_rows.append((unit_id, card_id))
             conn.executemany(
                 "INSERT OR REPLACE INTO card_index (unit_id, card_id) VALUES (?, ?)",
                 index_rows,
@@ -597,13 +469,13 @@ def verify_dataset_db(db_path: Path | str) -> bool:
     """Validates table schemas, audio blobs, JSON parsing, and index integrity."""
     db_path = Path(db_path)
     if not db_path.is_file():
-        logger.error("DB file does not exist: %s", db_path)
+        print(f"DB file does not exist: {db_path}")
         return False
 
     try:
         conn = sqlite3.connect(f"file:{db_path.resolve()}?mode=ro", uri=True)
     except (sqlite3.Error, OSError) as e:
-        logger.error("Failed to connect to SQLite DB: %s", e)
+        print(f"Failed to connect to SQLite DB: {e}")
         return False
 
     try:
@@ -614,23 +486,23 @@ def verify_dataset_db(db_path: Path | str) -> bool:
         existing_tables = {row[0] for row in cursor.fetchall()}
         for table_name, req_cols in EXPECTED_TABLES.items():
             if table_name not in existing_tables:
-                logger.error("Missing table: %s", table_name)
+                print(f"Missing table: {table_name}")
                 return False
             cursor.execute(f"PRAGMA table_info({table_name})")
             table_cols = {row[1] for row in cursor.fetchall()}
             missing_cols = req_cols - table_cols
             if missing_cols:
-                logger.error("Table %s missing columns: %s", table_name, missing_cols)
+                print(f"Table {table_name} missing columns: {missing_cols}")
                 return False
 
         # 2. Verify metadata
         cursor.execute("SELECT key, value FROM metadata")
         meta = {row[0]: row[1] for row in cursor.fetchall()}
         if "target_language" not in meta or not meta["target_language"]:
-            logger.error("Missing target_language in metadata")
+            print("Missing target_language in metadata")
             return False
         if "native_language" not in meta or not meta["native_language"]:
-            logger.error("Missing native_language in metadata")
+            print("Missing native_language in metadata")
             return False
 
         # 3. Verify audio map
@@ -639,7 +511,7 @@ def verify_dataset_db(db_path: Path | str) -> bool:
         audio_map: dict[str, int] = {}
         for fn, length in audio_rows:
             if length is None or length <= 0:
-                logger.error("Audio file '%s' has empty binary data", fn)
+                print(f"Audio file '{fn}' has empty binary data")
                 return False
             audio_map[fn] = length
             audio_map[Path(fn).name] = length
@@ -672,7 +544,7 @@ def verify_dataset_db(db_path: Path | str) -> bool:
             ) = row
 
             if not c_id or not sentence or not native_sentence:
-                logger.error("Card has empty required text fields: %s", c_id)
+                print(f"Card has empty required text fields: {c_id}")
                 return False
 
             card_ids_in_cards.add(c_id)
@@ -684,25 +556,25 @@ def verify_dataset_db(db_path: Path | str) -> bool:
                     old_c = card.OldCard.model_validate_json(full_json)
                     c = old_c.to_card()
                 except (pydantic.ValidationError, ValueError) as e2:
-                    logger.error("Invalid card JSON for %s: %s / %s", c_id, e, e2)
+                    print(f"Invalid card JSON for {c_id}: {e} / {e2}")
                     return False
 
             try:
                 parsed_tags = json.loads(unit_tags_json)
                 if not isinstance(parsed_tags, list):
-                    logger.error("unit_tags_json is not a list for %s", c_id)
+                    print(f"unit_tags_json is not a list for {c_id}")
                     return False
             except json.JSONDecodeError as e:
-                logger.error("Invalid unit_tags_json for %s: %s", c_id, e)
+                print(f"Invalid unit_tags_json for {c_id}: {e}")
                 return False
 
             try:
                 parsed_notes = json.loads(notes_json)
                 if not isinstance(parsed_notes, list):
-                    logger.error("notes_json is not a list for %s", c_id)
+                    print(f"notes_json is not a list for {c_id}")
                     return False
             except json.JSONDecodeError as e:
-                logger.error("Invalid notes_json for %s: %s", c_id, e)
+                print(f"Invalid notes_json for {c_id}: {e}")
                 return False
 
             for a_fn, field_name in [
@@ -711,13 +583,11 @@ def verify_dataset_db(db_path: Path | str) -> bool:
                 (native_audio_fn, "native_audio_filename"),
             ]:
                 if not a_fn:
-                    logger.error("Card %s has empty %s", c_id, field_name)
+                    print(f"Card {c_id} has empty {field_name}")
                     return False
                 if a_fn not in audio_map and Path(a_fn).name not in audio_map:
-                    logger.error(
-                        "Card %s references audio '%s' which is not in audio table",
-                        c_id,
-                        a_fn,
+                    print(
+                        f"Card {c_id} references audio '{a_fn}' which is not in audio table"
                     )
                     return False
 
@@ -727,21 +597,19 @@ def verify_dataset_db(db_path: Path | str) -> bool:
         cursor.execute("SELECT id, name, definition, difficulty FROM vocabulary")
         for v_id, name, definition, diff_str in cursor.fetchall():
             if not v_id or not name:
-                logger.error("Vocabulary row has empty id or name: %s", v_id)
+                print(f"Vocabulary row has empty id or name: {v_id}")
                 return False
             try:
                 languages.Difficulty(diff_str)
             except ValueError:
-                logger.error(
-                    "Invalid difficulty '%s' in vocabulary for %s", diff_str, v_id
-                )
+                print(f"Invalid difficulty '{diff_str}' in vocabulary for {v_id}")
                 return False
 
         # 6. Verify translations
         cursor.execute("SELECT unit_id, translation FROM translations")
         for u_id, trans in cursor.fetchall():
             if not u_id or not trans:
-                logger.error("Translation row has empty unit_id or translation")
+                print("Translation row has empty unit_id or translation")
                 return False
 
         # 7. Verify index consistency
@@ -752,7 +620,7 @@ def verify_dataset_db(db_path: Path | str) -> bool:
 
         for u_id, c_id in index_rows:
             if c_id not in card_ids_in_cards:
-                logger.error("card_index references non-existent card_id '%s'", c_id)
+                print(f"card_index references non-existent card_id '{c_id}'")
                 return False
             indexed_card_ids.add(c_id)
             index_entries_set.add((u_id, c_id))
@@ -760,16 +628,14 @@ def verify_dataset_db(db_path: Path | str) -> bool:
         for c_id, unit_ids in card_unit_ids_map.items():
             for u_id in unit_ids:
                 if (u_id, c_id) not in index_entries_set:
-                    logger.error(
-                        "Card %s contains unit %s but missing from card_index",
-                        c_id,
-                        u_id,
+                    print(
+                        f"Card {c_id} contains unit {u_id} but missing from card_index"
                     )
                     return False
 
         return True
     except Exception as e:  # noqa: BLE001
-        logger.error("verify_dataset_db encountered exception: %s", e)
+        print(f"verify_dataset_db encountered exception: {e}")
         return False
     finally:
         conn.close()

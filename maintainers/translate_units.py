@@ -22,100 +22,11 @@ from pathlib import Path
 
 import aiofiles  # type: ignore
 
-from bespoke import DictionaryUnit, Unit, WordUnit, languages, llm
-
-MAX_RETRIES = 5
-MAX_RESPONSE_LENGTH = 100
+from bespoke import languages, llm
+from bespoke.translation import translate_units
 
 
-def validate_translation(text: str) -> bool:
-    text = text.strip()
-    if not text:
-        return False
-    if any(char in text for char in ["[", "]", "(", ")", "*", "\n", "\r"]):
-        return False
-    return len(text) <= MAX_RESPONSE_LENGTH
-
-
-async def translate_unit(
-    unit: Unit,
-    target_language: languages.Language,
-    llm_client: llm.LlmClient,
-    native_language: languages.Language,
-    results: dict[str, str],
-    name_to_definitions: dict[str, list[str]],
-) -> None:
-    target = target_language.writing_system
-    native = native_language.writing_system
-    name = unit.name()
-
-    if isinstance(unit, WordUnit):
-        task = f"Translate the word '{name}' into {native}."
-        instructions = f"Provide only the direct translation equivalents in {native}."
-    elif isinstance(unit, DictionaryUnit):
-        task = (
-            f"Translate the word '{name}' into {native}.\n"
-            f"The specific meaning referred to is defined as: "
-            f"'{unit.definition()}'."
-        )
-        other_definitions = [
-            d for d in name_to_definitions.get(name, []) if d != unit.definition()
-        ]
-        if other_definitions:
-            definitions_list = "\n".join(f"- '{d}'" for d in other_definitions)
-            task += (
-                f"\n\nNote that the word '{name}' has other meanings defined "
-                f"as follows:\n{definitions_list}\n"
-                "Your translation MUST NOT cover those other meanings. "
-                "Choose translations that apply specifically to the target "
-                "meaning only."
-            )
-        instructions = (
-            f"Provide the most precise translation in {native} that fits "
-            f"the definition. Do NOT translate the definition itself. "
-            f"Translate only the word '{name}'."
-        )
-    else:
-        raise TypeError(f"Unknown unit type: {type(unit)}")
-
-    prompt = (
-        f"You are a lexicographer translating from {target} to {native}.\n"
-        f"{task}\n\n"
-        "Rules:\n"
-        f"1. {instructions}\n"
-        "2. Separate multiple synonyms with commas.\n"
-        f"3. Do NOT include the original word '{name}' or any {target} "
-        "characters in your response.\n"
-        "4. Do NOT include any pronunciation, or phonetics.\n"
-        "5. Do NOT include grammatical labels, parts of speech, gender "
-        "abbreviations, or explanations (do NOT write 'Noun', 'Verb', "
-        "'(f)', '(m)', etc.).\n"
-        "6. Do NOT use markdown formatting (no bold, no italics, "
-        "no asterisks).\n"
-        "7. The output must be on a single line.\n"
-        f"8. The output must not exceed {MAX_RESPONSE_LENGTH} characters.\n\n"
-        "9. The output will be automatically processed, return no other text.\n"
-    )
-
-    translated = ""
-    for attempt in range(MAX_RETRIES):
-        try:
-            raw_translated = await llm_client.text_call(prompt)
-            raw_translated = raw_translated.strip()
-            if validate_translation(raw_translated):
-                translated = raw_translated
-                break
-        except Exception as e:  # noqa: BLE001
-            print(f"Error for {unit.id()}: {e}")
-            await asyncio.sleep(1)
-
-    if translated:
-        results[unit.id()] = translated
-    else:
-        print(f"Error: Failed to translate {unit.id()}.")
-
-
-async def main_async():
+async def main_async() -> None:
     parser = argparse.ArgumentParser(
         description="Translate units to generate dictionary entries."
     )
@@ -145,6 +56,12 @@ async def main_async():
         type=str,
         help="Output path. Defaults to cards/translations_{target}_{native}.csv",
     )
+    parser.add_argument(
+        "--parallelism",
+        type=int,
+        default=16,
+        help="Parallelism limit for LLM calls (default: 16).",
+    )
     args = parser.parse_args()
 
     target_language = target_choices[args.target]
@@ -159,12 +76,7 @@ async def main_async():
     units = target_language.units()
     print(f"Found {len(units)} units in {target_language.writing_system}.")
 
-    name_to_definitions = {}
-    for u in units:
-        if isinstance(u, DictionaryUnit):
-            name_to_definitions.setdefault(u.name(), []).append(u.definition())
-
-    results = {}
+    existing_results: dict[str, str] = {}
     output_path = Path(args.output)
     if output_path.exists():
         print(f"Loading existing translations from {output_path}...")
@@ -176,39 +88,32 @@ async def main_async():
                     uid = row.get("unit_id")
                     trans = row.get("translation", "")
                     if uid:
-                        results[uid] = trans
-            existing_count = sum(1 for t in results.values() if t.strip())
+                        existing_results[uid] = trans
+            existing_count = sum(1 for t in existing_results.values() if t.strip())
             print(
-                f"Loaded {len(results)} entries, {existing_count} already translated."
+                f"Loaded {len(existing_results)} entries, {existing_count} already translated."
             )
         except (OSError, csv.Error) as e:
             print(f"Warning: Failed to read existing translations: {e}")
 
-    units_to_translate = [u for u in units if not results.get(u.id(), "").strip()]
+    units_to_translate = [
+        u for u in units if not existing_results.get(u.id(), "").strip()
+    ]
     print(f"Need to translate {len(units_to_translate)} units.")
 
     llm_client = llm.get_llm_client()
-    semaphore = asyncio.Semaphore(16)
+    results = dict(existing_results)
 
     try:
-        async with asyncio.TaskGroup() as tg:
-            for unit in units_to_translate:
-                await semaphore.acquire()
+        results = await translate_units(
+            units=units,
+            target_language=target_language,
+            native_language=native_language,
+            llm_client=llm_client,
+            existing_translations=existing_results,
+            parallelism=args.parallelism,
+        )
 
-                async def run_task(u=unit):
-                    try:
-                        await translate_unit(
-                            u,
-                            target_language,
-                            llm_client,
-                            native_language,
-                            results,
-                            name_to_definitions,
-                        )
-                    finally:
-                        semaphore.release()
-
-                tg.create_task(run_task())
     except (asyncio.CancelledError, KeyboardInterrupt):
         print("\nTranslation run was interrupted/cancelled. Saving progress...")
     finally:
@@ -229,7 +134,7 @@ async def main_async():
         )
 
 
-def main():
+def main() -> None:
     asyncio.run(main_async())
 
 

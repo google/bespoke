@@ -17,9 +17,11 @@ import unittest
 from pathlib import Path
 from unittest import mock
 
+import numpy as np
 import pydantic
 
 from bespoke import Card, CardIndex
+from bespoke.card import encode_audio_to_ogg
 from bespoke.languages import LANGUAGES
 from bespoke.unit import Difficulty, UnitTag, WordUnit
 from tests.fakes import FakeLlmClient
@@ -325,6 +327,20 @@ class TestCard(unittest.IsolatedAsyncioTestCase):
             self.assertEqual(mock_write_ogg.await_count, 0)
             student_unit = WordUnit("学生", Difficulty.A1)
             self.assertEqual(card_index.size(student_unit), 0)
+
+    @mock.patch("asyncio.create_subprocess_exec")
+    async def test_encode_audio_to_ogg(self, mock_subprocess: mock.AsyncMock) -> None:
+        mock_process = mock.AsyncMock()
+        mock_process.communicate.return_value = (b"OggS_sample_audio", b"")
+        mock_process.returncode = 0
+        mock_subprocess.return_value = mock_process
+
+        audio = np.zeros(24000, dtype=np.int16)
+        ogg_bytes = await encode_audio_to_ogg(audio)
+        self.assertIsInstance(ogg_bytes, bytes)
+        self.assertGreater(len(ogg_bytes), 0)
+        self.assertTrue(ogg_bytes.startswith(b"OggS"))
+        mock_subprocess.assert_called_once()
 
 
 if __name__ == "__main__":

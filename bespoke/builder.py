@@ -186,7 +186,6 @@ class SentenceProducer:
 
 
 class DeckBuilder:
-    MAX_PARALLELISM = 16
     MIN_TAGGING_COVERAGE = 0.7
 
     def __init__(
@@ -195,11 +194,13 @@ class DeckBuilder:
         card_index: CardIndex,
         llm_client: llm.LlmClient,
         grammar: dict[Difficulty, list[str]],
+        parallelism: int = 16,
     ) -> None:
         self._language = target_language
         self._card_index = card_index
         self._llm_client = llm_client
         self._grammar = grammar
+        self._parallelism = parallelism
         self._duplicates: set[str] = set()
         self._start_time: datetime | None = None
         self._created_count = 0
@@ -229,7 +230,8 @@ class DeckBuilder:
         self._start_time = datetime.now(UTC)
         print(f"Initialized with {len(self._duplicates)} existing cards")
 
-        semaphore = asyncio.Semaphore(self.MAX_PARALLELISM)
+        semaphore = asyncio.Semaphore(self._parallelism)
+
         try:
             async with asyncio.TaskGroup() as tg:
                 while not sentence_producer.done():

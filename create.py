@@ -32,11 +32,14 @@ async def create(
     cards_per_unit: int,
     cards_per_call: int,
     max_difficulty: Difficulty = Difficulty.C2,
+    parallelism: int = 16,
 ) -> None:
     card_index = CardIndex.load(target, native)
     llm_client = llm.get_llm_client()
     grammar = languages.load_grammar(target.code_name)
-    deck_builder = DeckBuilder(target, card_index, llm_client, grammar)
+    deck_builder = DeckBuilder(
+        target, card_index, llm_client, grammar, parallelism=parallelism
+    )
     await deck_builder.create_cards(
         cards_per_unit=cards_per_unit,
         cards_per_call=cards_per_call,
@@ -78,6 +81,12 @@ def main():
         "--cards_per_call", type=int, default=8, help="Number of cards per API call."
     )
     parser.add_argument(
+        "--parallelism",
+        type=int,
+        default=16,
+        help="Maximum number of parallel LLM calls.",
+    )
+    parser.add_argument(
         "--max_difficulty",
         type=str,
         choices=[d.value for d in Difficulty],
@@ -96,7 +105,14 @@ def main():
     native = native_choices[args.native]
     max_diff = Difficulty(args.max_difficulty)
     asyncio.run(
-        create(target, native, args.cards_per_unit, args.cards_per_call, max_diff)
+        create(
+            target,
+            native,
+            args.cards_per_unit,
+            args.cards_per_call,
+            max_diff,
+            parallelism=args.parallelism,
+        )
     )
 
 
