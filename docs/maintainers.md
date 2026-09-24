@@ -86,7 +86,19 @@ and synthesizing native audio clips:
 uv run -m maintainers.convert_dataset --target="Japanese" --from-native="English" --to-native="German"
 ```
 
-### 9. Transition Deck State (`maintainers/transition_deck.py`)
+### 9. Replace Dataset Translations (`maintainers/replace_translation.py`)
+
+Overwrites translations in a `.db` dataset package in-place:
+
+```sh
+# Replace a single unit translation:
+uv run -m maintainers.replace_translation --db=cards/japanese_(english).db --unit-id="大学生" --translation="college student"
+
+# Or apply bulk replacements from a CSV file (with header unit_id,translation):
+uv run -m maintainers.replace_translation --db=cards/japanese_(english).db --file=fixes.csv
+```
+
+### 10. Transition Deck State (`maintainers/transition_deck.py`)
 
 Only necessary if you started learning on a commit from May 2026 or earlier.
 Migrates legacy deck rating states to updated DictionaryUnit IDs:
