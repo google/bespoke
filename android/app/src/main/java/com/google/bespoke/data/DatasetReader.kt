@@ -363,11 +363,6 @@ class DatasetReader(private val dbFile: File) : Closeable {
                             unitTagsList.add(UnitTag(occ, uid))
                         }
                     }
-                } else if (unitTagsRaw != null && unitTagsRaw.isJsonObject) {
-                    for ((k, v) in unitTagsRaw.asJsonObject.entrySet()) {
-                        unitTagsList.add(UnitTag(k, v.asString))
-                    }
-                    unitTagsList.sortBy { sentence.indexOf(it.occurance) }
                 }
 
                 Card(

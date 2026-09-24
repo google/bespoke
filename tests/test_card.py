@@ -118,27 +118,16 @@ class TestCard(unittest.IsolatedAsyncioTestCase):
                 notes=[],
             )
 
-    def test_old_card_conversion(self) -> None:
-        card = Card.load(Path("tests/data"), "old_card_example")
+    def test_card_loading(self) -> None:
+        card = Card.load(Path("tests/data"), "card_example")
         self.assertIsNotNone(card)
         assert card is not None
-        self.assertEqual(card.id, "old_test")
+        self.assertEqual(card.id, "test_card")
         self.assertEqual(card.sentence, "大学生は学生より年上です。")
         self.assertEqual(set(card.unit_ids()), {"学生", "大学生"})
         self.assertEqual(len(card.unit_tags), 2)
         tags = {(t.occurance, t.unit_id) for t in card.unit_tags}
         self.assertEqual(tags, {("学生", "学生"), ("大学生", "大学生")})
-
-    def test_new_card_loading(self) -> None:
-        card = Card.load(Path("tests/data"), "new_card_example")
-        self.assertIsNotNone(card)
-        assert card is not None
-        self.assertEqual(card.id, "old_test")
-        self.assertEqual(card.sentence, "大学生は学生より年上です。")
-        old_card = Card.load(Path("tests/data"), "old_card_example")
-        self.assertIsNotNone(old_card)
-        assert old_card is not None
-        self.assertEqual(card, old_card)
 
     async def test_card_index_remove(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:

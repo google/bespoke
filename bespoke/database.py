@@ -175,12 +175,7 @@ def load_cards_from_db(
                 chunk,
             )
             for cid, json_data in cursor.fetchall():
-                try:
-                    c = card.Card.model_validate_json(json_data)
-                except (pydantic.ValidationError, ValueError):
-                    old_c = card.OldCard.model_validate_json(json_data)
-                    c = old_c.to_card()
-                result[cid] = c
+                result[cid] = card.Card.model_validate_json(json_data)
     finally:
         conn.close()
     return result
@@ -197,12 +192,7 @@ def load_all_cards_from_db(db_path: Path | str) -> list[card.Card]:
         cursor.execute("SELECT id, json FROM cards")
         cards = []
         for _, json_data in cursor.fetchall():
-            try:
-                c = card.Card.model_validate_json(json_data)
-            except (pydantic.ValidationError, ValueError):
-                old_c = card.OldCard.model_validate_json(json_data)
-                c = old_c.to_card()
-            cards.append(c)
+            cards.append(card.Card.model_validate_json(json_data))
         return cards
     finally:
         conn.close()
@@ -552,12 +542,8 @@ def verify_dataset_db(db_path: Path | str) -> bool:
             try:
                 c = card.Card.model_validate_json(full_json)
             except (pydantic.ValidationError, ValueError) as e:
-                try:
-                    old_c = card.OldCard.model_validate_json(full_json)
-                    c = old_c.to_card()
-                except (pydantic.ValidationError, ValueError) as e2:
-                    print(f"Invalid card JSON for {c_id}: {e} / {e2}")
-                    return False
+                print(f"Invalid card JSON for {c_id}: {e}")
+                return False
 
             try:
                 parsed_tags = json.loads(unit_tags_json)
@@ -693,11 +679,7 @@ class DatasetDB:
         )
         cards = []
         for (card_json,) in cursor.fetchall():
-            try:
-                cards.append(card.Card.model_validate_json(card_json))
-            except (pydantic.ValidationError, ValueError):
-                old_card = card.OldCard.model_validate_json(card_json)
-                cards.append(old_card.to_card())
+            cards.append(card.Card.model_validate_json(card_json))
         return cards
 
     def get_audio(self, filename: str) -> bytes | None:

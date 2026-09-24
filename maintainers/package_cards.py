@@ -89,13 +89,7 @@ def package_cards(
     for card_path in card_paths:
         try:
             with open(card_path, "r", encoding="utf-8") as f:
-                content = f.read()
-                try:
-                    c = card.Card.model_validate_json(content)
-                except (pydantic.ValidationError, ValueError):
-                    old_c = card.OldCard.model_validate_json(content)
-                    c = old_c.to_card()
-                cards.append(c)
+                cards.append(card.Card.model_validate_json(f.read()))
         except (
             OSError,
             pydantic.ValidationError,

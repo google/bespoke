@@ -298,7 +298,8 @@ class LearningScreenComposeTest {
             }
         }
 
-        // 1. Flip to back
+        // 1. Verify Initial Front Card and Flip to back
+        composeTestRule.onNodeWithTag("FrontCardView").assertIsDisplayed()
         composeTestRule.onNodeWithTag("FlipButton").performScrollTo().performClick()
         composeTestRule.onNodeWithTag("BackCardView").assertIsDisplayed()
 

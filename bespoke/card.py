@@ -100,17 +100,9 @@ class Card(pydantic.BaseModel):
         path = directory / f"{card_id}.json"
         try:
             with open(path, "r", encoding="utf-8") as f:
-                content = f.read()
-                try:
-                    return cls.model_validate_json(content)
-                except pydantic.ValidationError:
-                    try:
-                        old_card = OldCard.model_validate_json(content)
-                        return old_card.to_card()
-                    except pydantic.ValidationError:
-                        print(f"Failed to read card from file '{path}'")
-        except OSError as e:
-            print(f"An error occurred while accessing '{path}': {e}")
+                return cls.model_validate_json(f.read())
+        except (OSError, pydantic.ValidationError) as e:
+            print(f"Failed to read card from file '{path}': {e}")
         return None
 
     @classmethod
@@ -119,47 +111,10 @@ class Card(pydantic.BaseModel):
         try:
             async with aiofiles.open(path, mode="r", encoding="utf-8") as f:
                 content = await f.read()
-                try:
-                    return cls.model_validate_json(content)
-                except pydantic.ValidationError:
-                    try:
-                        old_card = OldCard.model_validate_json(content)
-                        return old_card.to_card()
-                    except pydantic.ValidationError:
-                        print(f"Failed to read card from file '{path}'")
-        except OSError as e:
-            print(f"An error occurred while accessing '{path}': {e}")
+                return cls.model_validate_json(content)
+        except (OSError, pydantic.ValidationError) as e:
+            print(f"Failed to read card from file '{path}': {e}")
         return None
-
-
-class OldCard(pydantic.BaseModel):
-    id: str
-    sentence: str
-    native_sentence: str
-    audio_filename: str
-    slow_audio_filename: str
-    native_audio_filename: str
-    phonetic: str | None
-    units: list[str]
-    unit_tags: dict[str, str]
-    notes: list[str]
-
-    def to_card(self) -> Card:
-        new_unit_tags = [
-            UnitTag(occurance=k, unit_id=v) for k, v in self.unit_tags.items()
-        ]
-        new_unit_tags.sort(key=lambda tag: self.sentence.find(tag.occurance))
-        return Card(
-            id=self.id,
-            sentence=self.sentence,
-            native_sentence=self.native_sentence,
-            audio_filename=self.audio_filename,
-            slow_audio_filename=self.slow_audio_filename,
-            native_audio_filename=self.native_audio_filename,
-            phonetic=self.phonetic,
-            unit_tags=new_unit_tags,
-            notes=self.notes,
-        )
 
 
 async def encode_audio_to_ogg(audio: np.ndarray, bitrate: str = "16k") -> bytes:

@@ -98,15 +98,6 @@ uv run -m maintainers.replace_translation --db=cards/japanese_(english).db --uni
 uv run -m maintainers.replace_translation --db=cards/japanese_(english).db --file=fixes.csv
 ```
 
-### 10. Transition Deck State (`maintainers/transition_deck.py`)
-
-Only necessary if you started learning on a commit from May 2026 or earlier.
-Migrates legacy deck rating states to updated DictionaryUnit IDs:
-
-```sh
-uv run -m maintainers.transition_deck --target="Japanese"
-```
-
 ## Android App Development and Testing
 
 The native Android application is located in the `android/` directory.
