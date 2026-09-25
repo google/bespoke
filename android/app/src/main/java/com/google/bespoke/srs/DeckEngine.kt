@@ -130,11 +130,15 @@ class DeckEngine(
             }
         }
 
-        if (maxUrgency > IMMEDIATE_URGENCY || (
-		soonUrgent >= SOON_URGENT_THRESHOLD && maxUrgency > 0.0
-	)) {
-            if (maxMode != null && maxUnitId != null) {
-                return Pair(maxMode, maxUnitId)
+        if (maxUrgency > 0.0) {
+            val probability = maxOf(
+                maxUrgency / IMMEDIATE_URGENCY,
+                soonUrgent.toDouble() / SOON_URGENT_THRESHOLD
+            )
+            if (Math.random() < probability) {
+                if (maxMode != null && maxUnitId != null) {
+                    return Pair(maxMode, maxUnitId)
+                }
             }
         }
 

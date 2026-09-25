@@ -159,12 +159,15 @@ class Deck:
                         max_urgency = urgency
                         max_mode = mode
                         max_unit_id = unit.id()
-        if max_urgency > IMMEDIATE_URGENCY or (
-            soon_urgent >= SOON_URGENT_THRESHOLD and max_urgency > 0.0
-        ):
-            assert max_mode is not None
-            assert max_unit_id is not None
-            return max_mode, max_unit_id
+        if max_urgency > 0.0:
+            probability = max(
+                max_urgency / IMMEDIATE_URGENCY,
+                soon_urgent / SOON_URGENT_THRESHOLD,
+            )
+            if random.random() < probability:
+                assert max_mode is not None
+                assert max_unit_id is not None
+                return max_mode, max_unit_id
 
         # If nothing needs to be introduced, new difficulty unlocked
         if not available_difficulties:
