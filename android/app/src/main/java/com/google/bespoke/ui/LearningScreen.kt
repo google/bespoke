@@ -19,6 +19,7 @@ import com.google.bespoke.model.*
 import com.google.bespoke.srs.DeckEngine
 import com.google.bespoke.ui.components.*
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.isActive
@@ -31,6 +32,7 @@ fun LearningScreen(
     datasetReader: DatasetReader,
     audioPlayer: AudioPlayer,
     modifier: Modifier = Modifier,
+    ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
     onSaveProgress: (() -> Unit)? = null,
     onNavigateBack: (() -> Unit)? = null,
     @Suppress("UNUSED_PARAMETER") deckTitle: String? = null
@@ -113,7 +115,7 @@ fun LearningScreen(
         currentlyPlayingFile = filename
         activeAudioJob = coroutineScope.launch {
             try {
-                val blob = withContext(Dispatchers.IO) {
+                val blob = withContext(ioDispatcher) {
                     datasetReader.getAudioBlob(filename)
                 }
                 if (!isActive) return@launch
@@ -144,7 +146,7 @@ fun LearningScreen(
         stopAudio()
         coroutineScope.launch {
             try {
-                val (mode, card) = withContext(Dispatchers.IO) {
+                val (mode, card) = withContext(ioDispatcher) {
                     deckEngine.draw()
                 }
                 currentMode = mode

@@ -27,32 +27,15 @@ To start learning, you need a dataset of cards, and an app to learn with them.
 
 This collection grows as more cards are generated.
 
-You can download any of the existing datasets automatically using, e.g.:
-
-```sh
-uv run download.py --target="Traditional Chinese" --native="German"
-```
+Download the dataset on your Android phone, or laptop, from these sources:
 
 | Language Pair | Kaggle Dataset |
 | :------------ | :------------- |
 | German → Traditional Chinese | [bespoke-cards-german-tradchinese](https://www.kaggle.com/datasets/google/bespoke-cards-german-tradchinese) |
 | English → German | [bespoke-cards-english-german](https://www.kaggle.com/datasets/google/bespoke-cards-english-german) |
-| Simplified Chinese → German | [bespoke-cards-simpchinese-german](https://www.kaggle.com/datasets/google/bespoke-cards-simpchinese-german) |
 
-Alternatively, if you prefer to download manually, you can obtain the `.zip`
-file directly from the links in the table above. Download the dataset into the
-`cards/` directory and extract it:
-
-```sh
-cd cards/
-unzip dataset_filename.zip
-```
-
-Ensure the `cards/` directory contains `index_trad_chinese_german.json` and
-`trad_chinese_german/`.
-
-Note: We are currently transitioning to a new dataset format that can be used
-with the Android app. The above zip files are exclusively for the Python code.
+For Android, use the import function of the app.
+For Python, copy the `.db` file into `cards/`.
 
 ### Generate your own dataset
 

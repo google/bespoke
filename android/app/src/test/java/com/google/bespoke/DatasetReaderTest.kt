@@ -5,6 +5,7 @@ import androidx.test.core.app.ApplicationProvider
 import com.google.bespoke.data.DatasetReader
 import com.google.bespoke.model.DictionaryUnit
 import com.google.bespoke.model.WordUnit
+import org.junit.After
 import org.junit.Assert.*
 import org.junit.Before
 import org.junit.Test
@@ -23,7 +24,7 @@ class DatasetReaderTest {
     @Before
     fun setUp() {
         context = ApplicationProvider.getApplicationContext()
-        dbFile = File(context.filesDir, "test_deck.db")
+        dbFile = File(context.filesDir, "test_deck_${System.nanoTime()}.db")
         val resourceStream = DatasetReaderTest::class.java.classLoader?.getResourceAsStream("sample_deck.db")
             ?: throw IllegalStateException("sample_deck.db resource not found in test resources")
         resourceStream.use { input ->
@@ -32,6 +33,16 @@ class DatasetReaderTest {
             }
         }
         reader = DatasetReader(dbFile)
+    }
+
+    @After
+    fun tearDown() {
+        if (::reader.isInitialized) {
+            reader.close()
+        }
+        if (::dbFile.isInitialized && dbFile.exists()) {
+            dbFile.delete()
+        }
     }
 
     @Test

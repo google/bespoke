@@ -18,6 +18,7 @@ import com.google.bespoke.ui.BackCardView
 import com.google.bespoke.ui.FrontCardView
 import com.google.bespoke.ui.LearningScreen
 import com.google.bespoke.ui.theme.BespokeTheme
+import org.junit.After
 import org.junit.Assert.*
 import org.junit.Before
 import org.junit.Rule
@@ -71,7 +72,7 @@ class LearningScreenComposeTest {
     @Before
     fun setUp() {
         context = ApplicationProvider.getApplicationContext()
-        dbFile = File(context.filesDir, "test_compose_deck.db")
+        dbFile = File(context.filesDir, "test_compose_deck_${System.nanoTime()}.db")
         val resourceStream = LearningScreenComposeTest::class.java.classLoader?.getResourceAsStream("sample_deck.db")
             ?: throw IllegalStateException("sample_deck.db resource not found in test resources")
         resourceStream.use { input ->
@@ -81,6 +82,16 @@ class LearningScreenComposeTest {
         }
         reader = DatasetReader(dbFile)
         deck = reader.createDeckEngine()
+    }
+
+    @After
+    fun tearDown() {
+        if (::reader.isInitialized) {
+            reader.close()
+        }
+        if (::dbFile.isInitialized && dbFile.exists()) {
+            dbFile.delete()
+        }
     }
 
     @Test
@@ -257,6 +268,7 @@ class LearningScreenComposeTest {
                     deckEngine = deck,
                     datasetReader = reader,
                     audioPlayer = fakeAudioPlayer,
+                    ioDispatcher = kotlinx.coroutines.Dispatchers.Main,
                     onSaveProgress = { progressSaved = true }
                 )
             }
@@ -276,9 +288,6 @@ class LearningScreenComposeTest {
         composeTestRule.onNodeWithTag("NextButton").performScrollTo().performClick()
 
         // 5. Verifies next card is loaded on front view and progress was saved
-        composeTestRule.waitUntil(5000) {
-            composeTestRule.onAllNodesWithTag("FrontCardView").fetchSemanticsNodes().isNotEmpty()
-        }
         composeTestRule.onNodeWithTag("FrontCardView").assertIsDisplayed()
         assertTrue(progressSaved)
     }
@@ -293,6 +302,7 @@ class LearningScreenComposeTest {
                     deckEngine = deck,
                     datasetReader = reader,
                     audioPlayer = fakeAudioPlayer,
+                    ioDispatcher = kotlinx.coroutines.Dispatchers.Main,
                     onSaveProgress = { progressSaved = true }
                 )
             }
@@ -311,9 +321,6 @@ class LearningScreenComposeTest {
 
         // 3. Click Next to go to front view
         composeTestRule.onNodeWithTag("NextButton").performScrollTo().performClick()
-        composeTestRule.waitUntil(5000) {
-            composeTestRule.onAllNodesWithTag("FrontCardView").fetchSemanticsNodes().isNotEmpty()
-        }
         composeTestRule.onNodeWithTag("FrontCardView").assertIsDisplayed()
 
         // 4. Click Blocked badge in DeckStatsRow

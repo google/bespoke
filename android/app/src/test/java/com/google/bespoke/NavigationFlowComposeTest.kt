@@ -16,6 +16,7 @@ import com.google.bespoke.srs.DeckEngine
 import com.google.bespoke.ui.LearningScreen
 import com.google.bespoke.ui.StartScreen
 import com.google.bespoke.ui.theme.BespokeTheme
+import org.junit.After
 import org.junit.Assert.*
 import org.junit.Before
 import org.junit.Rule
@@ -45,7 +46,7 @@ class NavigationFlowComposeTest {
     @Before
     fun setUp() {
         context = ApplicationProvider.getApplicationContext()
-        dbFile = File(context.filesDir, "sample_deck.db")
+        dbFile = File(context.filesDir, "sample_deck_${System.nanoTime()}.db")
         val resourceStream = NavigationFlowComposeTest::class.java.classLoader?.getResourceAsStream("sample_deck.db")
             ?: throw IllegalStateException("sample_deck.db resource not found in test resources")
         resourceStream.use { input ->
@@ -55,9 +56,22 @@ class NavigationFlowComposeTest {
         }
     }
 
+    private var activeReader: DatasetReader? = null
+    private var initialReader: DatasetReader? = null
+
+    @After
+    fun tearDown() {
+        initialReader?.close()
+        activeReader?.close()
+        if (::dbFile.isInitialized && dbFile.exists()) {
+            dbFile.delete()
+        }
+    }
+
     @Test
     fun testCompleteStudySessionFlowWithSpacedRepetition() {
         val reader = DatasetReader(dbFile)
+        initialReader = reader
         val deck = reader.createDeckEngine()
         deck.setDifficulty(Difficulty.A1)
         deck.setModes(listOf(Mode.LISTEN, Mode.SPEAK))
@@ -87,6 +101,7 @@ class NavigationFlowComposeTest {
                         deckEngine = currentEngine,
                         datasetReader = currentReader,
                         audioPlayer = fakeAudioPlayer,
+                        ioDispatcher = kotlinx.coroutines.Dispatchers.Main,
                         onSaveProgress = {
                             DeckRepository.saveProgress(context, currentEngine)
                         },
@@ -100,6 +115,7 @@ class NavigationFlowComposeTest {
                         availableDecks = listOf(deckInfo),
                         onStartDeck = { info, diff, modes ->
                             val (r, e) = DeckRepository.prepareDeck(context, info, diff, modes)
+                            activeReader = r
                             datasetReader = r
                             engine = e
                             activeSessionInfo = info
