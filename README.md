@@ -47,8 +47,19 @@ If you don't find a dataset that fits your needs, follow the
 Once you have a dataset ready, you can use one of our apps to select and show
 cards for learning. There are two options:
 
-- A Python frontend that opens a browser tab.
 - An Android app.
+- A Python frontend that opens a browser tab.
+
+### Android app
+
+An Android app is being tested, but not yet in the app store.
+To build it, see the [developer manual](docs/maintainers.md).
+You can upload a .db file into the app to start learning.
+
+Note: If you upload a dataset into the app, it will make a copy.
+You can save space by deleting the downloaded dataset afterwards.
+
+<img alt="Android app" src="docs/android_app.png" width="540px">
 
 ### Python frontend
 
@@ -61,17 +72,6 @@ uv run learn.py --target="Japanese" --native="English" --difficulty=A1 --use_rea
 
 Due to browser restrictions, the first card will not autoplay sound.
 All cards after the first will work as expected.
-
-### Android app
-
-An Android app with the same features as the Python code is under development.
-To build it, see the [developer manual](docs/maintainers.md).
-You can upload a .db file into the app to start learning.
-
-Note: If you upload a dataset into the app, it will make a copy.
-You can save space by deleting the downloaded dataset afterwards.
-
-<img alt="Android app" src="docs/android_app.png" width="540px">
 
 ### Backups
 
