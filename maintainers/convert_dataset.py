@@ -20,8 +20,8 @@ import hashlib
 import sys
 from pathlib import Path
 
-from bespoke import card, database, languages, llm, translation
-from bespoke.card import CARDS_DIR
+from bespoke import database, languages, llm, translation
+from bespoke.card import CARDS_DIR, Card, encode_audio_to_ogg
 
 
 async def convert_dataset(
@@ -79,13 +79,17 @@ async def convert_dataset(
     print(f"Translating {len(cards)} cards and generating audio...")
     semaphore = asyncio.Semaphore(parallelism)
 
-    async def process_card(c: card.Card) -> tuple[card.Card, str, bytes]:
+    @llm.standard_retry
+    async def process_card(
+        index: int, target_card: Card
+    ) -> tuple[int, Card, str, bytes]:
         async with semaphore:
-            new_native_sentence = await llm_client.translate(
-                c.sentence, new_native_lang
+            raw_translated = await llm_client.translate(
+                target_card.sentence, new_native_lang
             )
+            new_native_sentence = raw_translated.strip().strip("\"'“”«»‘`")
             audio_array = await llm_client.speak(new_native_sentence, slowly=False)
-            ogg_bytes = await card.encode_audio_to_ogg(audio_array)
+            ogg_bytes = await encode_audio_to_ogg(audio_array)
 
             native_hash = hashlib.sha256(
                 new_native_sentence.encode("utf-8")
@@ -93,26 +97,29 @@ async def convert_dataset(
             native_filename = f"cards/{target_lang.code_name}_{new_native_lang.code_name}/{native_hash}.ogg"
             base_native_filename = f"{native_hash}.ogg"
 
-            new_card = card.Card(
-                id=c.id,
-                sentence=c.sentence,
+            new_card = Card(
+                id=target_card.id,
+                sentence=target_card.sentence,
                 native_sentence=new_native_sentence,
-                phonetic=c.phonetic,
-                audio_filename=c.audio_filename,
-                slow_audio_filename=c.slow_audio_filename,
+                phonetic=target_card.phonetic,
+                audio_filename=target_card.audio_filename,
+                slow_audio_filename=target_card.slow_audio_filename,
                 native_audio_filename=native_filename,
-                unit_tags=c.unit_tags,
-                notes=c.notes,
+                unit_tags=target_card.unit_tags,
+                notes=target_card.notes,
             )
-            return new_card, base_native_filename, ogg_bytes
+            return index, new_card, base_native_filename, ogg_bytes
 
-    tasks = [process_card(c) for c in cards]
-    converted_results = await asyncio.gather(*tasks)
-
-    new_cards: list[card.Card] = []
-    for new_c, base_native_filename, ogg_bytes in converted_results:
-        new_cards.append(new_c)
+    tasks = [process_card(index, c) for index, c in enumerate(cards)]
+    converted_cards: list[Card | None] = [None] * len(cards)
+    for index, future in enumerate(asyncio.as_completed(tasks), 1):
+        card_position, new_card, base_native_filename, ogg_bytes = await future
+        converted_cards[card_position] = new_card
         audio_data[base_native_filename] = ogg_bytes
+        if index % 1000 == 0 or index == len(cards):
+            print(f"Converted {index}/{len(cards)} cards...")
+
+    new_cards: list[Card] = [c for c in converted_cards if c is not None]
 
     database.write_dataset_to_db(
         output_db_path=output_db_path,

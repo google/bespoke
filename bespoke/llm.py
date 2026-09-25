@@ -358,7 +358,7 @@ def _build_check_card_prompt(
 
 class LlmClient(abc.ABC):
     @abc.abstractmethod
-    async def text_call(self, prompt: str) -> str:
+    async def text_call(self, prompt: str, *, lower_safety: bool = False) -> str:
         """Sends a prompt to the LLM and returns the text response."""
 
     async def translate(self, sentence: str, language: Language) -> str:
@@ -368,7 +368,7 @@ class LlmClient(abc.ABC):
             f"{language.writing_system}: \n{sentence} \n"
             "Only respond with the translation, no introduction or explanations."
         )
-        return await self.text_call(prompt)
+        return await self.text_call(prompt, lower_safety=True)
 
     async def to_phonetic(self, sentence: str, language: Language) -> str | None:
         """Converts a sentence to its phonetic representation."""
@@ -473,13 +473,39 @@ class GeminiLlmClient(LlmClient):
         self._genai = genai
         self._client = genai.Client(api_key=api_key)
 
+    def _get_low_safety_settings(self) -> list[typing.Any]:
+        return [
+            self._genai.types.SafetySetting(
+                category=self._genai.types.HarmCategory.HARM_CATEGORY_HARASSMENT,
+                threshold=self._genai.types.HarmBlockThreshold.BLOCK_NONE,
+            ),
+            self._genai.types.SafetySetting(
+                category=self._genai.types.HarmCategory.HARM_CATEGORY_HATE_SPEECH,
+                threshold=self._genai.types.HarmBlockThreshold.BLOCK_NONE,
+            ),
+            self._genai.types.SafetySetting(
+                category=self._genai.types.HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT,
+                threshold=self._genai.types.HarmBlockThreshold.BLOCK_NONE,
+            ),
+            self._genai.types.SafetySetting(
+                category=self._genai.types.HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT,
+                threshold=self._genai.types.HarmBlockThreshold.BLOCK_NONE,
+            ),
+            self._genai.types.SafetySetting(
+                category=self._genai.types.HarmCategory.HARM_CATEGORY_CIVIC_INTEGRITY,
+                threshold=self._genai.types.HarmBlockThreshold.BLOCK_NONE,
+            ),
+        ]
+
     @standard_retry
-    async def text_call(self, prompt: str) -> str:
+    async def text_call(self, prompt: str, *, lower_safety: bool = False) -> str:
+        safety_settings = self._get_low_safety_settings() if lower_safety else None
         response = await self._client.aio.models.generate_content(
             model=self.TEXT_MODEL,
             contents=[prompt],
             config=self._genai.types.GenerateContentConfig(
                 response_modalities=["TEXT"],
+                safety_settings=safety_settings,
                 automatic_function_calling=self._genai.types.AutomaticFunctionCallingConfig(
                     disable=True
                 ),
@@ -701,7 +727,7 @@ class OpenRouterElevenLabsLlmClient(LlmClient):
         self._litellm = litellm
 
     @standard_retry
-    async def text_call(self, prompt: str) -> str:
+    async def text_call(self, prompt: str, *, lower_safety: bool = False) -> str:
         response = await self._litellm.acompletion(
             model=self.TEXT_MODEL,
             messages=[{"role": "user", "content": prompt}],
@@ -867,7 +893,7 @@ class OpenAiLlmClient(LlmClient):
         self._litellm.suppress_debug_info = True
 
     @standard_retry
-    async def text_call(self, prompt: str) -> str:
+    async def text_call(self, prompt: str, *, lower_safety: bool = False) -> str:
         response = await self._litellm.acompletion(
             model=self.TEXT_MODEL,
             messages=[{"role": "user", "content": prompt}],

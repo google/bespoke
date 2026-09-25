@@ -361,7 +361,7 @@ class ConvertFakeLlmClient(fakes.FakeLlmClient):
         super().__init__()
         self.translation_map = translation_map or {}
 
-    async def text_call(self, prompt: str) -> str:
+    async def text_call(self, prompt: str, *, lower_safety: bool = False) -> str:
         for key, val in self.translation_map.items():
             if key in prompt:
                 return val

@@ -33,7 +33,7 @@ class TranslationFakeLlmClient(fakes.FakeLlmClient):
         self.translation_map = translation_map or {}
         self.calls: list[str] = []
 
-    async def text_call(self, prompt: str) -> str:
+    async def text_call(self, prompt: str, *, lower_safety: bool = False) -> str:
         self.calls.append(prompt)
         for key, val in self.translation_map.items():
             if key in prompt:

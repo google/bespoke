@@ -157,7 +157,7 @@ class FakeLlmClient(llm.LlmClient):
                 names.append(unit.name())
         return names
 
-    async def text_call(self, prompt: str) -> str:
+    async def text_call(self, prompt: str, *, lower_safety: bool = False) -> str:
         return f"Fake response to: {prompt}"
 
     async def create_sentences(

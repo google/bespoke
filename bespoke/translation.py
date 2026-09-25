@@ -21,7 +21,6 @@ import asyncio
 from bespoke import languages, llm
 from bespoke.unit import DictionaryUnit, Unit, WordUnit
 
-MAX_RETRIES = 5
 MAX_RESPONSE_LENGTH = 100
 
 
@@ -96,6 +95,18 @@ def _build_unit_translation_prompt(
     )
 
 
+@llm.standard_retry
+async def _translate_single_unit(
+    prompt: str,
+    llm_client: llm.LlmClient,
+) -> str:
+    raw_translated = await llm_client.text_call(prompt, lower_safety=True)
+    candidate = raw_translated.strip().strip("\"'“”«»‘`")
+    if not validate_translation(candidate):
+        raise ValueError(f"Invalid translation output: {candidate}")
+    return candidate
+
+
 async def translate_unit(
     unit: Unit,
     target_language: languages.Language,
@@ -112,21 +123,10 @@ async def translate_unit(
         name_to_definitions=name_to_definitions,
     )
 
-    translated = ""
-    for _ in range(MAX_RETRIES):
-        try:
-            raw_translated = await llm_client.text_call(prompt)
-            raw_translated = raw_translated.strip()
-            if validate_translation(raw_translated):
-                translated = raw_translated
-                break
-        except Exception as e:  # noqa: BLE001
-            print(f"Error translating unit {unit.id()}: {e}")
-            await asyncio.sleep(1)
-
-    if translated:
+    try:
+        translated = await _translate_single_unit(prompt, llm_client)
         results[unit.id()] = translated
-    else:
+    except Exception:  # noqa: BLE001
         print(f"Failed to translate unit {unit.id()}")
 
 
